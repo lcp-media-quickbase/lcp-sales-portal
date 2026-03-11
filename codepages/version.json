@@ -1,5 +1,5 @@
 {
-  "version": "1.0.9",
+  "version": "1.1.0",
   "updated": "2026-03-11",
-  "notes": "Property 2/3 + Billing Contact 1/3 layout, phone auto-formatting"
+  "notes": "Slide-out price panel - reference prices while building order, click + to add"
 }
