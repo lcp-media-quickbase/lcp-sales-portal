@@ -160,11 +160,22 @@ function addPropertyToOrder(propertyId) {
     AppState.orderProperties.push({
         propertyId: propertyId,
         property: property,
-        lineItems: []
+        lineItems: [],
+        // Initialize billing from property, can be overridden
+        billingContact: property.billingContact || '',
+        billingEmail: property.billingEmail || '',
+        billingPhone: property.billingPhone || ''
     });
     
     renderOrderProperties();
     closeModal('property-modal');
+}
+
+function updatePropertyBilling(propertyId, field, value) {
+    var orderProp = AppState.orderProperties.find(op => op.propertyId === propertyId);
+    if (orderProp) {
+        orderProp[field] = value;
+    }
 }
 
 function removePropertyFromOrder(propertyId) {
@@ -234,16 +245,8 @@ function renderOrderProperties() {
         return;
     }
     
-    c.innerHTML = AppState.orderProperties.map(op => {
+    c.innerHTML = AppState.orderProperties.map((op, idx) => {
         var p = op.property;
-        var billingHtml = '';
-        if (p.billingContact || p.billingEmail || p.billingPhone) {
-            billingHtml = `<div class="property-group-billing">
-                ${p.billingContact ? `<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${p.billingContact}</span>` : ''}
-                ${p.billingEmail ? `<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>${p.billingEmail}</span>` : ''}
-                ${p.billingPhone ? `<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${p.billingPhone}</span>` : ''}
-            </div>`;
-        }
         
         var lineItemsHtml = '';
         if (op.lineItems.length) {
@@ -263,12 +266,25 @@ function renderOrderProperties() {
                 <div class="property-group-info">
                     <div class="property-group-name">${p.name}</div>
                     <div class="property-group-address">${p.address || 'No address'}</div>
-                    ${billingHtml}
                 </div>
                 <div class="property-group-actions">
                     <button type="button" class="btn btn-ghost btn-sm" onclick="removePropertyFromOrder(${op.propertyId})" title="Remove Property">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     </button>
+                </div>
+            </div>
+            <div class="property-group-billing">
+                <div class="billing-field">
+                    <label class="billing-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Contact</label>
+                    <input type="text" class="form-input billing-input" id="billing-contact-${op.propertyId}" value="${op.billingContact || ''}" placeholder="Contact name" onchange="updatePropertyBilling(${op.propertyId},'billingContact',this.value)">
+                </div>
+                <div class="billing-field">
+                    <label class="billing-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Email</label>
+                    <input type="email" class="form-input billing-input" id="billing-email-${op.propertyId}" value="${op.billingEmail || ''}" placeholder="billing@company.com" onchange="updatePropertyBilling(${op.propertyId},'billingEmail',this.value)">
+                </div>
+                <div class="billing-field">
+                    <label class="billing-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>Phone</label>
+                    <input type="tel" class="form-input billing-input" id="billing-phone-${op.propertyId}" value="${op.billingPhone || ''}" placeholder="(555) 123-4567" oninput="formatPhoneNumber(this)" onchange="updatePropertyBilling(${op.propertyId},'billingPhone',this.value)">
                 </div>
             </div>
             <div class="property-group-body">
