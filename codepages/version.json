@@ -1,5 +1,5 @@
 {
-  "version": "1.2.7",
+  "version": "1.2.8",
   "updated": "2026-03-11",
-  "notes": "Removed Screenshot, reordered: Product, Description, Qty, Stills, Panos"
+  "notes": "Fixed line item alignment with CSS grid layout"
 }
