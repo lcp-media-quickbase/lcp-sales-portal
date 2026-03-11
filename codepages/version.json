@@ -1,5 +1,5 @@
 {
-  "version": "1.0.3",
+  "version": "1.0.4",
   "updated": "2026-03-11",
-  "notes": "Client dropdown displays yCRM ID (FID 9) then Name (FID 8)"
+  "notes": "Fixed bootstrap loader to properly load app.js before buildDashboard"
 }

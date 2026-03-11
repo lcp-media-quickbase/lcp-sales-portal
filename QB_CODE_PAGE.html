@@ -24,7 +24,7 @@ function fetchRetry(url, n, d) {
     return r;
   });
 }
-// Step 1: Get version from version.json (cached at @main, small file)
+// Step 1: Get version
 fetchRetry('https://raw.githubusercontent.com/' + REPO + '/main/codepages/version.json?_=' + Date.now(), 2, 1000)
   .then(function(r) { return r.json(); })
   .catch(function() { return { version: 'main' }; })
@@ -32,44 +32,43 @@ fetchRetry('https://raw.githubusercontent.com/' + REPO + '/main/codepages/versio
     var v = cfg.version || 'main';
     var CDN = 'https://cdn.jsdelivr.net/gh/' + REPO + '@' + v + '/codepages';
     document.getElementById('loader').lastChild.textContent = 'Loading ' + v + '...';
-    // Step 2: Load core files from tagged version
+    // Step 2: Load all files
     return Promise.all([
       fetchRetry(CDN + '/shared.css', 2, 1000).then(function(r){return r.text();}),
       fetchRetry(CDN + '/shared.js', 2, 1000).then(function(r){return r.text();}),
+      fetchRetry(CDN + '/app.js', 2, 1000).then(function(r){return r.text();}),
       fetchRetry(CDN + '/dashboard.html', 2, 1000).then(function(r){return r.text();})
-    ]).then(function(res) { return { cdn: CDN, res: res }; });
+    ]);
   })
-  .then(function(d) {
-    var CDN = d.cdn, css = d.res[0], js = d.res[1], html = d.res[2];
+  .then(function(res) {
+    var css = res[0], sharedJs = res[1], appJs = res[2], html = res[3];
+    // Parse HTML to get body content only (strip scripts)
     var parser = new DOMParser();
     var doc = parser.parseFromString(html, 'text/html');
-    var ps = ''; doc.querySelectorAll('style').forEach(function(s){ps += s.outerHTML;});
-    var scripts = [];
-    doc.body.querySelectorAll('script:not([src])').forEach(function(s){scripts.push(s.textContent);});
-    var srcScripts = [];
-    doc.body.querySelectorAll('script[src]').forEach(function(s){
-      var src = s.getAttribute('src');
-      if (src !== 'shared.js') srcScripts.push(src);
-    });
+    // Remove loader, inject styles
     document.getElementById('loader').remove();
-    var el = document.createElement('style'); el.textContent = css; document.head.appendChild(el);
-    if (ps) document.head.insertAdjacentHTML('beforeend', ps);
-    document.body.innerHTML = doc.body.innerHTML;
-    var s1 = document.createElement('script'); s1.textContent = js; document.body.appendChild(s1);
-    if (scripts[0]) { var s2 = document.createElement('script'); s2.textContent = scripts[0]; document.body.appendChild(s2); }
-    // Fetch all tab scripts in parallel
-    return Promise.all(srcScripts.map(function(src) {
-      return fetchRetry(CDN + '/' + src, 2, 1000).then(function(r){return r.text();});
-    })).then(function(tabCodes) {
-      // Execute in order
-      tabCodes.forEach(function(code) {
-        var s = document.createElement('script'); s.textContent = code; document.body.appendChild(s);
-      });
-      // Run remaining inline scripts (buildDashboard)
-      for (var i = 1; i < scripts.length; i++) {
-        var s = document.createElement('script'); s.textContent = scripts[i]; document.body.appendChild(s);
-      }
+    var styleEl = document.createElement('style');
+    styleEl.textContent = css;
+    document.head.appendChild(styleEl);
+    // Copy any inline styles from dashboard.html head
+    doc.querySelectorAll('head style').forEach(function(s) {
+      document.head.appendChild(s.cloneNode(true));
     });
+    // Copy body content (without script tags)
+    var bodyContent = doc.body.innerHTML;
+    // Remove script tags from body content
+    bodyContent = bodyContent.replace(/<script[\s\S]*?<\/script>/gi, '');
+    document.body.innerHTML = bodyContent;
+    // Execute scripts in order: shared.js, app.js, then buildDashboard()
+    var s1 = document.createElement('script');
+    s1.textContent = sharedJs;
+    document.body.appendChild(s1);
+    var s2 = document.createElement('script');
+    s2.textContent = appJs;
+    document.body.appendChild(s2);
+    var s3 = document.createElement('script');
+    s3.textContent = 'buildDashboard();';
+    document.body.appendChild(s3);
   }).catch(function(e) {
     document.getElementById('loader').innerHTML =
       '<div style="color:#ef4444;font-size:14px">Failed to load: ' + e.message + '</div>' +
