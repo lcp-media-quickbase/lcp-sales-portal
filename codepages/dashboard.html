@@ -231,13 +231,20 @@
                         </div>
                         
                         <div class="card">
-                            <div class="card-header"><h2 class="card-title">3D Products</h2></div>
-                            <div class="line-item-header"><span>Product</span><span>Quantity</span><span>Unit Price</span><span>Total</span><span></span></div>
-                            <div id="quote-line-items"></div>
-                            <button type="button" class="btn btn-secondary add-line-item-btn" onclick="addQuoteLineItem()">
-                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-                                Add Product
-                            </button>
+                            <div class="card-header">
+                                <h2 class="card-title">Properties & 3D Products</h2>
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="openQuotePropertySelector()">
+                                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                                    Add Property
+                                </button>
+                            </div>
+                            <div id="quote-properties-container">
+                                <div class="empty-state" style="padding: 40px 20px;">
+                                    <svg class="empty-state-icon" style="width:48px;height:48px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                                    <p class="empty-state-text">No properties added yet</p>
+                                    <p class="empty-state-subtext">Click "Add Property" to get started</p>
+                                </div>
+                            </div>
                         </div>
                         
                         <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
