@@ -204,6 +204,13 @@ body {
 .line-item .remove-btn:hover { background: rgba(239, 68, 68, 0.1); color: var(--error); }
 .add-line-item-btn { margin-top: 16px; }
 
+/* Quote-specific line items (Product, Qty, Stills, Panos, Description) */
+.line-item-quote { display: flex; gap: 12px; }
+.line-item-header-quote { display: flex; gap: 12px; padding: 0 16px 12px; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+.line-item-header-quote span { display: flex; align-items: center; }
+.line-item-quote .form-group { margin-bottom: 0; }
+.line-item-quote .form-input { font-size: 13px; padding: 10px 12px; }
+
 /* Property & Product Selectors */
 .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; max-height: 400px; overflow-y: auto; padding: 4px; }
 .product-card { background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px; cursor: pointer; transition: all 0.15s ease; }

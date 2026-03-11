@@ -566,8 +566,9 @@ function addLineItemToQuoteProperty(propertyId) {
         productId: null,
         productName: '',
         quantity: 1,
-        unitPrice: 0,
-        total: 0
+        stills: '',
+        panos: '',
+        description: ''
     });
     renderQuoteProperties();
 }
@@ -579,14 +580,16 @@ function removeLineItemFromQuoteProperty(propertyId, lineItemId) {
     renderQuoteProperties();
 }
 
-function updateQuoteLineItemQty(propertyId, lineItemId, qty) {
+function updateQuoteLineItem(propertyId, lineItemId, field, value) {
     var quoteProp = AppState.quoteProperties.find(op => op.propertyId === propertyId);
     if (!quoteProp) return;
     var li = quoteProp.lineItems.find(l => l.id === lineItemId);
     if (li) {
-        li.quantity = parseInt(qty) || 1;
-        li.total = li.quantity * li.unitPrice;
-        renderQuoteProperties();
+        if (field === 'quantity' || field === 'stills' || field === 'panos') {
+            li[field] = parseInt(value) || (field === 'quantity' ? 1 : '');
+        } else {
+            li[field] = value;
+        }
     }
 }
 
@@ -598,8 +601,6 @@ function selectProductForQuotePropertyLine(propertyId, lineItemId) {
         if (li) {
             li.productId = product.id;
             li.productName = product.name;
-            li.unitPrice = product.price;
-            li.total = li.quantity * product.price;
             renderQuoteProperties();
         }
     });
@@ -649,11 +650,12 @@ function renderQuoteProperties() {
         
         var lineItemsHtml = '';
         if (op.lineItems.length) {
-            lineItemsHtml = op.lineItems.map(li => `<div class="line-item">
-                <div class="form-group"><button type="button" class="btn btn-secondary" style="width:100%;justify-content:flex-start" onclick="selectProductForQuotePropertyLine(${op.propertyId},${li.id})">${li.productName||'Select Product...'}</button></div>
-                <div class="form-group"><input type="number" class="form-input" value="${li.quantity}" min="1" onchange="updateQuoteLineItemQty(${op.propertyId},${li.id},this.value)"></div>
-                <div class="form-group"><input type="text" class="form-input" value="${formatCurrency(li.unitPrice)}" readonly style="background:var(--bg-hover);cursor:not-allowed"></div>
-                <div class="form-group"><input type="text" class="form-input" value="${formatCurrency(li.total)}" readonly style="background:var(--bg-hover);cursor:not-allowed;font-weight:600;color:var(--lcp-blue)"></div>
+            lineItemsHtml = op.lineItems.map(li => `<div class="line-item line-item-quote">
+                <div class="form-group" style="flex:2"><button type="button" class="btn btn-secondary" style="width:100%;justify-content:flex-start" onclick="selectProductForQuotePropertyLine(${op.propertyId},${li.id})">${li.productName||'Select Product...'}</button></div>
+                <div class="form-group" style="flex:0.7"><input type="number" class="form-input" value="${li.quantity}" min="1" placeholder="Qty" onchange="updateQuoteLineItem(${op.propertyId},${li.id},'quantity',this.value)"></div>
+                <div class="form-group" style="flex:0.7"><input type="number" class="form-input" value="${li.stills||''}" min="0" placeholder="Stills" onchange="updateQuoteLineItem(${op.propertyId},${li.id},'stills',this.value)"></div>
+                <div class="form-group" style="flex:0.7"><input type="number" class="form-input" value="${li.panos||''}" min="0" placeholder="Panos" onchange="updateQuoteLineItem(${op.propertyId},${li.id},'panos',this.value)"></div>
+                <div class="form-group" style="flex:2"><input type="text" class="form-input" value="${li.description||''}" placeholder="Description" onchange="updateQuoteLineItem(${op.propertyId},${li.id},'description',this.value)"></div>
                 <button type="button" class="remove-btn" onclick="removeLineItemFromQuoteProperty(${op.propertyId},${li.id})"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
             </div>`).join('');
         } else {
@@ -687,7 +689,7 @@ function renderQuoteProperties() {
                 </div>
             </div>
             <div class="property-group-body">
-                <div class="line-item-header"><span>Product</span><span>Quantity</span><span>Unit Price</span><span>Total</span><span></span></div>
+                <div class="line-item-header line-item-header-quote"><span style="flex:2">Product</span><span style="flex:0.7">Qty</span><span style="flex:0.7">Stills</span><span style="flex:0.7">Panos</span><span style="flex:2">Description</span><span style="width:36px"></span></div>
                 <div class="line-items-container">${lineItemsHtml}</div>
                 <button type="button" class="btn btn-secondary add-line-item-btn" onclick="addLineItemToQuoteProperty(${op.propertyId})">
                     <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
@@ -775,12 +777,14 @@ async function saveQuote() {
             for (const qp of AppState.quoteProperties) {
                 for (const li of qp.lineItems) {
                     if (li.productId) {
-                        await createRecord(CONFIG.tables.lineItems3D, { 
+                        var lineData = { 
                             [lf.relatedQuote]: { value: quoteId }, 
-                            [lf.description]: { value: li.productName }, 
-                            [lf.quantity]: { value: li.quantity }, 
-                            [lf.total]: { value: li.total }
-                        });
+                            [lf.quantity]: { value: li.quantity || 1 },
+                            [lf.description]: { value: li.description || '' },
+                            [lf.stills]: { value: li.stills || 0 },
+                            [lf.panos]: { value: li.panos || 0 }
+                        };
+                        await createRecord(CONFIG.tables.lineItems3D, lineData);
                     }
                 }
             }
