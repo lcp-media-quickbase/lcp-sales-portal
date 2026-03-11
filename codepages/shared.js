@@ -87,8 +87,16 @@ initTheme();
 
 async function getTemporaryToken() {
     try {
-        const r = await fetch(`https://${CONFIG.getRealmHostname()}/db/main?a=QBI_AuthenticateWithSession&fmt=json`, { method: 'POST', credentials: 'include' });
-        return (await r.json()).ticket;
+        var realm = window.location.hostname;
+        var url = 'https://' + realm + '/db/main?a=QBI_AuthenticateWithSession&fmt=json';
+        console.log('Auth URL:', url);
+        const r = await fetch(url, { 
+            method: 'POST', 
+            credentials: 'include' 
+        });
+        const data = await r.json();
+        console.log('Auth response:', data);
+        return data.ticket;
     } catch (e) { console.error('Auth failed:', e); return null; }
 }
 
