@@ -1,5 +1,5 @@
 {
-  "version": "1.1.1",
+  "version": "1.1.2",
   "updated": "2026-03-11",
-  "notes": "Fix scroll on order form, search by code, smaller price/button"
+  "notes": "Fix scrolling, product selector now table with click-to-select"
 }

@@ -175,14 +175,35 @@ async function loadProducts() {
 }
 
 function renderProductGrid() {
-    const c = document.getElementById('product-grid');
-    if (!AppState.products.length) { c.innerHTML = '<div class="empty-state"><p class="empty-state-text">No products available</p></div>'; return; }
-    c.innerHTML = AppState.products.map(p => `<div class="product-card ${AppState.selectedProduct?.id===p.id?'selected':''}" onclick="selectProduct(${p.id})"><div class="product-name">${p.name}</div><div class="product-description">Code: ${p.code} · ${p.unit} · ${p.frequency}</div><div class="product-price">${formatCurrency(p.price)}</div>${p.assetType?`<div class="product-meta"><span class="badge-type ${p.assetType.toLowerCase().replace(/\s+/g,'-')}">${p.assetType}</span></div>`:''}</div>`).join('');
+    var c = document.getElementById('product-table-body');
+    if (!c) return;
+    if (!AppState.products.length) { c.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--text-muted)">No products available</td></tr>'; return; }
+    c.innerHTML = AppState.products.map(p => `<tr class="product-row" onclick="selectProductRow(${p.id})" data-type="${p.assetType||''}" data-name="${p.name.toLowerCase()}" data-code="${(p.code||'').toString().toLowerCase()}" style="cursor:pointer;"><td>${p.code}</td><td>${p.name}</td><td style="color:var(--lcp-blue);font-weight:500;">${formatCurrency(p.price)}</td><td>${p.unit}</td><td>${p.assetType?`<span class="badge-type ${p.assetType.toLowerCase().replace(/\s+/g,'-')}">${p.assetType}</span>`:'-'}</td></tr>`).join('');
 }
 
 function filterProducts() {
-    const s = document.getElementById('product-search-input').value.toLowerCase();
-    document.querySelectorAll('.product-card').forEach(c => { const n = c.querySelector('.product-name').textContent.toLowerCase(); const d = c.querySelector('.product-description').textContent.toLowerCase(); c.style.display = (n.includes(s)||d.includes(s)) ? 'block' : 'none'; });
+    var search = document.getElementById('product-search-input').value.toLowerCase();
+    var typeFilter = document.getElementById('product-type-filter');
+    var type = typeFilter ? typeFilter.value : '';
+    document.querySelectorAll('.product-row').forEach(row => { 
+        var rowType = row.dataset.type;
+        var rowName = row.dataset.name;
+        var rowCode = row.dataset.code;
+        var matchType = !type || rowType === type;
+        var matchSearch = !search || rowName.includes(search) || rowCode.includes(search);
+        row.style.display = (matchType && matchSearch) ? '' : 'none'; 
+    });
+}
+
+function selectProductRow(productId) {
+    var product = AppState.products.find(p => p.id === productId);
+    if (!product) return;
+    if (AppState.currentProductCallback) {
+        AppState.currentProductCallback(product);
+    }
+    closeModal('product-modal');
+    AppState.selectedProduct = null;
+    AppState.currentProductCallback = null;
 }
 
 function selectProduct(id) { AppState.selectedProduct = AppState.products.find(p => p.id === id); renderProductGrid(); }
@@ -192,16 +213,12 @@ function openProductSelector(cb) {
     AppState.selectedProduct = null;
     renderProductGrid();
     document.getElementById('product-search-input').value = '';
+    var typeFilter = document.getElementById('product-type-filter');
+    if (typeFilter) typeFilter.value = '';
     openModal('product-modal');
 }
 
-function confirmProductSelection() {
-    if (!AppState.selectedProduct) { alert('Please select a product'); return; }
-    if (AppState.currentProductCallback) AppState.currentProductCallback(AppState.selectedProduct);
-    closeModal('product-modal');
-    AppState.selectedProduct = null;
-    AppState.currentProductCallback = null;
-}
+// confirmProductSelection no longer needed - row click selects directly
 
 // ============================================================================
 // PRICE LIST TAB

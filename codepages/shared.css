@@ -193,13 +193,13 @@ body {
 
 .page-header {
     padding: 24px 32px; border-bottom: 1px solid var(--border-color);
-    background: var(--bg-primary); position: sticky; top: 0; z-index: 50;
+    background: var(--bg-primary);
 }
 .page-title { font-size: 24px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
 .page-subtitle { font-size: 14px; color: var(--text-secondary); }
 .page-content { padding: 32px; }
 
-.tab-content { display: none; flex-direction: column; min-height: calc(100vh - 85px); }
+.tab-content { display: none; flex-direction: column; }
 .tab-content.default-active { display: flex; }
 
 /* Cards */
