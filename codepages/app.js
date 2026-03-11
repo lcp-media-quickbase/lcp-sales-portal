@@ -568,7 +568,8 @@ function addLineItemToQuoteProperty(propertyId) {
         quantity: 1,
         stills: '',
         panos: '',
-        description: ''
+        description: '',
+        screenshot: ''
     });
     renderQuoteProperties();
 }
@@ -585,7 +586,7 @@ function updateQuoteLineItem(propertyId, lineItemId, field, value) {
     if (!quoteProp) return;
     var li = quoteProp.lineItems.find(l => l.id === lineItemId);
     if (li) {
-        if (field === 'quantity' || field === 'stills' || field === 'panos') {
+        if (field === 'quantity' || field === 'stills' || field === 'panos' || field === 'screenshot') {
             li[field] = parseInt(value) || (field === 'quantity' ? 1 : '');
         } else {
             li[field] = value;
@@ -650,13 +651,14 @@ function renderQuoteProperties() {
         
         var lineItemsHtml = '';
         if (op.lineItems.length) {
-            lineItemsHtml = op.lineItems.map(li => `<div class="line-item line-item-quote">
-                <div class="form-group" style="flex:2"><button type="button" class="btn btn-secondary" style="width:100%;justify-content:flex-start" onclick="selectProductForQuotePropertyLine(${op.propertyId},${li.id})">${li.productName||'Select Product...'}</button></div>
-                <div class="form-group" style="flex:0.7"><input type="number" class="form-input" value="${li.quantity}" min="1" placeholder="Qty" onchange="updateQuoteLineItem(${op.propertyId},${li.id},'quantity',this.value)"></div>
-                <div class="form-group" style="flex:0.7"><input type="number" class="form-input" value="${li.stills||''}" min="0" placeholder="Stills" onchange="updateQuoteLineItem(${op.propertyId},${li.id},'stills',this.value)"></div>
-                <div class="form-group" style="flex:0.7"><input type="number" class="form-input" value="${li.panos||''}" min="0" placeholder="Panos" onchange="updateQuoteLineItem(${op.propertyId},${li.id},'panos',this.value)"></div>
-                <div class="form-group" style="flex:2"><input type="text" class="form-input" value="${li.description||''}" placeholder="Description" onchange="updateQuoteLineItem(${op.propertyId},${li.id},'description',this.value)"></div>
-                <button type="button" class="remove-btn" onclick="removeLineItemFromQuoteProperty(${op.propertyId},${li.id})"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+            lineItemsHtml = op.lineItems.map(li => `<div class="line-item-quote">
+                <div class="quote-col quote-col-product"><button type="button" class="btn btn-secondary" style="width:100%;justify-content:flex-start" onclick="selectProductForQuotePropertyLine(${op.propertyId},${li.id})">${li.productName||'Select Product...'}</button></div>
+                <div class="quote-col quote-col-sm"><input type="number" class="form-input" value="${li.quantity}" min="1" onchange="updateQuoteLineItem(${op.propertyId},${li.id},'quantity',this.value)"></div>
+                <div class="quote-col quote-col-sm"><input type="number" class="form-input" value="${li.stills||''}" min="0" onchange="updateQuoteLineItem(${op.propertyId},${li.id},'stills',this.value)"></div>
+                <div class="quote-col quote-col-sm"><input type="number" class="form-input" value="${li.panos||''}" min="0" onchange="updateQuoteLineItem(${op.propertyId},${li.id},'panos',this.value)"></div>
+                <div class="quote-col quote-col-desc"><input type="text" class="form-input" value="${li.description||''}" placeholder="Description" onchange="updateQuoteLineItem(${op.propertyId},${li.id},'description',this.value)"></div>
+                <div class="quote-col quote-col-sm"><input type="number" class="form-input" value="${li.screenshot||''}" min="0" onchange="updateQuoteLineItem(${op.propertyId},${li.id},'screenshot',this.value)"></div>
+                <div class="quote-col quote-col-action"><button type="button" class="remove-btn" onclick="removeLineItemFromQuoteProperty(${op.propertyId},${li.id})"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>
             </div>`).join('');
         } else {
             lineItemsHtml = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">No products yet</div>';
@@ -689,7 +691,15 @@ function renderQuoteProperties() {
                 </div>
             </div>
             <div class="property-group-body">
-                <div class="line-item-header line-item-header-quote"><span style="flex:2">Product</span><span style="flex:0.7">Qty</span><span style="flex:0.7">Stills</span><span style="flex:0.7">Panos</span><span style="flex:2">Description</span><span style="width:36px"></span></div>
+                <div class="line-item-header-quote">
+                    <div class="quote-col quote-col-product">Product</div>
+                    <div class="quote-col quote-col-sm">Qty</div>
+                    <div class="quote-col quote-col-sm">Stills</div>
+                    <div class="quote-col quote-col-sm">Panos</div>
+                    <div class="quote-col quote-col-desc">Description</div>
+                    <div class="quote-col quote-col-sm">Screenshot</div>
+                    <div class="quote-col quote-col-action"></div>
+                </div>
                 <div class="line-items-container">${lineItemsHtml}</div>
                 <button type="button" class="btn btn-secondary add-line-item-btn" onclick="addLineItemToQuoteProperty(${op.propertyId})">
                     <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
@@ -782,7 +792,8 @@ async function saveQuote() {
                             [lf.quantity]: { value: li.quantity || 1 },
                             [lf.description]: { value: li.description || '' },
                             [lf.stills]: { value: li.stills || 0 },
-                            [lf.panos]: { value: li.panos || 0 }
+                            [lf.panos]: { value: li.panos || 0 },
+                            [lf.screenshot]: { value: li.screenshot || 0 }
                         };
                         await createRecord(CONFIG.tables.lineItems3D, lineData);
                     }
