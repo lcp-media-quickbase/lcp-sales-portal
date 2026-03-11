@@ -1,7 +1,7 @@
 // LCP Sales Portal - Application Logic v1.0.2
 
 const AppState = {
-    selectedProduct: null, selectedClient: null,
+    selectedProduct: null, selectedClient: null, selectedQuoteClient: null,
     currentProductCallback: null, currentPropertyCallback: null,
     orderProperties: [], // [{propertyId, property, lineItems: [{id, productId, productName, quantity, unitPrice, total}], billingContact, billingEmail, billingPhone}]
     quoteProperties: [], // Same structure for 3D quotes
@@ -35,6 +35,10 @@ function setupClientSelector() {
         const sel = document.getElementById('client-selector');
         const dd = document.getElementById('client-dropdown');
         if (sel && !sel.contains(e.target)) dd.classList.remove('open');
+        
+        const quoteSel = document.getElementById('quote-client-selector');
+        const quoteDd = document.getElementById('quote-client-dropdown');
+        if (quoteSel && !quoteSel.contains(e.target)) quoteDd.classList.remove('open');
     });
 }
 
@@ -54,7 +58,8 @@ async function loadClients() {
         const r = await queryRecords(CONFIG.tables.companies, [f.recordId, f.name, f.ycrmId], null, [{ fieldId: f.ycrmId, order: 'ASC' }], true);
         AppState.clients = r.data.map(rec => ({ id: rec[f.recordId].value, name: rec[f.name]?.value || '', ycrmId: rec[f.ycrmId]?.value || '' }));
         renderClientList();
-    } catch (e) { console.error('Load clients failed:', e); AppState.clients = []; renderClientList(); }
+        renderQuoteClientList();
+    } catch (e) { console.error('Load clients failed:', e); AppState.clients = []; renderClientList(); renderQuoteClientList(); }
 }
 
 function renderClientList() {
@@ -86,10 +91,42 @@ async function saveNewClient() {
     const nc = { id: Date.now(), name, ycrmId: '' };
     AppState.clients.unshift(nc);
     renderClientList();
+    renderQuoteClientList();
     selectClient(nc.id);
     document.getElementById('new-client-name').value = '';
     closeModal('add-client-modal');
     showSuccess('Client added');
+}
+
+// Quote Client Selector
+function toggleQuoteClientDropdown() {
+    const dd = document.getElementById('quote-client-dropdown');
+    dd.classList.toggle('open');
+    if (dd.classList.contains('open')) document.getElementById('quote-client-search-input').focus();
+}
+
+function renderQuoteClientList() {
+    const c = document.getElementById('quote-client-list');
+    if (!c) return;
+    if (!AppState.clients.length) { c.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted)">No clients found</div>'; return; }
+    c.innerHTML = AppState.clients.map(cl => `<div class="client-item ${AppState.selectedQuoteClient?.id===cl.id?'selected':''}" onclick="selectQuoteClient(${cl.id})"><div class="client-item-name">${cl.name || 'No name'}</div><div class="client-item-id">${cl.ycrmId || 'No ID'}</div></div>`).join('');
+}
+
+function filterQuoteClients() {
+    const s = document.getElementById('quote-client-search-input').value.toLowerCase();
+    document.querySelectorAll('#quote-client-list .client-item').forEach(i => { 
+        const name = i.querySelector('.client-item-name').textContent.toLowerCase();
+        const ycrmId = i.querySelector('.client-item-id').textContent.toLowerCase();
+        i.style.display = (name.includes(s) || ycrmId.includes(s)) ? 'block' : 'none'; 
+    });
+}
+
+function selectQuoteClient(id) {
+    AppState.selectedQuoteClient = AppState.clients.find(c => c.id === id);
+    document.getElementById('quote-selected-client-name').textContent = AppState.selectedQuoteClient ? `${AppState.selectedQuoteClient.name || 'No name'}${AppState.selectedQuoteClient.ycrmId ? ' (' + AppState.selectedQuoteClient.ycrmId + ')' : ''}` : 'Select a client...';
+    document.getElementById('quote-company-id').value = id;
+    document.getElementById('quote-client-dropdown').classList.remove('open');
+    renderQuoteClientList();
 }
 
 // ============================================================================
@@ -758,9 +795,11 @@ async function saveOrder() {
 }
 
 async function saveQuote() {
+    const companyId = document.getElementById('quote-company-id').value;
     const name = document.getElementById('quote-name').value.trim();
     const email = document.getElementById('quote-sales-email').value.trim();
     const notes = getRichTextContent('quote-notes-editor');
+    if (!companyId) { alert('Please select a client'); return; }
     if (!name || !email) { alert('Quote name and sales rep email required'); return; }
     if (!AppState.quoteProperties.length) { alert('Please add at least one property'); return; }
     
@@ -775,7 +814,8 @@ async function saveQuote() {
             [f.quoteDate]: { value: getTodayISO() }, 
             [f.expirationDate]: { value: getExpirationDate(30) }, 
             [f.quoteStatus]: { value: 'Draft' }, 
-            [f.historyNotes]: { value: notes } 
+            [f.historyNotes]: { value: notes },
+            [f.relatedCompany]: { value: parseInt(companyId) }
         };
         const r = await createRecord(CONFIG.tables.quotes3D, data);
         if (r.data?.[0]) {
@@ -858,7 +898,11 @@ function resetQuoteForm() {
     document.getElementById('quote-form').reset();
     setRichTextContent('quote-notes-editor', '');
     AppState.quoteProperties = [];
+    AppState.selectedQuoteClient = null;
+    document.getElementById('quote-selected-client-name').textContent = 'Select a client...';
+    document.getElementById('quote-company-id').value = '';
     renderQuoteProperties();
+    renderQuoteClientList();
 }
 
 function viewOrder(id) { window.open(`https://${CONFIG.getRealmHostname()}/db/${CONFIG.tables.orders}?a=dr&rid=${id}`, '_blank'); }

@@ -53,7 +53,7 @@
                     <div class="nav-section-title">Resources</div>
                     <a class="nav-item" data-tab="tab-price-list" onclick="switchTab('tab-price-list')">
                         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                        Price List
+                        Charge Codes
                     </a>
                 </div>
             </nav>
@@ -80,7 +80,7 @@
                             <div class="form-row">
                                 <div class="form-col-left">
                                     <div class="form-group">
-                                        <label class="form-label required">Client / Company</label>
+                                        <label class="form-label required">Client</label>
                                         <div class="client-selector" id="client-selector">
                                             <div class="client-selector-input" onclick="toggleClientDropdown()">
                                                 <span id="selected-client-name">Select a client...</span>
@@ -206,6 +206,22 @@
                             <div class="card-header"><h2 class="card-title">Quote Details</h2></div>
                             <div class="form-row">
                                 <div class="form-col-left">
+                                    <div class="form-group">
+                                        <label class="form-label required">Client</label>
+                                        <div class="client-selector" id="quote-client-selector">
+                                            <div class="client-selector-input" onclick="toggleQuoteClientDropdown()">
+                                                <span id="quote-selected-client-name">Select a client...</span>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                                            </div>
+                                            <div class="client-selector-dropdown" id="quote-client-dropdown">
+                                                <div class="client-search">
+                                                    <input type="text" placeholder="Search clients..." id="quote-client-search-input" oninput="filterQuoteClients()">
+                                                </div>
+                                                <div class="client-list" id="quote-client-list"></div>
+                                            </div>
+                                        </div>
+                                        <input type="hidden" id="quote-company-id">
+                                    </div>
                                     <div class="form-group">
                                         <label class="form-label required">Quote Name</label>
                                         <input type="text" class="form-input" id="quote-name" placeholder="Enter quote name" required>
