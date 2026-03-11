@@ -2,7 +2,7 @@
 // App ID: bvvpht7z6 | Realm: lcp360-5583.quickbase.com
 
 const CONFIG = {
-    version: '1.0.6',
+    version: '1.0.7',
     versionUrl: 'https://raw.githubusercontent.com/lcp-media-quickbase/lcp-sales-portal/main/codepages/version.json',
     
     getRealmHostname: function() { return window.location.hostname; },
@@ -82,32 +82,66 @@ function initTheme() { document.documentElement.setAttribute('data-theme', getTh
 initTheme();
 
 // ============================================================================
-// API UTILITIES
+// API UTILITIES - Auth via QB session cookie
 // ============================================================================
 
-async function getTemporaryToken() {
-    try {
-        var realm = window.location.hostname;
-        var url = 'https://' + realm + '/db/main?a=QBI_AuthenticateWithSession&fmt=json';
-        console.log('Auth URL:', url);
-        const r = await fetch(url, { 
-            method: 'POST', 
-            credentials: 'include' 
-        });
-        const data = await r.json();
-        console.log('Auth response:', data);
-        return data.ticket;
-    } catch (e) { console.error('Auth failed:', e); return null; }
+var _tempTokens = {};
+var TEMP_TOKEN_LIFETIME = 4 * 60 * 1000; // 4 min (tokens expire at 5)
+
+async function getTempToken(tableId) {
+    var cached = _tempTokens[tableId];
+    if (cached && Date.now() < cached.expiresAt) {
+        return cached.token;
+    }
+    
+    var realm = CONFIG.crossAppRealm; // Use lcpmedia.quickbase.com for API
+    var resp = await fetch(
+        'https://api.quickbase.com/v1/auth/temporary/' + tableId,
+        {
+            method: 'GET',
+            headers: {
+                'QB-Realm-Hostname': realm,
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include'
+        }
+    );
+    
+    if (!resp.ok) {
+        throw new Error('Failed to get temp token for ' + tableId);
+    }
+    
+    var data = await resp.json();
+    _tempTokens[tableId] = {
+        token: data.temporaryAuthorization,
+        expiresAt: Date.now() + TEMP_TOKEN_LIFETIME
+    };
+    return data.temporaryAuthorization;
 }
 
-async function qbApiRequest(tableId, endpoint, method = 'POST', body = null, useCrossAppRealm = false) {
-    const token = await getTemporaryToken();
-    if (!token) throw new Error('Authentication failed');
-    const realm = useCrossAppRealm ? CONFIG.crossAppRealm : CONFIG.getRealmHostname();
-    const opts = { method, headers: { 'QB-Realm-Hostname': realm, 'Authorization': `QB-TEMP-TOKEN ${token}`, 'Content-Type': 'application/json' } };
+async function qbApiRequest(tableId, endpoint, method, body, useCrossAppRealm) {
+    method = method || 'POST';
+    useCrossAppRealm = useCrossAppRealm !== false; // Default true
+    
+    var token = await getTempToken(tableId);
+    var realm = CONFIG.crossAppRealm;
+    
+    var opts = { 
+        method: method, 
+        headers: { 
+            'QB-Realm-Hostname': realm, 
+            'Authorization': 'QB-TEMP-TOKEN ' + token, 
+            'Content-Type': 'application/json' 
+        },
+        credentials: 'include'
+    };
     if (body) opts.body = JSON.stringify(body);
-    const r = await fetch(`https://api.quickbase.com/v1/${endpoint}`, opts);
-    if (!r.ok) throw new Error((await r.json()).message || 'API failed');
+    
+    var r = await fetch('https://api.quickbase.com/v1/' + endpoint, opts);
+    if (!r.ok) {
+        var errData = await r.json().catch(function() { return {}; });
+        throw new Error(errData.message || 'API failed: ' + r.status);
+    }
     return r.json();
 }
 

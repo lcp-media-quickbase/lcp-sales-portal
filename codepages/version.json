@@ -1,5 +1,5 @@
 {
-  "version": "1.0.6",
+  "version": "1.0.7",
   "updated": "2026-03-11",
-  "notes": "Fixed CONFIG.version sync, version display now dynamic"
+  "notes": "Fixed auth - use QB temp token API with session cookie (matches 3d-projects)"
 }
