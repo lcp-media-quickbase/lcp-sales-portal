@@ -760,6 +760,7 @@ async function saveOrder() {
 async function saveQuote() {
     const name = document.getElementById('quote-name').value.trim();
     const email = document.getElementById('quote-sales-email').value.trim();
+    const notes = getRichTextContent('quote-notes-editor');
     if (!name || !email) { alert('Quote name and sales rep email required'); return; }
     if (!AppState.quoteProperties.length) { alert('Please add at least one property'); return; }
     
@@ -774,7 +775,7 @@ async function saveQuote() {
             [f.quoteDate]: { value: getTodayISO() }, 
             [f.expirationDate]: { value: getExpirationDate(30) }, 
             [f.quoteStatus]: { value: 'Draft' }, 
-            [f.historyNotes]: { value: document.getElementById('quote-notes').value } 
+            [f.historyNotes]: { value: notes } 
         };
         const r = await createRecord(CONFIG.tables.quotes3D, data);
         if (r.data?.[0]) {
@@ -855,6 +856,7 @@ function resetOrderForm() {
 
 function resetQuoteForm() {
     document.getElementById('quote-form').reset();
+    setRichTextContent('quote-notes-editor', '');
     AppState.quoteProperties = [];
     renderQuoteProperties();
 }
