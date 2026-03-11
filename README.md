@@ -28,18 +28,39 @@ Custom QuickBase Code Page for the LCP Media sales team to create and manage ord
 
 ## Installation
 
-1. Enable GitHub Pages for this repo (Settings → Pages → Source: main branch)
-2. In QuickBase, create a new Code Page in the app
-3. Embed: `https://lcp-media-quickbase.github.io/lcp-sales-portal/`
+1. In QuickBase, go to your app → **Settings** → **Code Pages**
+2. Create a new code page (type: **Exact Forms**)
+3. Paste the contents of `QB_CODE_PAGE.html` into the code page editor
+4. Save and access via the code page URL
 
-## Development
+## File Structure
 
-Files:
-- `index.html` - Main page structure and styles
-- `config.js` - Table/field IDs and configuration
-- `shared.js` - API utilities and shared functions
-- `app.js` - Application logic
-- `version.json` - Version tracking for auto-update notices
+```
+lcp-sales-portal/
+├── QB_CODE_PAGE.html      ← Paste this into QuickBase
+├── README.md
+└── codepages/
+    ├── version.json       ← Version for CDN cache busting
+    ├── shared.css         ← All styles
+    ├── shared.js          ← Config + API utilities
+    ├── app.js             ← Application logic
+    └── dashboard.html     ← Main UI structure
+```
+
+## How It Works
+
+The bootstrap loader in QB fetches versioned assets from jsDelivr CDN:
+1. Reads `version.json` to get current version tag
+2. Loads CSS, JS, HTML from `cdn.jsdelivr.net/gh/lcp-media-quickbase/lcp-sales-portal@{version}/codepages/`
+3. Injects styles and scripts into the page
+4. Runs `buildDashboard()` to initialize
+
+## Versioning
+
+To release a new version:
+1. Update `codepages/version.json` with new version number
+2. Create a git tag matching that version: `git tag 1.0.1 && git push --tags`
+3. jsDelivr will cache the new version
 
 ### Critical Rules
 
