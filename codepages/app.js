@@ -5,7 +5,7 @@ const AppState = {
     currentProductCallback: null, currentPropertyCallback: null,
     orderProperties: [], // [{propertyId, property, lineItems: [{id, productId, productName, quantity, unitPrice, total}], billingContact, billingEmail, billingPhone}]
     quoteProperties: [], // Same structure for 3D quotes
-    products: [], properties: [], clients: [], orders: [], quotes: [], priceList: []
+    products: [], products3D: [], properties: [], clients: [], orders: [], quotes: [], priceList: []
 };
 
 // ============================================================================
@@ -19,6 +19,7 @@ function buildDashboard() {
     setupClientSelector();
     loadProperties();
     loadProducts();
+    load3DProducts();
     loadClients();
     checkVersion();
     console.log('LCP Sales Portal initialized');
@@ -352,6 +353,23 @@ async function loadProducts() {
     }
 }
 
+async function load3DProducts() {
+    try {
+        const f = CONFIG.fields.products3D;
+        // Filter for FID 12 = '3D Services'
+        const r = await queryRecords(CONFIG.tables.products, [f.recordId, f.productName, f.retailPrice], "{12.EX.'3D Services'}", [{ fieldId: f.productName, order: 'ASC' }], true);
+        AppState.products3D = r.data.map(rec => ({
+            id: rec[f.recordId].value,
+            name: rec[f.productName]?.value || 'Unnamed Product',
+            price: rec[f.retailPrice]?.value || 0
+        }));
+        console.log('Loaded 3D products:', AppState.products3D.length);
+    } catch (e) {
+        console.error('Load 3D products failed:', e);
+        AppState.products3D = [];
+    }
+}
+
 function renderProductGrid() {
     var c = document.getElementById('product-table-body');
     if (!c) return;
@@ -373,13 +391,21 @@ function filterProducts() {
     });
 }
 
-function selectProductRow(productId) {
-    var product = AppState.products.find(p => p.id === productId);
+function selectProductRow(productId, is3D) {
+    var product;
+    if (is3D) {
+        product = AppState.products3D.find(p => p.id === productId);
+    } else {
+        product = AppState.products.find(p => p.id === productId);
+    }
     if (!product) return;
     if (AppState.currentProductCallback) {
         AppState.currentProductCallback(product);
     }
     closeModal('product-modal');
+    // Show type filter again
+    var typeFilter = document.getElementById('product-type-filter');
+    if (typeFilter) typeFilter.style.display = '';
     AppState.selectedProduct = null;
     AppState.currentProductCallback = null;
 }
@@ -392,7 +418,10 @@ function openProductSelector(cb) {
     renderProductGrid();
     document.getElementById('product-search-input').value = '';
     var typeFilter = document.getElementById('product-type-filter');
-    if (typeFilter) typeFilter.value = '';
+    if (typeFilter) {
+        typeFilter.value = '';
+        typeFilter.style.display = '';
+    }
     openModal('product-modal');
 }
 
@@ -562,7 +591,7 @@ function updateQuoteLineItemQty(propertyId, lineItemId, qty) {
 }
 
 function selectProductForQuotePropertyLine(propertyId, lineItemId) {
-    openProductSelector(function(product) {
+    open3DProductSelector(function(product) {
         var quoteProp = AppState.quoteProperties.find(op => op.propertyId === propertyId);
         if (!quoteProp) return;
         var li = quoteProp.lineItems.find(l => l.id === lineItemId);
@@ -574,6 +603,27 @@ function selectProductForQuotePropertyLine(propertyId, lineItemId) {
             renderQuoteProperties();
         }
     });
+}
+
+function open3DProductSelector(cb) {
+    AppState.currentProductCallback = cb;
+    AppState.selectedProduct = null;
+    render3DProductGrid();
+    var searchInput = document.getElementById('product-search-input');
+    if (searchInput) searchInput.value = '';
+    var typeFilter = document.getElementById('product-type-filter');
+    if (typeFilter) typeFilter.style.display = 'none'; // Hide type filter for 3D products
+    openModal('product-modal');
+}
+
+function render3DProductGrid() {
+    var c = document.getElementById('product-table-body');
+    if (!c) return;
+    if (!AppState.products3D.length) { 
+        c.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--text-muted)">No 3D products available</td></tr>'; 
+        return; 
+    }
+    c.innerHTML = AppState.products3D.map(p => `<tr class="product-row" onclick="selectProductRow(${p.id}, true)" data-name="${p.name.toLowerCase()}" style="cursor:pointer;"><td>—</td><td>${p.name}</td><td style="color:var(--lcp-blue);font-weight:500;">${formatCurrency(p.price)}</td><td>Each</td><td><span class="badge-type 3d">3D</span></td></tr>`).join('');
 }
 
 function updateQuotePropertyBilling(propertyId, field, value) {
@@ -714,23 +764,22 @@ async function saveQuote() {
             [f.salesRepEmail]: { value: email }, 
             [f.quoteDate]: { value: getTodayISO() }, 
             [f.expirationDate]: { value: getExpirationDate(30) }, 
-            [f.quoteStatus]: { value: document.getElementById('quote-status').value }, 
+            [f.quoteStatus]: { value: 'Draft' }, 
             [f.historyNotes]: { value: document.getElementById('quote-notes').value } 
         };
         const r = await createRecord(CONFIG.tables.quotes3D, data);
         if (r.data?.[0]) {
             const quoteId = r.data[0][f.recordId].value;
+            const lf = CONFIG.fields.lineItems3D;
             // Save line items for each property
             for (const qp of AppState.quoteProperties) {
                 for (const li of qp.lineItems) {
                     if (li.productId) {
-                        const lf = CONFIG.fields.lineItems3D;
                         await createRecord(CONFIG.tables.lineItems3D, { 
                             [lf.relatedQuote]: { value: quoteId }, 
                             [lf.description]: { value: li.productName }, 
                             [lf.quantity]: { value: li.quantity }, 
                             [lf.total]: { value: li.total }
-                            // TODO: Add related property field when available
                         });
                     }
                 }

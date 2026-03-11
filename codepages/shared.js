@@ -2,7 +2,7 @@
 // App ID: bvvpht7z6 | Realm: lcp360-5583.quickbase.com
 
 const CONFIG = {
-    version: '1.2.3',
+    version: '1.2.4',
     versionUrl: 'https://raw.githubusercontent.com/lcp-media-quickbase/lcp-sales-portal/main/codepages/version.json',
     
     getRealmHostname: function() { return window.location.hostname; },
@@ -57,6 +57,9 @@ const CONFIG = {
         yardiCodes: {
             recordId: 3, code: 6, productDescription: 7, unitOfMeasure: 8,
             retailPrice: 9, billingFrequency: 10, pipelineAssetType: 18
+        },
+        products3D: {
+            recordId: 3, productType: 12, productName: 13, retailPrice: 16
         }
     },
     
