@@ -82,7 +82,7 @@ body {
 .version-info { font-size: 11px; color: var(--text-muted); }
 
 /* Main Content */
-.main-content { flex: 1; margin-left: var(--sidebar-width); min-height: 100vh; transition: margin-right 0.3s ease; }
+.main-content { flex: 1; margin-left: var(--sidebar-width); min-height: 100vh; overflow-y: auto; transition: margin-right 0.3s ease; }
 .main-content.panel-open { margin-right: 380px; }
 
 /* Slide-out Price Panel */
@@ -147,15 +147,15 @@ body {
 .price-panel-item-info { flex: 1; min-width: 0; }
 .price-panel-item-name { font-weight: 500; font-size: 14px; color: var(--text-primary); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .price-panel-item-meta { font-size: 12px; color: var(--text-muted); display: flex; gap: 8px; align-items: center; }
-.price-panel-item-price { font-weight: 600; font-size: 15px; color: var(--lcp-blue); margin-right: 12px; white-space: nowrap; }
+.price-panel-item-price { font-weight: 600; font-size: 13px; color: var(--lcp-blue); margin-right: 10px; white-space: nowrap; }
 
 .price-panel-item-add {
     background: var(--lcp-blue);
     color: #1a1a1a;
     border: none;
-    width: 32px;
-    height: 32px;
-    border-radius: 6px;
+    width: 26px;
+    height: 26px;
+    border-radius: 5px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -165,6 +165,7 @@ body {
 }
 
 .price-panel-item-add:hover { background: var(--lcp-blue-hover); transform: scale(1.05); }
+.price-panel-item-add svg { width: 14px; height: 14px; }
 
 /* Floating toggle button */
 .price-list-toggle {

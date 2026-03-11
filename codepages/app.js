@@ -455,7 +455,7 @@ function renderPricePanelList() {
     }
     
     c.innerHTML = AppState.products.map(p => `
-        <div class="price-panel-item" data-type="${p.assetType||''}" data-name="${p.name.toLowerCase()}">
+        <div class="price-panel-item" data-type="${p.assetType||''}" data-name="${p.name.toLowerCase()}" data-code="${(p.code||'').toString().toLowerCase()}">
             <div class="price-panel-item-info">
                 <div class="price-panel-item-name" title="${p.name}">${p.name}</div>
                 <div class="price-panel-item-meta">
@@ -467,7 +467,7 @@ function renderPricePanelList() {
             </div>
             <div class="price-panel-item-price">${formatCurrency(p.price)}</div>
             <button class="price-panel-item-add" onclick="addProductToOrder(${p.id})" title="Add to order">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
             </button>
         </div>
     `).join('');
@@ -480,8 +480,9 @@ function filterPanelProducts() {
     document.querySelectorAll('.price-panel-item').forEach(function(item) {
         var itemType = item.dataset.type;
         var itemName = item.dataset.name;
+        var itemCode = item.dataset.code;
         var matchType = !type || itemType === type;
-        var matchSearch = !search || itemName.includes(search);
+        var matchSearch = !search || itemName.includes(search) || itemCode.includes(search);
         item.style.display = (matchType && matchSearch) ? 'flex' : 'none';
     });
 }
