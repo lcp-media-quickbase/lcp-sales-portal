@@ -1,5 +1,5 @@
 {
-  "version": "1.1.5",
+  "version": "1.2.0",
   "updated": "2026-03-11",
-  "notes": "Filter out properties with no name"
+  "notes": "Multi-property support with grouped line items and billing contact display"
 }

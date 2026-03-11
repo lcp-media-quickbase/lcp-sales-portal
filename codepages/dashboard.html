@@ -143,51 +143,19 @@
                         
                         <div class="card">
                             <div class="card-header">
-                                <h2 class="card-title">Property & Billing Contact</h2>
+                                <h2 class="card-title">Properties & Line Items</h2>
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="openPropertySelector()">
+                                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                                    Add Property
+                                </button>
                             </div>
-                            <div class="form-row">
-                                <div class="form-col-property">
-                                    <div class="property-section-header">
-                                        <span class="form-label">Property</span>
-                                        <button type="button" class="btn btn-secondary btn-sm" onclick="openModal('property-modal')">
-                                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                                            Select Property
-                                        </button>
-                                    </div>
-                                    <div id="selected-property-display">
-                                        <div class="empty-state" style="padding: 30px 20px;">
-                                            <svg class="empty-state-icon" style="width:48px;height:48px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                                            <p class="empty-state-text">No property selected</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="form-col-billing">
-                                    <div class="form-group">
-                                        <label class="form-label">Billing Contact Name</label>
-                                        <input type="text" class="form-input" id="billing-contact-name" placeholder="Full name">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Billing Contact Email</label>
-                                        <input type="email" class="form-input" id="billing-contact-email" placeholder="billing@company.com">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Billing Contact Phone</label>
-                                        <input type="tel" class="form-input" id="billing-contact-phone" placeholder="(555) 123-4567" oninput="formatPhoneNumber(this)">
-                                    </div>
+                            <div id="order-properties-container">
+                                <div class="empty-state" style="padding: 40px 20px;">
+                                    <svg class="empty-state-icon" style="width:48px;height:48px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                                    <p class="empty-state-text">No properties added yet</p>
+                                    <p class="empty-state-subtext">Click "Add Property" to get started</p>
                                 </div>
                             </div>
-                        </div>
-                        
-                        <div class="card">
-                            <div class="card-header">
-                                <h2 class="card-title">Line Items</h2>
-                            </div>
-                            <div class="line-item-header"><span>Product</span><span>Quantity</span><span>Unit Price</span><span>Total</span><span></span></div>
-                            <div id="order-line-items"></div>
-                            <button type="button" class="btn btn-secondary add-line-item-btn" onclick="addOrderLineItem()">
-                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-                                Add Line Item
-                            </button>
                         </div>
                         
                         <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">

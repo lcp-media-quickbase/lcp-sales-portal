@@ -1,8 +1,10 @@
 // LCP Sales Portal - Application Logic v1.0.2
 
 const AppState = {
-    selectedProperty: null, selectedProduct: null, selectedClient: null,
-    currentProductCallback: null, orderLineItems: [], quoteLineItems: [],
+    selectedProduct: null, selectedClient: null,
+    currentProductCallback: null, currentPropertyCallback: null,
+    orderProperties: [], // [{propertyId, property, lineItems: [{id, productId, productName, quantity, unitPrice, total}]}]
+    quoteLineItems: [],
     products: [], properties: [], clients: [], orders: [], quotes: [], priceList: []
 };
 
@@ -96,11 +98,14 @@ async function saveNewClient() {
 async function loadProperties() {
     try {
         const f = CONFIG.fields.propertiesMaster;
-        const r = await queryRecords(CONFIG.tables.propertiesMaster, [f.recordId, f.propertyName, f.address], "{12.XEX.''}", [{ fieldId: f.propertyName, order: 'ASC' }], true);
+        const r = await queryRecords(CONFIG.tables.propertiesMaster, [f.recordId, f.propertyName, f.address, f.billingContact, f.billingEmail, f.billingPhone], "{12.XEX.''}", [{ fieldId: f.propertyName, order: 'ASC' }], true);
         AppState.properties = r.data.map(rec => ({ 
             id: rec[f.recordId].value, 
             name: rec[f.propertyName]?.value || 'Unnamed', 
-            address: rec[f.address]?.value || ''
+            address: rec[f.address]?.value || '',
+            billingContact: rec[f.billingContact]?.value || '',
+            billingEmail: rec[f.billingEmail]?.value || '',
+            billingPhone: rec[f.billingPhone]?.value || ''
         }));
         renderPropertyList();
     } catch (e) { 
@@ -117,7 +122,14 @@ function renderPropertyList() {
         c.innerHTML = '<tr><td style="text-align:center;padding:40px;color:var(--text-muted)">No properties found</td></tr>'; 
         return; 
     }
-    c.innerHTML = AppState.properties.map(p => `<tr class="property-row" onclick="selectProperty(${p.id})" data-name="${(p.name||'').toLowerCase()}" data-address="${(p.address||'').toLowerCase()}" style="cursor:pointer;"><td><div class="property-name-large">${p.name}</div><div class="property-address-small">${p.address || 'No address'}</div></td></tr>`).join('');
+    // Filter out already selected properties
+    var selectedIds = AppState.orderProperties.map(op => op.propertyId);
+    var available = AppState.properties.filter(p => !selectedIds.includes(p.id));
+    if (!available.length) {
+        c.innerHTML = '<tr><td style="text-align:center;padding:40px;color:var(--text-muted)">All properties already added</td></tr>';
+        return;
+    }
+    c.innerHTML = available.map(p => `<tr class="property-row" onclick="addPropertyToOrder(${p.id})" data-name="${(p.name||'').toLowerCase()}" data-address="${(p.address||'').toLowerCase()}" style="cursor:pointer;"><td><div class="property-name-large">${p.name}</div><div class="property-address-small">${p.address || 'No address'}</div></td></tr>`).join('');
 }
 
 function filterProperties() {
@@ -129,20 +141,152 @@ function filterProperties() {
     });
 }
 
-function selectProperty(id) {
-    AppState.selectedProperty = AppState.properties.find(p => p.id === id);
-    updateSelectedPropertyDisplay();
+function openPropertySelector() {
+    renderPropertyList();
+    document.getElementById('property-search-input').value = '';
+    openModal('property-modal');
+}
+
+function addPropertyToOrder(propertyId) {
+    var property = AppState.properties.find(p => p.id === propertyId);
+    if (!property) return;
+    
+    // Check if already added
+    if (AppState.orderProperties.find(op => op.propertyId === propertyId)) {
+        closeModal('property-modal');
+        return;
+    }
+    
+    AppState.orderProperties.push({
+        propertyId: propertyId,
+        property: property,
+        lineItems: []
+    });
+    
+    renderOrderProperties();
     closeModal('property-modal');
 }
 
-function updateSelectedPropertyDisplay() {
-    const c = document.getElementById('selected-property-display');
-    if (!AppState.selectedProperty) { c.innerHTML = '<div class="empty-state" style="padding: 30px 20px;"><svg class="empty-state-icon" style="width:48px;height:48px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><p class="empty-state-text">No property selected</p></div>'; return; }
-    const p = AppState.selectedProperty;
-    c.innerHTML = `<div class="selected-property-card"><div class="property-name-large">${p.name}</div><div class="property-address-small">${p.address||'No address'}</div><button class="btn btn-ghost btn-sm" onclick="clearSelectedProperty()" title="Remove" style="position:absolute;top:12px;right:12px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>`;
+function removePropertyFromOrder(propertyId) {
+    AppState.orderProperties = AppState.orderProperties.filter(op => op.propertyId !== propertyId);
+    renderOrderProperties();
 }
 
-function clearSelectedProperty() { AppState.selectedProperty = null; updateSelectedPropertyDisplay(); }
+var lineItemCounter = 0;
+
+function addLineItemToProperty(propertyId) {
+    var orderProp = AppState.orderProperties.find(op => op.propertyId === propertyId);
+    if (!orderProp) return;
+    
+    lineItemCounter++;
+    orderProp.lineItems.push({
+        id: lineItemCounter,
+        productId: null,
+        productName: '',
+        quantity: 1,
+        unitPrice: 0,
+        total: 0
+    });
+    renderOrderProperties();
+}
+
+function removeLineItemFromProperty(propertyId, lineItemId) {
+    var orderProp = AppState.orderProperties.find(op => op.propertyId === propertyId);
+    if (!orderProp) return;
+    orderProp.lineItems = orderProp.lineItems.filter(li => li.id !== lineItemId);
+    renderOrderProperties();
+}
+
+function updateLineItemQty(propertyId, lineItemId, qty) {
+    var orderProp = AppState.orderProperties.find(op => op.propertyId === propertyId);
+    if (!orderProp) return;
+    var li = orderProp.lineItems.find(l => l.id === lineItemId);
+    if (li) {
+        li.quantity = parseInt(qty) || 1;
+        li.total = li.quantity * li.unitPrice;
+        renderOrderProperties();
+    }
+}
+
+function selectProductForPropertyLine(propertyId, lineItemId) {
+    openProductSelector(function(product) {
+        var orderProp = AppState.orderProperties.find(op => op.propertyId === propertyId);
+        if (!orderProp) return;
+        var li = orderProp.lineItems.find(l => l.id === lineItemId);
+        if (li) {
+            li.productId = product.id;
+            li.productName = product.name;
+            li.unitPrice = product.price;
+            li.total = li.quantity * product.price;
+            renderOrderProperties();
+        }
+    });
+}
+
+function renderOrderProperties() {
+    var c = document.getElementById('order-properties-container');
+    if (!AppState.orderProperties.length) {
+        c.innerHTML = `<div class="empty-state" style="padding: 40px 20px;">
+            <svg class="empty-state-icon" style="width:48px;height:48px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <p class="empty-state-text">No properties added yet</p>
+            <p class="empty-state-subtext">Click "Add Property" to get started</p>
+        </div>`;
+        return;
+    }
+    
+    c.innerHTML = AppState.orderProperties.map(op => {
+        var p = op.property;
+        var billingHtml = '';
+        if (p.billingContact || p.billingEmail || p.billingPhone) {
+            billingHtml = `<div class="property-group-billing">
+                ${p.billingContact ? `<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${p.billingContact}</span>` : ''}
+                ${p.billingEmail ? `<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>${p.billingEmail}</span>` : ''}
+                ${p.billingPhone ? `<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${p.billingPhone}</span>` : ''}
+            </div>`;
+        }
+        
+        var lineItemsHtml = '';
+        if (op.lineItems.length) {
+            lineItemsHtml = op.lineItems.map(li => `<div class="line-item">
+                <div class="form-group"><button type="button" class="btn btn-secondary" style="width:100%;justify-content:flex-start" onclick="selectProductForPropertyLine(${op.propertyId},${li.id})">${li.productName||'Select Product...'}</button></div>
+                <div class="form-group"><input type="number" class="form-input" value="${li.quantity}" min="1" onchange="updateLineItemQty(${op.propertyId},${li.id},this.value)"></div>
+                <div class="form-group"><input type="text" class="form-input" value="${formatCurrency(li.unitPrice)}" readonly style="background:var(--bg-hover);cursor:not-allowed"></div>
+                <div class="form-group"><input type="text" class="form-input" value="${formatCurrency(li.total)}" readonly style="background:var(--bg-hover);cursor:not-allowed;font-weight:600;color:var(--lcp-blue)"></div>
+                <button type="button" class="remove-btn" onclick="removeLineItemFromProperty(${op.propertyId},${li.id})"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+            </div>`).join('');
+        } else {
+            lineItemsHtml = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">No line items yet</div>';
+        }
+        
+        return `<div class="property-group">
+            <div class="property-group-header">
+                <div class="property-group-info">
+                    <div class="property-group-name">${p.name}</div>
+                    <div class="property-group-address">${p.address || 'No address'}</div>
+                    ${billingHtml}
+                </div>
+                <div class="property-group-actions">
+                    <button type="button" class="btn btn-ghost btn-sm" onclick="removePropertyFromOrder(${op.propertyId})" title="Remove Property">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="property-group-body">
+                <div class="line-item-header"><span>Product</span><span>Quantity</span><span>Unit Price</span><span>Total</span><span></span></div>
+                <div class="line-items-container">${lineItemsHtml}</div>
+                <button type="button" class="btn btn-secondary add-line-item-btn" onclick="addLineItemToProperty(${op.propertyId})">
+                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                    Add Line Item
+                </button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// Keep these for backwards compat but they're not used in new flow
+function selectProperty(id) { addPropertyToOrder(id); }
+function updateSelectedPropertyDisplay() { renderOrderProperties(); }
+function clearSelectedProperty() { }
 
 async function saveNewProperty() {
     const name = document.getElementById('new-property-name').value.trim();
@@ -336,12 +480,14 @@ function removeQuoteLineItem(id) { AppState.quoteLineItems = AppState.quoteLineI
 async function saveOrder() {
     const email = document.getElementById('order-sales-email').value.trim();
     const notes = getRichTextContent('order-notes-editor');
-    const billingName = document.getElementById('billing-contact-name').value.trim();
-    const billingEmail = document.getElementById('billing-contact-email').value.trim();
-    const billingPhone = document.getElementById('billing-contact-phone').value.trim();
     
     if (!email) { alert('Sales rep email required'); return; }
     if (!AppState.selectedClient) { alert('Please select a client'); return; }
+    if (!AppState.orderProperties.length) { alert('Please add at least one property'); return; }
+    
+    // Check each property has at least one line item
+    var hasLineItems = AppState.orderProperties.some(op => op.lineItems.length > 0);
+    if (!hasLineItems) { alert('Please add at least one line item'); return; }
     
     try {
         const f = CONFIG.fields.orders;
@@ -351,18 +497,24 @@ async function saveOrder() {
             [f.expirationDate]: { value: getExpirationDate(30) }, 
             [f.orderStatus]: { value: 'Draft' }, 
             [f.historyNotes]: { value: notes }, 
-            [f.relatedCompany]: { value: AppState.selectedClient.id },
-            [f.billingContactName]: { value: billingName },
-            [f.billingContactEmail]: { value: billingEmail },
-            [f.billingContactPhone]: { value: billingPhone }
+            [f.relatedCompany]: { value: AppState.selectedClient.id }
         };
         const r = await createRecord(CONFIG.tables.orders, data);
         if (r.data?.[0]) {
             const orderId = r.data[0][f.recordId].value;
-            for (const li of AppState.orderLineItems) {
-                if (li.productId) {
-                    const lf = CONFIG.fields.orderLineItems;
-                    await createRecord(CONFIG.tables.orderLineItems, { [lf.relatedOrder]: { value: orderId }, [lf.description]: { value: li.productName }, [lf.quantity]: { value: li.quantity }, [lf.total]: { value: li.total } });
+            // Save line items for each property
+            for (const op of AppState.orderProperties) {
+                for (const li of op.lineItems) {
+                    if (li.productId) {
+                        const lf = CONFIG.fields.orderLineItems;
+                        await createRecord(CONFIG.tables.orderLineItems, { 
+                            [lf.relatedOrder]: { value: orderId }, 
+                            [lf.description]: { value: li.productName }, 
+                            [lf.quantity]: { value: li.quantity }, 
+                            [lf.total]: { value: li.total }
+                            // TODO: Add related property field when available
+                        });
+                    }
                 }
             }
             showSuccess('Order saved!');
@@ -437,13 +589,13 @@ function getStatusClass(s) { if (!s) return 'draft'; const l = s.toLowerCase(); 
 function resetOrderForm() {
     document.getElementById('order-form').reset();
     setRichTextContent('order-notes-editor', '');
-    document.getElementById('billing-contact-name').value = '';
-    document.getElementById('billing-contact-email').value = '';
-    document.getElementById('billing-contact-phone').value = '';
-    AppState.orderLineItems = []; AppState.selectedProperty = null; AppState.selectedClient = null; orderLineCounter = 0;
+    AppState.orderProperties = [];
+    AppState.selectedClient = null;
+    lineItemCounter = 0;
     document.getElementById('selected-client-name').textContent = 'Select a client...';
     document.getElementById('order-company-id').value = '';
-    renderOrderLineItems(); updateSelectedPropertyDisplay(); renderClientList();
+    renderOrderProperties();
+    renderClientList();
 }
 
 function resetQuoteForm() {
