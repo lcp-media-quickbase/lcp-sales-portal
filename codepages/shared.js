@@ -4,12 +4,18 @@
 
 const CONFIG = {
     // Version info
-    version: '1.0.0',
-    versionUrl: 'https://raw.githubusercontent.com/lcp-media-quickbase/lcp-sales-portal/main/version.json',
+    version: '1.0.1',
+    versionUrl: 'https://raw.githubusercontent.com/lcp-media-quickbase/lcp-sales-portal/main/codepages/version.json',
+    
+    // Logo URLs (from HubSpot)
+    logos: {
+        dark: 'https://www.lcpmedia.com/hs-fs/hubfs/LCP_Media_Logo_White_Green_PNG%20(2).png?width=600&height=206&name=LCP_Media_Logo_White_Green_PNG%20(2).png',
+        light: 'https://www.lcpmedia.com/hs-fs/hubfs/LCP%20Media_Logo-2.png?width=800&height=275&name=LCP%20Media_Logo-2.png'
+    },
     
     // QuickBase realm detection
     getRealmHostname: function() {
-        return window.location.hostname; // Auto-detect: lcp360-5583.quickbase.com
+        return window.location.hostname;
     },
     
     // Cross-app realm (for external tables like Products, Companies)
@@ -25,14 +31,13 @@ const CONFIG = {
         quotes3D: 'bvvpht76j',
         lineItems3D: 'bvvpht773',
         properties: 'bvvpht79i',
-        // External tables (cross-app)
         products: 'bvdjrfrja',
         companies: 'bvdjrk2qq',
         yardiCodes: 'bvkv6qbt9',
         propertiesMaster: 'bvdjrndec'
     },
     
-    // Field mappings - Orders table (bvvpht73m)
+    // Field mappings
     fields: {
         orders: {
             recordId: 3,
@@ -51,8 +56,6 @@ const CONFIG = {
             companyYcrmName: 20,
             companyName: 21
         },
-        
-        // Order Line Items table (bvvpht749)
         orderLineItems: {
             recordId: 3,
             quantity: 6,
@@ -69,8 +72,6 @@ const CONFIG = {
             codeUnitOfMeasure: 17,
             codeBillingFrequency: 18
         },
-        
-        // 3D Quotes table (bvvpht76j)
         quotes3D: {
             recordId: 3,
             dateCreated: 1,
@@ -87,8 +88,6 @@ const CONFIG = {
             companyYcrmId: 19,
             companyYcrmName: 20
         },
-        
-        // 3D Line Items table (bvvpht773)
         lineItems3D: {
             recordId: 3,
             quantity: 6,
@@ -102,8 +101,6 @@ const CONFIG = {
             productName: 14,
             productRetailPrice: 15
         },
-        
-        // Properties table (bvvpht79i)
         properties: {
             recordId: 3,
             relatedOrder: 6,
@@ -121,39 +118,63 @@ const CONFIG = {
             propertyState: 18,
             propertyPostalCode: 19,
             propertyCountry: 20
+        },
+        companies: {
+            recordId: 3,
+            companyName: 8,
+            ycrmId: 9,
+            ycrmName: 13
         }
     },
     
-    // Quote status options (for 3D Quotes)
-    quoteStatuses: [
-        'Draft',
-        'Pending Review',
-        'Sent to Client',
-        'Approved',
-        'Rejected',
-        'Expired'
+    // Sales rep emails
+    salesReps: [
+        'sales@lcpmedia.com',
+        'support@lcpmedia.com'
     ],
     
-    // Order status options
-    orderStatuses: [
-        'Draft',
-        'Pending',
-        'Processing',
-        'Completed',
-        'Cancelled'
-    ]
+    quoteStatuses: ['Draft', 'Pending Review', 'Sent to Client', 'Approved', 'Rejected', 'Expired'],
+    orderStatuses: ['Draft', 'Pending', 'Processing', 'Completed', 'Cancelled']
 };
 
-// Freeze config to prevent accidental modification
 Object.freeze(CONFIG);
 Object.freeze(CONFIG.tables);
 Object.freeze(CONFIG.fields);
-// LCP Sales Portal - Shared Utilities
-// CRITICAL RULES:
-// - switchTab must use inline display:none/flex styles, never CSS classes
-// - Nav items in renderDashboardNav are <a> tags closed with </a>, never </div>
-// - buildDashboard must be synchronous (async causes blank screen)
-// - Never use broad sed on this file - use targeted string replacements
+
+// ============================================================================
+// THEME MANAGEMENT
+// ============================================================================
+
+function getTheme() {
+    return localStorage.getItem('lcp-theme') || 'dark';
+}
+
+function setTheme(theme) {
+    localStorage.setItem('lcp-theme', theme);
+    document.documentElement.setAttribute('data-theme', theme);
+    
+    var logo = document.getElementById('appLogo');
+    if (logo) {
+        logo.src = theme === 'light' ? CONFIG.logos.light : CONFIG.logos.dark;
+    }
+    
+    var toggleBtn = document.getElementById('theme-toggle');
+    if (toggleBtn) {
+        toggleBtn.innerHTML = theme === 'light' 
+            ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
+            : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+    }
+}
+
+function toggleTheme() {
+    setTheme(getTheme() === 'light' ? 'dark' : 'light');
+}
+
+function initTheme() {
+    document.documentElement.setAttribute('data-theme', getTheme());
+}
+
+initTheme();
 
 // ============================================================================
 // API UTILITIES
@@ -175,73 +196,47 @@ async function getTemporaryToken() {
 
 async function qbApiRequest(tableId, endpoint, method = 'POST', body = null, useCrossAppRealm = false) {
     const token = await getTemporaryToken();
-    if (!token) {
-        throw new Error('Authentication failed');
-    }
+    if (!token) throw new Error('Authentication failed');
     
     const realm = useCrossAppRealm ? CONFIG.crossAppRealm : CONFIG.getRealmHostname();
     const url = `https://api.quickbase.com/v1/${endpoint}`;
     
-    const headers = {
-        'QB-Realm-Hostname': realm,
-        'Authorization': `QB-TEMP-TOKEN ${token}`,
-        'Content-Type': 'application/json'
-    };
-    
     const options = {
         method: method,
-        headers: headers
+        headers: {
+            'QB-Realm-Hostname': realm,
+            'Authorization': `QB-TEMP-TOKEN ${token}`,
+            'Content-Type': 'application/json'
+        }
     };
     
-    if (body) {
-        options.body = JSON.stringify(body);
-    }
+    if (body) options.body = JSON.stringify(body);
     
     const response = await fetch(url, options);
-    
     if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'API request failed');
     }
-    
     return response.json();
 }
 
 async function queryRecords(tableId, select, where = null, sortBy = null, useCrossAppRealm = false) {
-    const body = {
-        from: tableId,
-        select: select
-    };
-    
-    if (where) {
-        body.where = where;
-    }
-    
-    if (sortBy) {
-        body.sortBy = sortBy;
-    }
-    
+    const body = { from: tableId, select: select };
+    if (where) body.where = where;
+    if (sortBy) body.sortBy = sortBy;
     return qbApiRequest(tableId, 'records/query', 'POST', body, useCrossAppRealm);
 }
 
 async function createRecord(tableId, data) {
-    const body = {
-        to: tableId,
-        data: [data]
-    };
-    
-    return qbApiRequest(tableId, 'records', 'POST', body);
+    return qbApiRequest(tableId, 'records', 'POST', { to: tableId, data: [data] });
 }
 
 async function updateRecord(tableId, recordId, data) {
+    const tableKey = getTableKey(tableId);
     const body = {
         to: tableId,
-        data: [{
-            ...data,
-            [CONFIG.fields[getTableKey(tableId)].recordId]: { value: recordId }
-        }]
+        data: [{ ...data, [CONFIG.fields[tableKey].recordId]: { value: recordId } }]
     };
-    
     return qbApiRequest(tableId, 'records', 'POST', body);
 }
 
@@ -257,61 +252,29 @@ function getTableKey(tableId) {
 // ============================================================================
 
 function showLoading(container) {
-    container.innerHTML = `
-        <div class="loading-spinner">
-            <div class="spinner"></div>
-            <p>Loading...</p>
-        </div>
-    `;
+    container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p>Loading...</p></div>';
 }
 
 function showError(container, message) {
-    container.innerHTML = `
-        <div class="error-message">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="15" y1="9" x2="9" y2="15"></line>
-                <line x1="9" y1="9" x2="15" y2="15"></line>
-            </svg>
-            <p>${message}</p>
-        </div>
-    `;
+    container.innerHTML = `<div class="error-message"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg><p>${message}</p></div>`;
 }
 
 function showSuccess(message) {
     const toast = document.createElement('div');
     toast.className = 'toast toast-success';
-    toast.innerHTML = `
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-        </svg>
-        <span>${message}</span>
-    `;
+    toast.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg><span>${message}</span>`;
     document.body.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.classList.add('toast-fade-out');
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
+    setTimeout(() => { toast.classList.add('toast-fade-out'); setTimeout(() => toast.remove(), 300); }, 3000);
 }
 
 function formatCurrency(value) {
     if (!value && value !== 0) return '$0.00';
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD'
-    }).format(value);
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
 }
 
 function formatDate(dateString) {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-    });
+    return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 function getTodayISO() {
@@ -329,26 +292,16 @@ function getExpirationDate(daysFromNow = 30) {
 // ============================================================================
 
 function switchTab(tabId) {
-    // Hide all tabs using inline styles (NEVER use CSS classes for this)
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.style.display = 'none';
-    });
-    
-    // Show selected tab using inline style
+    document.querySelectorAll('.tab-content').forEach(tab => { tab.style.display = 'none'; });
     const selectedTab = document.getElementById(tabId);
-    if (selectedTab) {
-        selectedTab.style.display = 'flex';
-    }
+    if (selectedTab) selectedTab.style.display = 'flex';
     
-    // Update nav active state
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.remove('active');
-    });
-    
+    document.querySelectorAll('.nav-item').forEach(item => { item.classList.remove('active'); });
     const activeNav = document.querySelector(`[data-tab="${tabId}"]`);
-    if (activeNav) {
-        activeNav.classList.add('active');
-    }
+    if (activeNav) activeNav.classList.add('active');
+    
+    if (tabId === 'tab-order-history') loadOrderHistory();
+    else if (tabId === 'tab-quote-history') loadQuoteHistory();
 }
 
 // ============================================================================
@@ -359,9 +312,7 @@ async function checkVersion() {
     try {
         const response = await fetch(CONFIG.versionUrl + '?t=' + Date.now());
         const data = await response.json();
-        
         if (data.version !== CONFIG.version) {
-            console.log(`New version available: ${data.version} (current: ${CONFIG.version})`);
             showVersionNotice(data.version);
         }
     } catch (error) {
@@ -372,11 +323,7 @@ async function checkVersion() {
 function showVersionNotice(newVersion) {
     const notice = document.createElement('div');
     notice.className = 'version-notice';
-    notice.innerHTML = `
-        <span>A new version (${newVersion}) is available.</span>
-        <button onclick="location.reload(true)">Refresh</button>
-        <button onclick="this.parentElement.remove()">Dismiss</button>
-    `;
+    notice.innerHTML = `<span>A new version (${newVersion}) is available.</span><button onclick="location.reload(true)">Refresh</button><button onclick="this.parentElement.remove()">Dismiss</button>`;
     document.body.insertBefore(notice, document.body.firstChild);
 }
 
@@ -386,38 +333,42 @@ function showVersionNotice(newVersion) {
 
 function openModal(modalId) {
     const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-    }
+    if (modal) { modal.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
 }
 
 function closeModal(modalId) {
     const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.style.display = 'none';
-        document.body.style.overflow = '';
-    }
+    if (modal) { modal.style.display = 'none'; document.body.style.overflow = ''; }
 }
 
 function closeAllModals() {
-    document.querySelectorAll('.modal').forEach(modal => {
-        modal.style.display = 'none';
-    });
+    document.querySelectorAll('.modal').forEach(modal => { modal.style.display = 'none'; });
     document.body.style.overflow = '';
 }
 
-// Close modal on outside click
 document.addEventListener('click', function(e) {
-    if (e.target.classList.contains('modal')) {
-        e.target.style.display = 'none';
-        document.body.style.overflow = '';
-    }
+    if (e.target.classList.contains('modal')) { e.target.style.display = 'none'; document.body.style.overflow = ''; }
 });
 
-// Close modal on escape
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        closeAllModals();
-    }
+    if (e.key === 'Escape') closeAllModals();
 });
+
+// ============================================================================
+// RICH TEXT EDITOR
+// ============================================================================
+
+function execRichTextCommand(command, value = null) {
+    document.execCommand(command, false, value);
+    document.getElementById('order-notes-editor')?.focus();
+}
+
+function getRichTextContent(editorId) {
+    const editor = document.getElementById(editorId);
+    return editor ? editor.innerHTML : '';
+}
+
+function setRichTextContent(editorId, content) {
+    const editor = document.getElementById(editorId);
+    if (editor) editor.innerHTML = content || '';
+}
