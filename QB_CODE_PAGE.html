@@ -47,6 +47,9 @@ fetchRetry('https://raw.githubusercontent.com/' + REPO + '/main/codepages/versio
     var doc = parser.parseFromString(html, 'text/html');
     // Remove loader, inject styles
     document.getElementById('loader').remove();
+    // Remove overflow:hidden that was set for loader
+    document.documentElement.style.overflow = '';
+    document.body.style.overflow = '';
     var styleEl = document.createElement('style');
     styleEl.textContent = css;
     document.head.appendChild(styleEl);

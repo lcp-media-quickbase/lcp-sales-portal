@@ -199,36 +199,6 @@
                         </div>
                     </form>
                 </div>
-                
-                <!-- Floating Price List Toggle Button -->
-                <button class="price-list-toggle" id="price-list-toggle" onclick="togglePricePanel()">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                    <span>Price List</span>
-                </button>
-            </div>
-            
-            <!-- Slide-out Price Panel -->
-            <div class="price-panel" id="price-panel">
-                <div class="price-panel-header">
-                    <h3>Price List</h3>
-                    <button class="modal-close" onclick="togglePricePanel()">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    </button>
-                </div>
-                <div class="price-panel-filters">
-                    <input type="text" class="form-input" id="panel-price-search" placeholder="Search products..." oninput="filterPanelProducts()">
-                    <select class="form-select" id="panel-price-type" onchange="filterPanelProducts()">
-                        <option value="">All Types</option>
-                        <option value="3D">3D</option>
-                        <option value="Drone">Drone</option>
-                        <option value="Photography">Photography</option>
-                        <option value="Subscription">Subscription</option>
-                        <option value="TourBuilder Go">TourBuilder Go</option>
-                    </select>
-                </div>
-                <div class="price-panel-list" id="price-panel-list">
-                    <!-- Products loaded dynamically -->
-                </div>
             </div>
             
             <!-- TAB: Order History -->
