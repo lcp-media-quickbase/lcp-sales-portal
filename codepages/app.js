@@ -95,39 +95,54 @@ async function saveNewClient() {
 
 async function loadProperties() {
     try {
-        const f = CONFIG.fields.properties;
-        const r = await queryRecords(CONFIG.tables.properties, [f.recordId, f.propertyName, f.propertyStreet1, f.propertyCity, f.propertyState, f.propertyPostalCode], null, [{ fieldId: f.propertyName, order: 'ASC' }]);
-        AppState.properties = r.data.map(rec => ({ id: rec[f.recordId].value, name: rec[f.propertyName]?.value || 'Unnamed', street: rec[f.propertyStreet1]?.value || '', city: rec[f.propertyCity]?.value || '', state: rec[f.propertyState]?.value || '', postal: rec[f.propertyPostalCode]?.value || '' }));
+        const f = CONFIG.fields.propertiesMaster;
+        const r = await queryRecords(CONFIG.tables.propertiesMaster, [f.recordId, f.propertyName, f.address], null, [{ fieldId: f.propertyName, order: 'ASC' }], true);
+        AppState.properties = r.data.map(rec => ({ 
+            id: rec[f.recordId].value, 
+            name: rec[f.propertyName]?.value || 'Unnamed', 
+            address: rec[f.address]?.value || ''
+        }));
         renderPropertyList();
-    } catch (e) { console.error('Load properties failed:', e); document.getElementById('property-list').innerHTML = '<div class="empty-state"><p class="empty-state-text">No properties found</p></div>'; }
+    } catch (e) { 
+        console.error('Load properties failed:', e); 
+        var tbody = document.getElementById('property-table-body');
+        if (tbody) tbody.innerHTML = '<tr><td style="text-align:center;padding:40px;color:var(--text-muted)">Failed to load properties</td></tr>'; 
+    }
 }
 
 function renderPropertyList() {
-    const c = document.getElementById('property-list');
-    if (!AppState.properties.length) { c.innerHTML = '<div class="empty-state"><p class="empty-state-text">No properties found</p></div>'; return; }
-    c.innerHTML = AppState.properties.map(p => `<div class="property-item ${AppState.selectedProperty?.id===p.id?'selected':''}" onclick="selectProperty(${p.id})"><div class="property-info"><div class="property-name-display">${p.name}</div><div class="property-address">${[p.street,p.city,p.state,p.postal].filter(Boolean).join(', ')||'No address'}</div></div><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--lcp-blue);opacity:${AppState.selectedProperty?.id===p.id?'1':'0'}"><polyline points="20 6 9 17 4 12"/></svg></div>`).join('');
+    var c = document.getElementById('property-table-body');
+    if (!c) return;
+    if (!AppState.properties.length) { 
+        c.innerHTML = '<tr><td style="text-align:center;padding:40px;color:var(--text-muted)">No properties found</td></tr>'; 
+        return; 
+    }
+    c.innerHTML = AppState.properties.map(p => `<tr class="property-row" onclick="selectProperty(${p.id})" data-name="${(p.name||'').toLowerCase()}" data-address="${(p.address||'').toLowerCase()}" style="cursor:pointer;"><td><div class="property-name-large">${p.name}</div><div class="property-address-small">${p.address || 'No address'}</div></td></tr>`).join('');
 }
 
 function filterProperties() {
-    const s = document.getElementById('property-search-input').value.toLowerCase();
-    document.querySelectorAll('.property-item').forEach(i => { const n = i.querySelector('.property-name-display').textContent.toLowerCase(); const a = i.querySelector('.property-address').textContent.toLowerCase(); i.style.display = (n.includes(s)||a.includes(s)) ? 'flex' : 'none'; });
+    var s = document.getElementById('property-search-input').value.toLowerCase();
+    document.querySelectorAll('.property-row').forEach(function(row) { 
+        var name = row.dataset.name;
+        var address = row.dataset.address;
+        row.style.display = (name.includes(s) || address.includes(s)) ? '' : 'none'; 
+    });
 }
 
 function selectProperty(id) {
     AppState.selectedProperty = AppState.properties.find(p => p.id === id);
-    renderPropertyList();
     updateSelectedPropertyDisplay();
     closeModal('property-modal');
 }
 
 function updateSelectedPropertyDisplay() {
     const c = document.getElementById('selected-property-display');
-    if (!AppState.selectedProperty) { c.innerHTML = '<div class="empty-state"><svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><p class="empty-state-text">No property selected</p></div>'; return; }
+    if (!AppState.selectedProperty) { c.innerHTML = '<div class="empty-state" style="padding: 30px 20px;"><svg class="empty-state-icon" style="width:48px;height:48px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><p class="empty-state-text">No property selected</p></div>'; return; }
     const p = AppState.selectedProperty;
-    c.innerHTML = `<div class="property-item selected" style="cursor:default"><div class="property-info"><div class="property-name-display">${p.name}</div><div class="property-address">${[p.street,p.city,p.state,p.postal].filter(Boolean).join(', ')||'No address'}</div></div><button class="btn btn-ghost btn-sm" onclick="clearSelectedProperty()" title="Remove"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>`;
+    c.innerHTML = `<div class="selected-property-card"><div class="property-name-large">${p.name}</div><div class="property-address-small">${p.address||'No address'}</div><button class="btn btn-ghost btn-sm" onclick="clearSelectedProperty()" title="Remove" style="position:absolute;top:12px;right:12px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>`;
 }
 
-function clearSelectedProperty() { AppState.selectedProperty = null; updateSelectedPropertyDisplay(); renderPropertyList(); }
+function clearSelectedProperty() { AppState.selectedProperty = null; updateSelectedPropertyDisplay(); }
 
 async function saveNewProperty() {
     const name = document.getElementById('new-property-name').value.trim();

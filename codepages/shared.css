@@ -224,6 +224,10 @@ body {
 .property-info { flex: 1; }
 .property-name-display { font-weight: 500; color: var(--text-primary); }
 .property-address { font-size: 13px; color: var(--text-secondary); }
+.property-name-large { font-weight: 600; font-size: 15px; color: var(--text-primary); margin-bottom: 4px; }
+.property-address-small { font-size: 13px; color: var(--text-muted); }
+.selected-property-card { position: relative; padding: 16px; background: var(--bg-hover); border-radius: 8px; border: 1px solid var(--lcp-blue-border); }
+.property-row:hover { background: var(--bg-hover); }
 
 /* Modals */
 .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
