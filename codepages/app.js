@@ -435,14 +435,12 @@ function filterPriceList() {
 }
 
 // ============================================================================
-// LINE ITEMS
+// LINE ITEMS (legacy - keeping for compatibility)
 // ============================================================================
 
-let orderLineCounter = 0, quoteLineCounter = 0;
-
 function addOrderLineItem() {
-    orderLineCounter++;
-    AppState.orderLineItems.push({ id: orderLineCounter, productId: null, productName: '', quantity: 1, unitPrice: 0, total: 0 });
+    lineItemCounter++;
+    AppState.orderLineItems.push({ id: lineItemCounter, productId: null, productName: '', quantity: 1, unitPrice: 0, total: 0 });
     renderOrderLineItems();
 }
 
@@ -469,8 +467,6 @@ function removeOrderLineItem(id) { AppState.orderLineItems = AppState.orderLineI
 // ============================================================================
 // 3D QUOTE PROPERTIES & LINE ITEMS
 // ============================================================================
-
-var quoteLineCounter = 0;
 
 function openQuotePropertySelector() {
     renderQuotePropertyList();
@@ -535,9 +531,9 @@ function addLineItemToQuoteProperty(propertyId) {
     var quoteProp = AppState.quoteProperties.find(op => op.propertyId === propertyId);
     if (!quoteProp) return;
     
-    quoteLineCounter++;
+    lineItemCounter++;
     quoteProp.lineItems.push({
-        id: quoteLineCounter,
+        id: lineItemCounter,
         productId: null,
         productName: '',
         quantity: 1,
@@ -800,7 +796,6 @@ function resetOrderForm() {
 function resetQuoteForm() {
     document.getElementById('quote-form').reset();
     AppState.quoteProperties = [];
-    quoteLineCounter = 0;
     renderQuoteProperties();
 }
 

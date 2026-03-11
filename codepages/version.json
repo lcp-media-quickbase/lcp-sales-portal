@@ -1,5 +1,5 @@
 {
-  "version": "1.2.2",
+  "version": "1.2.3",
   "updated": "2026-03-11",
-  "notes": "3D Quotes now use same multi-property structure with billing contact fields"
+  "notes": "Fix duplicate variable declaration error"
 }
