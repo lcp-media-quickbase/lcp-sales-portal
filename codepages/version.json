@@ -1,5 +1,5 @@
 {
-  "version": "1.0.7",
+  "version": "1.0.8",
   "updated": "2026-03-11",
-  "notes": "Fixed auth - use QB temp token API with session cookie (matches 3d-projects)"
+  "notes": "Client dropdown: Name on top (large), yCRM ID on bottom (small)"
 }

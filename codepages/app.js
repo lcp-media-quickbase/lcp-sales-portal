@@ -57,21 +57,21 @@ async function loadClients() {
 function renderClientList() {
     const c = document.getElementById('client-list');
     if (!AppState.clients.length) { c.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted)">No clients found</div>'; return; }
-    c.innerHTML = AppState.clients.map(cl => `<div class="client-item ${AppState.selectedClient?.id===cl.id?'selected':''}" onclick="selectClient(${cl.id})"><div class="client-item-name">${cl.ycrmId || 'No ID'}</div><div class="client-item-id">${cl.name || 'No name'}</div></div>`).join('');
+    c.innerHTML = AppState.clients.map(cl => `<div class="client-item ${AppState.selectedClient?.id===cl.id?'selected':''}" onclick="selectClient(${cl.id})"><div class="client-item-name">${cl.name || 'No name'}</div><div class="client-item-id">${cl.ycrmId || 'No ID'}</div></div>`).join('');
 }
 
 function filterClients() {
     const s = document.getElementById('client-search-input').value.toLowerCase();
     document.querySelectorAll('.client-item').forEach(i => { 
-        const ycrmId = i.querySelector('.client-item-name').textContent.toLowerCase();
-        const name = i.querySelector('.client-item-id').textContent.toLowerCase();
-        i.style.display = (ycrmId.includes(s) || name.includes(s)) ? 'block' : 'none'; 
+        const name = i.querySelector('.client-item-name').textContent.toLowerCase();
+        const ycrmId = i.querySelector('.client-item-id').textContent.toLowerCase();
+        i.style.display = (name.includes(s) || ycrmId.includes(s)) ? 'block' : 'none'; 
     });
 }
 
 function selectClient(id) {
     AppState.selectedClient = AppState.clients.find(c => c.id === id);
-    document.getElementById('selected-client-name').textContent = AppState.selectedClient ? `${AppState.selectedClient.ycrmId || 'No ID'} - ${AppState.selectedClient.name || ''}` : 'Select a client...';
+    document.getElementById('selected-client-name').textContent = AppState.selectedClient ? `${AppState.selectedClient.name || 'No name'}${AppState.selectedClient.ycrmId ? ' (' + AppState.selectedClient.ycrmId + ')' : ''}` : 'Select a client...';
     document.getElementById('order-company-id').value = id;
     document.getElementById('client-dropdown').classList.remove('open');
     renderClientList();
