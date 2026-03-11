@@ -48,8 +48,8 @@ function toggleClientDropdown() {
 async function loadClients() {
     try {
         const f = CONFIG.fields.companies;
-        const r = await queryRecords(CONFIG.tables.companies, [f.recordId, f.companyName, f.ycrmId], null, [{ fieldId: f.companyName, order: 'ASC' }], true);
-        AppState.clients = r.data.map(rec => ({ id: rec[f.recordId].value, name: rec[f.companyName]?.value || 'Unnamed', ycrmId: rec[f.ycrmId]?.value || '' }));
+        const r = await queryRecords(CONFIG.tables.companies, [f.recordId, f.name, f.ycrmId], null, [{ fieldId: f.ycrmId, order: 'ASC' }], true);
+        AppState.clients = r.data.map(rec => ({ id: rec[f.recordId].value, name: rec[f.name]?.value || '', ycrmId: rec[f.ycrmId]?.value || '' }));
         renderClientList();
     } catch (e) { console.error('Load clients failed:', e); AppState.clients = []; renderClientList(); }
 }
@@ -57,17 +57,21 @@ async function loadClients() {
 function renderClientList() {
     const c = document.getElementById('client-list');
     if (!AppState.clients.length) { c.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted)">No clients found</div>'; return; }
-    c.innerHTML = AppState.clients.map(cl => `<div class="client-item ${AppState.selectedClient?.id===cl.id?'selected':''}" onclick="selectClient(${cl.id})"><div class="client-item-name">${cl.name}</div>${cl.ycrmId?`<div class="client-item-id">yCRM: ${cl.ycrmId}</div>`:''}</div>`).join('');
+    c.innerHTML = AppState.clients.map(cl => `<div class="client-item ${AppState.selectedClient?.id===cl.id?'selected':''}" onclick="selectClient(${cl.id})"><div class="client-item-name">${cl.ycrmId || 'No ID'}</div><div class="client-item-id">${cl.name || 'No name'}</div></div>`).join('');
 }
 
 function filterClients() {
     const s = document.getElementById('client-search-input').value.toLowerCase();
-    document.querySelectorAll('.client-item').forEach(i => { i.style.display = i.querySelector('.client-item-name').textContent.toLowerCase().includes(s) ? 'block' : 'none'; });
+    document.querySelectorAll('.client-item').forEach(i => { 
+        const ycrmId = i.querySelector('.client-item-name').textContent.toLowerCase();
+        const name = i.querySelector('.client-item-id').textContent.toLowerCase();
+        i.style.display = (ycrmId.includes(s) || name.includes(s)) ? 'block' : 'none'; 
+    });
 }
 
 function selectClient(id) {
     AppState.selectedClient = AppState.clients.find(c => c.id === id);
-    document.getElementById('selected-client-name').textContent = AppState.selectedClient?.name || 'Select a client...';
+    document.getElementById('selected-client-name').textContent = AppState.selectedClient ? `${AppState.selectedClient.ycrmId || 'No ID'} - ${AppState.selectedClient.name || ''}` : 'Select a client...';
     document.getElementById('order-company-id').value = id;
     document.getElementById('client-dropdown').classList.remove('open');
     renderClientList();

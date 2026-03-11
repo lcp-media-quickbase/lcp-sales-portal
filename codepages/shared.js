@@ -47,7 +47,7 @@ const CONFIG = {
             propertyAddress: 14, propertyStreet1: 15, propertyStreet2: 16, propertyCity: 17,
             propertyState: 18, propertyPostalCode: 19, propertyCountry: 20
         },
-        companies: { recordId: 3, companyName: 8, ycrmId: 9, ycrmName: 13 },
+        companies: { recordId: 3, name: 8, ycrmId: 9, ycrmName: 13 },
         yardiCodes: {
             recordId: 3, code: 6, productDescription: 7, unitOfMeasure: 8,
             retailPrice: 9, billingFrequency: 10, pipelineAssetType: 18
