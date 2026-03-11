@@ -169,16 +169,52 @@ function renderPropertyList() {
         c.innerHTML = '<tr><td style="text-align:center;padding:40px;color:var(--text-muted)">All properties already added</td></tr>';
         return;
     }
-    c.innerHTML = available.map(p => `<tr class="property-row" onclick="addPropertyFromSelector(${p.id})" data-name="${(p.name||'').toLowerCase()}" data-address="${(p.address||'').toLowerCase()}" style="cursor:pointer;"><td><div class="property-name-large">${p.name}</div><div class="property-address-small">${p.address || 'No address'}</div></td></tr>`).join('');
+    // Limit initial render to 100 items for performance - search filters the rest
+    var displayLimit = 100;
+    var limited = available.slice(0, displayLimit);
+    var html = limited.map(p => `<tr class="property-row" onclick="addPropertyFromSelector(${p.id})" data-name="${(p.name||'').toLowerCase()}" data-address="${(p.address||'').toLowerCase()}" style="cursor:pointer;"><td><div class="property-name-large">${p.name}</div><div class="property-address-small">${p.address || 'No address'}</div></td></tr>`).join('');
+    if (available.length > displayLimit) {
+        html += `<tr><td style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px;">Showing ${displayLimit} of ${available.length} properties. Use search to find more.</td></tr>`;
+    }
+    c.innerHTML = html;
 }
 
 function filterProperties() {
-    var s = document.getElementById('property-search-input').value.toLowerCase();
-    document.querySelectorAll('.property-row').forEach(function(row) { 
-        var name = row.dataset.name;
-        var address = row.dataset.address;
-        row.style.display = (name.includes(s) || address.includes(s)) ? '' : 'none'; 
-    });
+    var s = document.getElementById('property-search-input').value.toLowerCase().trim();
+    var c = document.getElementById('property-table-body');
+    if (!c) return;
+    
+    // Get available properties
+    var selectedIds = AppState.currentPropertyCallback === 'quote' 
+        ? AppState.quoteProperties.map(op => op.propertyId)
+        : AppState.orderProperties.map(op => op.propertyId);
+    var available = AppState.properties.filter(p => !selectedIds.includes(p.id));
+    
+    // Filter by search term
+    var filtered = s ? available.filter(p => 
+        (p.name || '').toLowerCase().includes(s) || 
+        (p.address || '').toLowerCase().includes(s)
+    ) : available;
+    
+    if (!filtered.length) {
+        c.innerHTML = '<tr><td style="text-align:center;padding:40px;color:var(--text-muted)">No matching properties</td></tr>';
+        return;
+    }
+    
+    // Show up to 100 matches
+    var displayLimit = 100;
+    var limited = filtered.slice(0, displayLimit);
+    var html = limited.map(p => `<tr class="property-row" onclick="addPropertyFromSelector(${p.id})" data-name="${(p.name||'').toLowerCase()}" data-address="${(p.address||'').toLowerCase()}" style="cursor:pointer;"><td><div class="property-name-large">${p.name}</div><div class="property-address-small">${p.address || 'No address'}</div></td></tr>`).join('');
+    if (filtered.length > displayLimit) {
+        html += `<tr><td style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px;">Showing ${displayLimit} of ${filtered.length} matches. Refine search to see more.</td></tr>`;
+    }
+    c.innerHTML = html;
+}
+
+var propertyFilterTimeout = null;
+function debouncedFilterProperties() {
+    clearTimeout(propertyFilterTimeout);
+    propertyFilterTimeout = setTimeout(filterProperties, 150);
 }
 
 function openPropertySelector() {
