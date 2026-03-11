@@ -1,5 +1,5 @@
 {
-  "version": "1.0.1",
+  "version": "1.0.2",
   "updated": "2026-03-11",
-  "notes": "Added light/dark theme toggle, client selector, rich text notes, streamlined order form"
+  "notes": "Sales rep email input, hyperlink button, LCP logo mark, Price List tab with yCRM codes"
 }
