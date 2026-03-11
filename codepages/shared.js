@@ -2,7 +2,7 @@
 // App ID: bvvpht7z6 | Realm: lcp360-5583.quickbase.com
 
 const CONFIG = {
-    version: '1.0.8',
+    version: '1.0.9',
     versionUrl: 'https://raw.githubusercontent.com/lcp-media-quickbase/lcp-sales-portal/main/codepages/version.json',
     
     getRealmHostname: function() { return window.location.hostname; },
@@ -25,7 +25,8 @@ const CONFIG = {
         orders: {
             recordId: 3, dateCreated: 1, dateModified: 2, quoteDate: 6, expirationDate: 7,
             salesRepEmail: 8, historyNotes: 9, orderStatus: 10, orderName: 11, orderPDF: 12,
-            propertyWorksheet: 13, relatedCompany: 18, companyYcrmId: 19, companyYcrmName: 20, companyName: 21
+            propertyWorksheet: 13, relatedCompany: 18, companyYcrmId: 19, companyYcrmName: 20, companyName: 21,
+            billingContactName: 22, billingContactEmail: 23, billingContactPhone: 24
         },
         orderLineItems: {
             recordId: 3, quantity: 6, total: 7, description: 8, notes: 9, relatedOrder: 10,
@@ -175,6 +176,18 @@ function formatCurrency(v) { return (v || v === 0) ? new Intl.NumberFormat('en-U
 function formatDate(d) { return d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : ''; }
 function getTodayISO() { return new Date().toISOString().split('T')[0]; }
 function getExpirationDate(days = 30) { const d = new Date(); d.setDate(d.getDate() + days); return d.toISOString().split('T')[0]; }
+
+function formatPhoneNumber(input) {
+    var value = input.value.replace(/\D/g, '');
+    if (value.length > 10) value = value.substring(0, 10);
+    if (value.length > 6) {
+        input.value = '(' + value.substring(0,3) + ') ' + value.substring(3,6) + '-' + value.substring(6);
+    } else if (value.length > 3) {
+        input.value = '(' + value.substring(0,3) + ') ' + value.substring(3);
+    } else if (value.length > 0) {
+        input.value = '(' + value;
+    }
+}
 
 // ============================================================================
 // NAVIGATION

@@ -304,12 +304,26 @@ function removeQuoteLineItem(id) { AppState.quoteLineItems = AppState.quoteLineI
 async function saveOrder() {
     const email = document.getElementById('order-sales-email').value.trim();
     const notes = getRichTextContent('order-notes-editor');
+    const billingName = document.getElementById('billing-contact-name').value.trim();
+    const billingEmail = document.getElementById('billing-contact-email').value.trim();
+    const billingPhone = document.getElementById('billing-contact-phone').value.trim();
+    
     if (!email) { alert('Sales rep email required'); return; }
     if (!AppState.selectedClient) { alert('Please select a client'); return; }
     
     try {
         const f = CONFIG.fields.orders;
-        const data = { [f.salesRepEmail]: { value: email }, [f.quoteDate]: { value: getTodayISO() }, [f.expirationDate]: { value: getExpirationDate(30) }, [f.orderStatus]: { value: 'Draft' }, [f.historyNotes]: { value: notes }, [f.relatedCompany]: { value: AppState.selectedClient.id } };
+        const data = { 
+            [f.salesRepEmail]: { value: email }, 
+            [f.quoteDate]: { value: getTodayISO() }, 
+            [f.expirationDate]: { value: getExpirationDate(30) }, 
+            [f.orderStatus]: { value: 'Draft' }, 
+            [f.historyNotes]: { value: notes }, 
+            [f.relatedCompany]: { value: AppState.selectedClient.id },
+            [f.billingContactName]: { value: billingName },
+            [f.billingContactEmail]: { value: billingEmail },
+            [f.billingContactPhone]: { value: billingPhone }
+        };
         const r = await createRecord(CONFIG.tables.orders, data);
         if (r.data?.[0]) {
             const orderId = r.data[0][f.recordId].value;
@@ -391,6 +405,9 @@ function getStatusClass(s) { if (!s) return 'draft'; const l = s.toLowerCase(); 
 function resetOrderForm() {
     document.getElementById('order-form').reset();
     setRichTextContent('order-notes-editor', '');
+    document.getElementById('billing-contact-name').value = '';
+    document.getElementById('billing-contact-email').value = '';
+    document.getElementById('billing-contact-phone').value = '';
     AppState.orderLineItems = []; AppState.selectedProperty = null; AppState.selectedClient = null; orderLineCounter = 0;
     document.getElementById('selected-client-name').textContent = 'Select a client...';
     document.getElementById('order-company-id').value = '';

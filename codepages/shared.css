@@ -104,6 +104,9 @@ body {
 .form-row { display: flex; gap: 24px; margin-bottom: 20px; }
 .form-col-left { flex: 1; max-width: 33.333%; display: flex; flex-direction: column; gap: 16px; }
 .form-col-right { flex: 2; display: flex; flex-direction: column; }
+.form-col-property { flex: 2; display: flex; flex-direction: column; }
+.form-col-billing { flex: 1; display: flex; flex-direction: column; gap: 16px; padding-left: 24px; border-left: 1px solid var(--border-color); }
+.property-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
 .form-group { display: flex; flex-direction: column; gap: 6px; }
 .form-group.full-width { grid-column: 1 / -1; }
