@@ -96,7 +96,7 @@ async function saveNewClient() {
 async function loadProperties() {
     try {
         const f = CONFIG.fields.propertiesMaster;
-        const r = await queryRecords(CONFIG.tables.propertiesMaster, [f.recordId, f.propertyName, f.address], null, [{ fieldId: f.propertyName, order: 'ASC' }], true);
+        const r = await queryRecords(CONFIG.tables.propertiesMaster, [f.recordId, f.propertyName, f.address], "{12.XEX.''}", [{ fieldId: f.propertyName, order: 'ASC' }], true);
         AppState.properties = r.data.map(rec => ({ 
             id: rec[f.recordId].value, 
             name: rec[f.propertyName]?.value || 'Unnamed', 
