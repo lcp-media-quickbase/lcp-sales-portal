@@ -962,6 +962,10 @@ async function saveOrder() {
             }
         }
         
+        // Generate contract documents (PDF and DOCX)
+        console.log('Generating contract documents for order:', orderId);
+        await generateOrderDocuments(orderId);
+        
         showSuccess('Order created successfully!');
         resetOrderForm();
         
@@ -971,6 +975,44 @@ async function saveOrder() {
     } finally {
         saveBtn.textContent = originalText;
         saveBtn.disabled = false;
+    }
+}
+
+async function generateOrderDocuments(recordId) {
+    const templateId = 1; // Contract template ID
+    const tableId = CONFIG.tables.orders;
+    const realm = CONFIG.getRealmHostname().replace('.quickbase.com', '');
+    const fileName = 'Order_Contract_' + recordId;
+    
+    try {
+        // Generate PDF
+        const pdfUrl = `https://api.quickbase.com/v1/docTemplates/${templateId}/generate?tableId=${tableId}&realm=${realm}&filename=${fileName}&format=pdf&recordId=${recordId}`;
+        const pdfResp = await fetch(pdfUrl, {
+            method: 'GET',
+            credentials: 'include',
+            headers: { 'QB-Realm-Hostname': CONFIG.getRealmHostname() }
+        });
+        if (pdfResp.ok) {
+            console.log('PDF contract generated successfully');
+        } else {
+            console.error('PDF generation failed:', pdfResp.status, await pdfResp.text());
+        }
+        
+        // Generate DOCX
+        const docxUrl = `https://api.quickbase.com/v1/docTemplates/${templateId}/generate?tableId=${tableId}&realm=${realm}&filename=${fileName}&format=docx&recordId=${recordId}`;
+        const docxResp = await fetch(docxUrl, {
+            method: 'GET',
+            credentials: 'include',
+            headers: { 'QB-Realm-Hostname': CONFIG.getRealmHostname() }
+        });
+        if (docxResp.ok) {
+            console.log('DOCX contract generated successfully');
+        } else {
+            console.error('DOCX generation failed:', docxResp.status, await docxResp.text());
+        }
+    } catch (e) {
+        console.error('Document generation failed:', e);
+        // Don't throw - order was created successfully, just log the doc gen failure
     }
 }
 

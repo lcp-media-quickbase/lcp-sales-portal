@@ -1,5 +1,5 @@
 {
-  "version": "1.5.7",
+  "version": "1.5.8",
   "updated": "2026-03-12",
-  "notes": "Auto-focus search input when opening modals"
+  "notes": "Auto-generate PDF and DOCX contracts after order creation"
 }
