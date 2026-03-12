@@ -1,5 +1,5 @@
 {
-  "version": "1.4.8",
+  "version": "1.4.9",
   "updated": "2026-03-12",
-  "notes": "Link line items to properties via FID 23"
+  "notes": "Add yCRM Opportunity ID field to order form"
 }

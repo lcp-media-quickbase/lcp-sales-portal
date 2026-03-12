@@ -859,6 +859,7 @@ function renderQuoteProperties() {
 
 async function saveOrder() {
     const email = document.getElementById('order-sales-email').value.trim();
+    const ycrmOpportunity = document.getElementById('order-ycrm-opportunity').value.trim();
     const notes = getRichTextContent('order-notes-editor');
     
     if (!email) { alert('Sales rep email required'); return; }
@@ -889,6 +890,9 @@ async function saveOrder() {
             [f.historyNotes]: { value: notes }, 
             [f.relatedCompany]: { value: AppState.selectedClient.id }
         };
+        if (ycrmOpportunity) {
+            orderData[f.ycrmOpportunityId] = { value: ycrmOpportunity };
+        }
         
         const orderResult = await createRecord(CONFIG.tables.orders, orderData);
         // QB returns created record IDs in metadata, not data
