@@ -1,5 +1,5 @@
 {
-  "version": "1.4.3",
+  "version": "1.4.4",
   "updated": "2026-03-12",
-  "notes": "Fix temp token - use actual realm hostname not cross-app alias"
+  "notes": "Fix API calls - realm must match temp token realm"
 }

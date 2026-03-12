@@ -2,7 +2,7 @@
 // App ID: bvvpht7z6 | Realm: lcp360-5583.quickbase.com
 
 const CONFIG = {
-    version: '1.4.3',
+    version: '1.4.4',
     versionUrl: 'https://raw.githubusercontent.com/lcp-media-quickbase/lcp-sales-portal/main/codepages/version.json',
     
     getRealmHostname: function() { return window.location.hostname; },
@@ -138,7 +138,7 @@ async function qbApiRequest(tableId, endpoint, method, body) {
     method = method || 'POST';
     
     var token = await getTempToken();
-    var realm = CONFIG.crossAppRealm;
+    var realm = CONFIG.getRealmHostname(); // Must match the realm used for temp token
     
     var opts = { 
         method: method, 
