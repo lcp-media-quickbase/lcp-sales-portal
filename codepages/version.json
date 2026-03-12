@@ -1,5 +1,5 @@
 {
-  "version": "1.5.1",
+  "version": "1.5.2",
   "updated": "2026-03-12",
-  "notes": "Prefill sales rep email with current user"
+  "notes": "Debug logging for getCurrentUser"
 }

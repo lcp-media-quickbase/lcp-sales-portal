@@ -2,7 +2,7 @@
 // App ID: bvvpht7z6 | Realm: lcp360-5583.quickbase.com
 
 const CONFIG = {
-    version: '1.5.1',
+    version: '1.5.2',
     versionUrl: 'https://raw.githubusercontent.com/lcp-media-quickbase/lcp-sales-portal/main/codepages/version.json',
     
     getRealmHostname: function() { return window.location.hostname; },
@@ -188,6 +188,7 @@ async function createRecord(tableId, data) {
 async function getCurrentUser() {
     try {
         var realm = CONFIG.getRealmHostname();
+        console.log('[User] Fetching current user from realm:', realm);
         var resp = await fetch('https://api.quickbase.com/v1/users/me', {
             method: 'GET',
             headers: {
@@ -196,10 +197,16 @@ async function getCurrentUser() {
             },
             credentials: 'include'
         });
-        if (!resp.ok) return null;
-        return await resp.json();
+        console.log('[User] Response status:', resp.status);
+        if (!resp.ok) {
+            console.error('[User] Failed to get current user:', resp.status, resp.statusText);
+            return null;
+        }
+        var user = await resp.json();
+        console.log('[User] Current user:', user);
+        return user;
     } catch (e) {
-        console.error('getCurrentUser failed:', e);
+        console.error('[User] getCurrentUser failed:', e);
         return null;
     }
 }
