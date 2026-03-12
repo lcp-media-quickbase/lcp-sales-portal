@@ -21,8 +21,22 @@ function buildDashboard() {
     loadProducts();
     load3DProducts();
     loadClients();
+    prefillCurrentUserEmail();
     checkVersion();
     console.log('LCP Sales Portal initialized');
+}
+
+async function prefillCurrentUserEmail() {
+    try {
+        var user = await getCurrentUser();
+        if (user && user.email) {
+            document.getElementById('order-sales-email').value = user.email;
+            document.getElementById('quote-sales-email').value = user.email;
+            console.log('Prefilled sales rep email:', user.email);
+        }
+    } catch (e) {
+        console.error('Failed to prefill user email:', e);
+    }
 }
 
 function setupFormHandlers() {
@@ -1048,6 +1062,7 @@ function resetOrderForm() {
     document.getElementById('order-company-id').value = '';
     renderOrderProperties();
     renderClientList();
+    prefillCurrentUserEmail();
 }
 
 function resetQuoteForm() {
@@ -1059,6 +1074,7 @@ function resetQuoteForm() {
     document.getElementById('quote-company-id').value = '';
     renderQuoteProperties();
     renderQuoteClientList();
+    prefillCurrentUserEmail();
 }
 
 function viewOrder(id) { window.open(`https://${CONFIG.getRealmHostname()}/db/${CONFIG.tables.orders}?a=dr&rid=${id}`, '_blank'); }

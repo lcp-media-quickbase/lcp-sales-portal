@@ -1,5 +1,5 @@
 {
-  "version": "1.5.0",
+  "version": "1.5.1",
   "updated": "2026-03-12",
-  "notes": "Widen property search input"
+  "notes": "Prefill sales rep email with current user"
 }

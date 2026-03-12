@@ -2,7 +2,7 @@
 // App ID: bvvpht7z6 | Realm: lcp360-5583.quickbase.com
 
 const CONFIG = {
-    version: '1.5.0',
+    version: '1.5.1',
     versionUrl: 'https://raw.githubusercontent.com/lcp-media-quickbase/lcp-sales-portal/main/codepages/version.json',
     
     getRealmHostname: function() { return window.location.hostname; },
@@ -182,6 +182,25 @@ async function createRecord(tableId, data) {
     } catch (e) {
         console.error('createRecord failed for table', tableId, ':', e);
         throw e;
+    }
+}
+
+async function getCurrentUser() {
+    try {
+        var realm = CONFIG.getRealmHostname();
+        var resp = await fetch('https://api.quickbase.com/v1/users/me', {
+            method: 'GET',
+            headers: {
+                'QB-Realm-Hostname': realm,
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include'
+        });
+        if (!resp.ok) return null;
+        return await resp.json();
+    } catch (e) {
+        console.error('getCurrentUser failed:', e);
+        return null;
     }
 }
 
