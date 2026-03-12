@@ -388,6 +388,7 @@ function selectProductForPropertyLine(propertyId, lineItemId) {
         var li = orderProp.lineItems.find(l => l.id === lineItemId);
         if (li) {
             li.productId = product.id;
+            li.productCode = product.code;
             li.productName = product.name;
             li.unitPrice = product.price;
             recalcLineItemTotal(li);
@@ -938,7 +939,7 @@ async function saveOrder() {
                     const lineItemData = { 
                         [lf.relatedOrder]: { value: orderId },
                         [lf.relatedProperty]: { value: propertyLinkId },
-                        [lf.relatedCode]: { value: li.productId },
+                        [lf.relatedCode]: { value: li.productCode },
                         [lf.description]: { value: li.productName }, 
                         [lf.quantity]: { value: li.quantity },
                         [lf.concession]: { value: li.concession || false },
@@ -949,7 +950,7 @@ async function saveOrder() {
                     if (liResult.metadata?.lineErrors && Object.keys(liResult.metadata.lineErrors).length > 0) {
                         console.error('Line item creation error:', liResult.metadata.lineErrors);
                     } else {
-                        console.log('Created line item for product:', li.productName);
+                        console.log('Created line item for product:', li.productName, 'code:', li.productCode);
                     }
                 }
             }
