@@ -918,25 +918,23 @@ async function saveOrder() {
                         [lf.relatedOrder]: { value: orderId },
                         [lf.relatedCode]: { value: li.productId },
                         [lf.description]: { value: li.productName }, 
-                        [lf.quantity]: { value: li.quantity }, 
-                        [lf.total]: { value: li.total },
+                        [lf.quantity]: { value: li.quantity },
                         [lf.concession]: { value: li.concession || false },
                         [lf.concessionPercent]: { value: li.concessionPercent || 0 }
                     };
                     
-                    await createRecord(CONFIG.tables.orderLineItems, lineItemData);
-                    console.log('Created line item for product:', li.productName);
+                    const liResult = await createRecord(CONFIG.tables.orderLineItems, lineItemData);
+                    if (liResult.metadata?.lineErrors && Object.keys(liResult.metadata.lineErrors).length > 0) {
+                        console.error('Line item creation error:', liResult.metadata.lineErrors);
+                    } else {
+                        console.log('Created line item for product:', li.productName);
+                    }
                 }
             }
         }
         
         showSuccess('Order created successfully!');
         resetOrderForm();
-        
-        // Optionally open the order in QuickBase
-        if (confirm('Order saved! Would you like to view it in QuickBase?')) {
-            viewOrder(orderId);
-        }
         
     } catch (e) { 
         console.error('Save order failed:', e); 
