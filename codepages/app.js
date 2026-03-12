@@ -865,13 +865,23 @@ async function saveOrder() {
     if (!AppState.selectedClient) { alert('Please select a client'); return; }
     if (!AppState.orderProperties.length) { alert('Please add at least one property'); return; }
     
-    // Check each property has at least one line item
-    var hasLineItems = AppState.orderProperties.some(op => op.lineItems.length > 0);
-    if (!hasLineItems) { alert('Please add at least one line item'); return; }
+    // Check each property has at least one line item with a product selected
+    var hasLineItems = AppState.orderProperties.some(op => op.lineItems.some(li => li.productId));
+    if (!hasLineItems) { alert('Please add at least one product to a line item'); return; }
+    
+    // Show saving indicator
+    var saveBtn = document.querySelector('#order-form .btn-primary');
+    var originalText = saveBtn.textContent;
+    saveBtn.textContent = 'Saving...';
+    saveBtn.disabled = true;
     
     try {
         const f = CONFIG.fields.orders;
-        const data = { 
+        const pf = CONFIG.fields.properties;
+        const lf = CONFIG.fields.orderLineItems;
+        
+        // 1. Create the Order record
+        const orderData = { 
             [f.salesRepEmail]: { value: email }, 
             [f.quoteDate]: { value: getTodayISO() }, 
             [f.expirationDate]: { value: getExpirationDate(30) }, 
@@ -879,30 +889,60 @@ async function saveOrder() {
             [f.historyNotes]: { value: notes }, 
             [f.relatedCompany]: { value: AppState.selectedClient.id }
         };
-        const r = await createRecord(CONFIG.tables.orders, data);
-        if (r.data?.[0]) {
-            const orderId = r.data[0][f.recordId].value;
-            // Save line items for each property
-            for (const op of AppState.orderProperties) {
-                for (const li of op.lineItems) {
-                    if (li.productId) {
-                        const lf = CONFIG.fields.orderLineItems;
-                        await createRecord(CONFIG.tables.orderLineItems, { 
-                            [lf.relatedOrder]: { value: orderId }, 
-                            [lf.description]: { value: li.productName }, 
-                            [lf.quantity]: { value: li.quantity }, 
-                            [lf.total]: { value: li.total },
-                            [lf.concession]: { value: li.concession || false },
-                            [lf.concessionPercent]: { value: li.concessionPercent || 0 }
-                            // TODO: Add related property field when available
-                        });
-                    }
+        
+        const orderResult = await createRecord(CONFIG.tables.orders, orderData);
+        if (!orderResult.data?.[0]) {
+            throw new Error('Failed to create order record');
+        }
+        const orderId = orderResult.data[0][f.recordId].value;
+        console.log('Created order:', orderId);
+        
+        // 2. For each property, create a property link record and line items
+        for (const op of AppState.orderProperties) {
+            // Create property link record
+            const propertyData = {
+                [pf.relatedOrder]: { value: orderId },
+                [pf.relatedProperty]: { value: op.propertyId }
+            };
+            
+            const propResult = await createRecord(CONFIG.tables.properties, propertyData);
+            const propertyLinkId = propResult.data?.[0]?.[pf.recordId]?.value;
+            console.log('Created property link:', propertyLinkId, 'for property:', op.propertyId);
+            
+            // 3. Create line items for this property
+            for (const li of op.lineItems) {
+                if (li.productId) {
+                    const lineItemData = { 
+                        [lf.relatedOrder]: { value: orderId },
+                        [lf.relatedCode]: { value: li.productId },
+                        [lf.description]: { value: li.productName }, 
+                        [lf.quantity]: { value: li.quantity }, 
+                        [lf.total]: { value: li.total },
+                        [lf.concession]: { value: li.concession || false },
+                        [lf.concessionPercent]: { value: li.concessionPercent || 0 }
+                    };
+                    
+                    await createRecord(CONFIG.tables.orderLineItems, lineItemData);
+                    console.log('Created line item for product:', li.productName);
                 }
             }
-            showSuccess('Order saved!');
-            resetOrderForm();
         }
-    } catch (e) { console.error(e); alert('Failed to save order'); }
+        
+        showSuccess('Order created successfully!');
+        resetOrderForm();
+        
+        // Optionally open the order in QuickBase
+        if (confirm('Order saved! Would you like to view it in QuickBase?')) {
+            viewOrder(orderId);
+        }
+        
+    } catch (e) { 
+        console.error('Save order failed:', e); 
+        alert('Failed to save order: ' + e.message); 
+    } finally {
+        saveBtn.textContent = originalText;
+        saveBtn.disabled = false;
+    }
 }
 
 async function saveQuote() {
