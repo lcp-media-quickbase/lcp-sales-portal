@@ -273,7 +273,9 @@ function addLineItemToProperty(propertyId) {
         productName: '',
         quantity: 1,
         unitPrice: 0,
-        total: 0
+        total: 0,
+        concession: false,
+        concessionPercent: 0
     });
     renderOrderProperties();
 }
@@ -291,8 +293,40 @@ function updateLineItemQty(propertyId, lineItemId, qty) {
     var li = orderProp.lineItems.find(l => l.id === lineItemId);
     if (li) {
         li.quantity = parseInt(qty) || 1;
-        li.total = li.quantity * li.unitPrice;
+        recalcLineItemTotal(li);
         renderOrderProperties();
+    }
+}
+
+function toggleConcession(propertyId, lineItemId, checked) {
+    var orderProp = AppState.orderProperties.find(op => op.propertyId === propertyId);
+    if (!orderProp) return;
+    var li = orderProp.lineItems.find(l => l.id === lineItemId);
+    if (li) {
+        li.concession = checked;
+        if (!checked) li.concessionPercent = 0;
+        recalcLineItemTotal(li);
+        renderOrderProperties();
+    }
+}
+
+function updateConcessionPercent(propertyId, lineItemId, pct) {
+    var orderProp = AppState.orderProperties.find(op => op.propertyId === propertyId);
+    if (!orderProp) return;
+    var li = orderProp.lineItems.find(l => l.id === lineItemId);
+    if (li) {
+        li.concessionPercent = Math.min(100, Math.max(0, parseFloat(pct) || 0));
+        recalcLineItemTotal(li);
+        renderOrderProperties();
+    }
+}
+
+function recalcLineItemTotal(li) {
+    var baseTotal = li.quantity * li.unitPrice;
+    if (li.concession && li.concessionPercent > 0) {
+        li.total = baseTotal * (1 - li.concessionPercent / 100);
+    } else {
+        li.total = baseTotal;
     }
 }
 
@@ -305,7 +339,7 @@ function selectProductForPropertyLine(propertyId, lineItemId) {
             li.productId = product.id;
             li.productName = product.name;
             li.unitPrice = product.price;
-            li.total = li.quantity * product.price;
+            recalcLineItemTotal(li);
             renderOrderProperties();
         }
     });
@@ -331,6 +365,8 @@ function renderOrderProperties() {
                 <div class="form-group"><button type="button" class="btn btn-secondary" style="width:100%;justify-content:flex-start" onclick="selectProductForPropertyLine(${op.propertyId},${li.id})">${li.productName||'Select Product...'}</button></div>
                 <div class="form-group"><input type="number" class="form-input" value="${li.quantity}" min="1" onchange="updateLineItemQty(${op.propertyId},${li.id},this.value)"></div>
                 <div class="form-group"><input type="text" class="form-input" value="${formatCurrency(li.unitPrice)}" readonly style="background:var(--bg-hover);cursor:not-allowed"></div>
+                <div class="form-group concession-check"><label class="concession-label"><input type="checkbox" ${li.concession?'checked':''} onchange="toggleConcession(${op.propertyId},${li.id},this.checked)"><span>Concession</span></label></div>
+                <div class="form-group concession-pct"><input type="number" class="form-input" value="${li.concessionPercent||0}" min="0" max="100" ${li.concession?'':'disabled'} onchange="updateConcessionPercent(${op.propertyId},${li.id},this.value)" style="${li.concession?'':'opacity:0.5;cursor:not-allowed'}"></div>
                 <div class="form-group"><input type="text" class="form-input" value="${formatCurrency(li.total)}" readonly style="background:var(--bg-hover);cursor:not-allowed;font-weight:600;color:var(--lcp-blue)"></div>
                 <button type="button" class="remove-btn" onclick="removeLineItemFromProperty(${op.propertyId},${li.id})"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
             </div>`).join('');
@@ -365,7 +401,7 @@ function renderOrderProperties() {
                 </div>
             </div>
             <div class="property-group-body">
-                <div class="line-item-header"><span>Product</span><span>Quantity</span><span>Unit Price</span><span>Total</span><span></span></div>
+                <div class="line-item-header"><span>Product</span><span>Qty</span><span>Unit Price</span><span>Concession</span><span>%</span><span>Total</span><span></span></div>
                 <div class="line-items-container">${lineItemsHtml}</div>
                 <button type="button" class="btn btn-secondary add-line-item-btn" onclick="addLineItemToProperty(${op.propertyId})">
                     <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
@@ -818,7 +854,9 @@ async function saveOrder() {
                             [lf.relatedOrder]: { value: orderId }, 
                             [lf.description]: { value: li.productName }, 
                             [lf.quantity]: { value: li.quantity }, 
-                            [lf.total]: { value: li.total }
+                            [lf.total]: { value: li.total },
+                            [lf.concession]: { value: li.concession || false },
+                            [lf.concessionPercent]: { value: li.concessionPercent || 0 }
                             // TODO: Add related property field when available
                         });
                     }
