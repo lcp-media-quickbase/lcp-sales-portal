@@ -891,10 +891,12 @@ async function saveOrder() {
         };
         
         const orderResult = await createRecord(CONFIG.tables.orders, orderData);
-        if (!orderResult.data?.[0]) {
+        // QB returns created record IDs in metadata, not data
+        const orderId = orderResult.metadata?.createdRecordIds?.[0];
+        if (!orderId) {
+            console.error('Order create response:', orderResult);
             throw new Error('Failed to create order record');
         }
-        const orderId = orderResult.data[0][f.recordId].value;
         console.log('Created order:', orderId);
         
         // 2. For each property, create a property link record and line items
@@ -906,7 +908,7 @@ async function saveOrder() {
             };
             
             const propResult = await createRecord(CONFIG.tables.properties, propertyData);
-            const propertyLinkId = propResult.data?.[0]?.[pf.recordId]?.value;
+            const propertyLinkId = propResult.metadata?.createdRecordIds?.[0];
             console.log('Created property link:', propertyLinkId, 'for property:', op.propertyId);
             
             // 3. Create line items for this property
