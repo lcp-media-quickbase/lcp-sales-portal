@@ -2,7 +2,7 @@
 // App ID: bvvpht7z6 | Realm: lcp360-5583.quickbase.com
 
 const CONFIG = {
-    version: '1.5.2',
+    version: '1.5.3',
     versionUrl: 'https://raw.githubusercontent.com/lcp-media-quickbase/lcp-sales-portal/main/codepages/version.json',
     
     getRealmHostname: function() { return window.location.hostname; },
@@ -189,12 +189,9 @@ async function getCurrentUser() {
     try {
         var realm = CONFIG.getRealmHostname();
         console.log('[User] Fetching current user from realm:', realm);
-        var resp = await fetch('https://api.quickbase.com/v1/users/me', {
+        // Use legacy XML API - API_GetUserInfo returns current user when no email provided
+        var resp = await fetch('https://' + realm + '/db/main?a=API_GetUserInfo&fmt=structured', {
             method: 'GET',
-            headers: {
-                'QB-Realm-Hostname': realm,
-                'Content-Type': 'application/json'
-            },
             credentials: 'include'
         });
         console.log('[User] Response status:', resp.status);
@@ -202,9 +199,16 @@ async function getCurrentUser() {
             console.error('[User] Failed to get current user:', resp.status, resp.statusText);
             return null;
         }
-        var user = await resp.json();
-        console.log('[User] Current user:', user);
-        return user;
+        var text = await resp.text();
+        console.log('[User] Response:', text);
+        // Parse XML response to get email
+        var parser = new DOMParser();
+        var xml = parser.parseFromString(text, 'text/xml');
+        var email = xml.querySelector('email')?.textContent;
+        var firstName = xml.querySelector('firstName')?.textContent;
+        var lastName = xml.querySelector('lastName')?.textContent;
+        console.log('[User] Parsed:', { email, firstName, lastName });
+        return { email, firstName, lastName };
     } catch (e) {
         console.error('[User] getCurrentUser failed:', e);
         return null;
