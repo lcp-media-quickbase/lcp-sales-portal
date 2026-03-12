@@ -1,5 +1,5 @@
 {
-  "version": "1.4.4",
+  "version": "1.4.5",
   "updated": "2026-03-12",
-  "notes": "Fix API calls - realm must match temp token realm"
+  "notes": "Per-table temp tokens for cross-app access"
 }

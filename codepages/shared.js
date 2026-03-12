@@ -2,7 +2,7 @@
 // App ID: bvvpht7z6 | Realm: lcp360-5583.quickbase.com
 
 const CONFIG = {
-    version: '1.4.4',
+    version: '1.4.5',
     versionUrl: 'https://raw.githubusercontent.com/lcp-media-quickbase/lcp-sales-portal/main/codepages/version.json',
     
     getRealmHostname: function() { return window.location.hostname; },
@@ -97,20 +97,22 @@ initTheme();
 // ============================================================================
 
 var TEMP_TOKEN_LIFETIME = 4 * 60 * 1000; // 4 min (tokens expire at 5)
-var _appTempToken = null;
-var _appTempTokenExpires = 0;
+var _tempTokens = {}; // { tableId: { token, expiresAt } }
 
-async function getTempToken() {
-    // Use a single temp token from the orders table (in current app)
-    // This token works for all tables the user has access to
-    if (_appTempToken && Date.now() < _appTempTokenExpires) {
-        return _appTempToken;
+// Tables in current app vs parent app
+var CURRENT_APP_TABLES = ['bvvpht73m', 'bvvpht749', 'bvvpht76j', 'bvvpht773', 'bvvpht79i'];
+var PARENT_APP_TABLES = ['bvdjrfrja', 'bvdjrk2qq', 'bvkv6qbt9', 'bvdjrndec'];
+
+async function getTempToken(tableId) {
+    // Check cache
+    var cached = _tempTokens[tableId];
+    if (cached && Date.now() < cached.expiresAt) {
+        return cached.token;
     }
     
-    // Must use actual page hostname for temp token request, not cross-app alias
     var realm = CONFIG.getRealmHostname();
     var resp = await fetch(
-        'https://api.quickbase.com/v1/auth/temporary/' + CONFIG.tables.orders,
+        'https://api.quickbase.com/v1/auth/temporary/' + tableId,
         {
             method: 'GET',
             headers: {
@@ -123,22 +125,24 @@ async function getTempToken() {
     
     if (!resp.ok) {
         var errData = await resp.json().catch(function() { return {}; });
-        console.error('getTempToken failed:', resp.status, errData);
-        throw new Error(errData.message || 'Failed to get temp token');
+        console.error('getTempToken failed for', tableId, ':', resp.status, errData);
+        throw new Error(errData.message || 'Failed to get temp token for ' + tableId);
     }
     
     var data = await resp.json();
-    _appTempToken = data.temporaryAuthorization;
-    _appTempTokenExpires = Date.now() + TEMP_TOKEN_LIFETIME;
-    console.log('[Auth] Temp token acquired');
-    return _appTempToken;
+    _tempTokens[tableId] = {
+        token: data.temporaryAuthorization,
+        expiresAt: Date.now() + TEMP_TOKEN_LIFETIME
+    };
+    console.log('[Auth] Temp token acquired for', tableId);
+    return data.temporaryAuthorization;
 }
 
 async function qbApiRequest(tableId, endpoint, method, body) {
     method = method || 'POST';
     
-    var token = await getTempToken();
-    var realm = CONFIG.getRealmHostname(); // Must match the realm used for temp token
+    var token = await getTempToken(tableId);
+    var realm = CONFIG.getRealmHostname();
     
     var opts = { 
         method: method, 
