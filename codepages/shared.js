@@ -2,7 +2,7 @@
 // App ID: bvvpht7z6 | Realm: lcp360-5583.quickbase.com
 
 const CONFIG = {
-    version: '1.5.6',
+    version: '1.5.7',
     versionUrl: 'https://raw.githubusercontent.com/lcp-media-quickbase/lcp-sales-portal/main/codepages/version.json',
     
     getRealmHostname: function() { return window.location.hostname; },
@@ -281,7 +281,18 @@ async function checkVersion() {
     } catch (e) { console.warn('Version check failed'); }
 }
 
-function openModal(id) { const m = document.getElementById(id); if (m) { m.style.display = 'flex'; document.body.style.overflow = 'hidden'; } }
+function openModal(id) { 
+    const m = document.getElementById(id); 
+    if (m) { 
+        m.style.display = 'flex'; 
+        document.body.style.overflow = 'hidden'; 
+        // Auto-focus search input if present
+        setTimeout(() => {
+            const searchInput = m.querySelector('input[type="text"], input[type="search"]');
+            if (searchInput) searchInput.focus();
+        }, 50);
+    } 
+}
 function closeModal(id) { const m = document.getElementById(id); if (m) { m.style.display = 'none'; document.body.style.overflow = ''; } }
 function closeAllModals() { document.querySelectorAll('.modal').forEach(m => { m.style.display = 'none'; }); document.body.style.overflow = ''; }
 document.addEventListener('click', e => { if (e.target.classList.contains('modal')) { e.target.style.display = 'none'; document.body.style.overflow = ''; } });

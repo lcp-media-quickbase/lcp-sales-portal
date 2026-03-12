@@ -1,5 +1,5 @@
 {
-  "version": "1.5.6",
+  "version": "1.5.7",
   "updated": "2026-03-12",
-  "notes": "Set order status based on concessions"
+  "notes": "Auto-focus search input when opening modals"
 }
