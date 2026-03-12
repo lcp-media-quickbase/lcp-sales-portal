@@ -896,12 +896,18 @@ async function saveOrder() {
         const pf = CONFIG.fields.properties;
         const lf = CONFIG.fields.orderLineItems;
         
+        // Check if any line item has concession checked
+        const hasConcessions = AppState.orderProperties.some(op => 
+            op.lineItems.some(li => li.productId && li.concession)
+        );
+        const orderStatus = hasConcessions ? 'Concessions Approval Needed' : 'Contract Needed';
+        
         // 1. Create the Order record
         const orderData = { 
             [f.salesRepEmail]: { value: email }, 
             [f.quoteDate]: { value: getTodayISO() }, 
             [f.expirationDate]: { value: getExpirationDate(30) }, 
-            [f.orderStatus]: { value: 'Draft' }, 
+            [f.orderStatus]: { value: orderStatus }, 
             [f.historyNotes]: { value: notes }, 
             [f.relatedCompany]: { value: AppState.selectedClient.id }
         };

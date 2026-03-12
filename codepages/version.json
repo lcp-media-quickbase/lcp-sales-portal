@@ -1,5 +1,5 @@
 {
-  "version": "1.5.5",
+  "version": "1.5.6",
   "updated": "2026-03-12",
-  "notes": "Use product code instead of record ID for relatedCode"
+  "notes": "Set order status based on concessions"
 }
