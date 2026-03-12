@@ -1,5 +1,5 @@
 {
-  "version": "1.3.3",
+  "version": "1.3.4",
   "updated": "2026-03-12",
-  "notes": "Add concession checkbox and percentage to order line items"
+  "notes": "Add lazy loading to client dropdowns"
 }

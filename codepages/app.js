@@ -62,19 +62,39 @@ async function loadClients() {
     } catch (e) { console.error('Load clients failed:', e); AppState.clients = []; renderClientList(); renderQuoteClientList(); }
 }
 
-function renderClientList() {
+var CLIENT_DISPLAY_LIMIT = 50;
+
+function renderClientList(searchTerm) {
     const c = document.getElementById('client-list');
+    if (!c) return;
     if (!AppState.clients.length) { c.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted)">No clients found</div>'; return; }
-    c.innerHTML = AppState.clients.map(cl => `<div class="client-item ${AppState.selectedClient?.id===cl.id?'selected':''}" onclick="selectClient(${cl.id})"><div class="client-item-name">${cl.name || 'No name'}</div><div class="client-item-id">${cl.ycrmId || 'No ID'}</div></div>`).join('');
+    
+    var term = (searchTerm || '').toLowerCase().trim();
+    var filtered = term 
+        ? AppState.clients.filter(cl => (cl.name || '').toLowerCase().includes(term) || (cl.ycrmId || '').toLowerCase().includes(term))
+        : AppState.clients;
+    
+    if (!filtered.length) {
+        c.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted)">No matching clients</div>';
+        return;
+    }
+    
+    var limited = filtered.slice(0, CLIENT_DISPLAY_LIMIT);
+    var html = limited.map(cl => `<div class="client-item ${AppState.selectedClient?.id===cl.id?'selected':''}" onclick="selectClient(${cl.id})"><div class="client-item-name">${cl.name || 'No name'}</div><div class="client-item-id">${cl.ycrmId || 'No ID'}</div></div>`).join('');
+    
+    if (filtered.length > CLIENT_DISPLAY_LIMIT) {
+        html += `<div style="padding:12px;text-align:center;color:var(--text-muted);font-size:12px;">Showing ${CLIENT_DISPLAY_LIMIT} of ${filtered.length}. Type to search.</div>`;
+    }
+    c.innerHTML = html;
 }
 
+var clientFilterTimeout = null;
 function filterClients() {
-    const s = document.getElementById('client-search-input').value.toLowerCase();
-    document.querySelectorAll('.client-item').forEach(i => { 
-        const name = i.querySelector('.client-item-name').textContent.toLowerCase();
-        const ycrmId = i.querySelector('.client-item-id').textContent.toLowerCase();
-        i.style.display = (name.includes(s) || ycrmId.includes(s)) ? 'block' : 'none'; 
-    });
+    clearTimeout(clientFilterTimeout);
+    clientFilterTimeout = setTimeout(function() {
+        var s = document.getElementById('client-search-input').value;
+        renderClientList(s);
+    }, 150);
 }
 
 function selectClient(id) {
@@ -105,20 +125,37 @@ function toggleQuoteClientDropdown() {
     if (dd.classList.contains('open')) document.getElementById('quote-client-search-input').focus();
 }
 
-function renderQuoteClientList() {
+function renderQuoteClientList(searchTerm) {
     const c = document.getElementById('quote-client-list');
     if (!c) return;
     if (!AppState.clients.length) { c.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted)">No clients found</div>'; return; }
-    c.innerHTML = AppState.clients.map(cl => `<div class="client-item ${AppState.selectedQuoteClient?.id===cl.id?'selected':''}" onclick="selectQuoteClient(${cl.id})"><div class="client-item-name">${cl.name || 'No name'}</div><div class="client-item-id">${cl.ycrmId || 'No ID'}</div></div>`).join('');
+    
+    var term = (searchTerm || '').toLowerCase().trim();
+    var filtered = term 
+        ? AppState.clients.filter(cl => (cl.name || '').toLowerCase().includes(term) || (cl.ycrmId || '').toLowerCase().includes(term))
+        : AppState.clients;
+    
+    if (!filtered.length) {
+        c.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted)">No matching clients</div>';
+        return;
+    }
+    
+    var limited = filtered.slice(0, CLIENT_DISPLAY_LIMIT);
+    var html = limited.map(cl => `<div class="client-item ${AppState.selectedQuoteClient?.id===cl.id?'selected':''}" onclick="selectQuoteClient(${cl.id})"><div class="client-item-name">${cl.name || 'No name'}</div><div class="client-item-id">${cl.ycrmId || 'No ID'}</div></div>`).join('');
+    
+    if (filtered.length > CLIENT_DISPLAY_LIMIT) {
+        html += `<div style="padding:12px;text-align:center;color:var(--text-muted);font-size:12px;">Showing ${CLIENT_DISPLAY_LIMIT} of ${filtered.length}. Type to search.</div>`;
+    }
+    c.innerHTML = html;
 }
 
+var quoteClientFilterTimeout = null;
 function filterQuoteClients() {
-    const s = document.getElementById('quote-client-search-input').value.toLowerCase();
-    document.querySelectorAll('#quote-client-list .client-item').forEach(i => { 
-        const name = i.querySelector('.client-item-name').textContent.toLowerCase();
-        const ycrmId = i.querySelector('.client-item-id').textContent.toLowerCase();
-        i.style.display = (name.includes(s) || ycrmId.includes(s)) ? 'block' : 'none'; 
-    });
+    clearTimeout(quoteClientFilterTimeout);
+    quoteClientFilterTimeout = setTimeout(function() {
+        var s = document.getElementById('quote-client-search-input').value;
+        renderQuoteClientList(s);
+    }, 150);
 }
 
 function selectQuoteClient(id) {
