@@ -919,10 +919,13 @@ async function saveOrder() {
         
         // 2. For each property, create a property link record and line items
         for (const op of AppState.orderProperties) {
-            // Create property link record
+            // Create property link record with billing contact info
             const propertyData = {
                 [pf.relatedOrder]: { value: orderId },
-                [pf.relatedProperty]: { value: op.propertyId }
+                [pf.relatedProperty]: { value: op.propertyId },
+                [pf.billingContact]: { value: op.billingContact || '' },
+                [pf.billingEmail]: { value: op.billingEmail || '' },
+                [pf.billingPhone]: { value: op.billingPhone || '' }
             };
             
             const propResult = await createRecord(CONFIG.tables.properties, propertyData);
@@ -976,8 +979,17 @@ async function saveQuote() {
     var hasLineItems = AppState.quoteProperties.some(qp => qp.lineItems.length > 0);
     if (!hasLineItems) { alert('Please add at least one product'); return; }
     
+    var saveBtn = document.querySelector('#quote-form .btn-primary');
+    var originalText = saveBtn.textContent;
+    saveBtn.textContent = 'Saving...';
+    saveBtn.disabled = true;
+    
     try {
         const f = CONFIG.fields.quotes3D;
+        const pf = CONFIG.fields.properties;
+        const lf = CONFIG.fields.lineItems3D;
+        
+        // 1. Create the Quote record
         const data = { 
             [f.quoteName]: { value: name }, 
             [f.salesRepEmail]: { value: email }, 
@@ -988,28 +1000,52 @@ async function saveQuote() {
             [f.relatedCompany]: { value: parseInt(companyId) }
         };
         const r = await createRecord(CONFIG.tables.quotes3D, data);
-        if (r.data?.[0]) {
-            const quoteId = r.data[0][f.recordId].value;
-            const lf = CONFIG.fields.lineItems3D;
-            // Save line items for each property
-            for (const qp of AppState.quoteProperties) {
-                for (const li of qp.lineItems) {
-                    if (li.productId) {
-                        var lineData = { 
-                            [lf.relatedQuote]: { value: quoteId }, 
-                            [lf.quantity]: { value: li.quantity || 1 },
-                            [lf.description]: { value: li.description || '' },
-                            [lf.stills]: { value: li.stills || 0 },
-                            [lf.panos]: { value: li.panos || 0 }
-                        };
-                        await createRecord(CONFIG.tables.lineItems3D, lineData);
-                    }
+        const quoteId = r.metadata?.createdRecordIds?.[0];
+        if (!quoteId) {
+            throw new Error('Failed to create quote record');
+        }
+        console.log('Created quote:', quoteId);
+        
+        // 2. For each property, create a property link record and line items
+        for (const qp of AppState.quoteProperties) {
+            // Create property link record with billing contact info
+            const propertyData = {
+                [pf.relatedQuote3D]: { value: quoteId },
+                [pf.relatedProperty]: { value: qp.propertyId },
+                [pf.billingContact]: { value: qp.billingContact || '' },
+                [pf.billingEmail]: { value: qp.billingEmail || '' },
+                [pf.billingPhone]: { value: qp.billingPhone || '' }
+            };
+            
+            const propResult = await createRecord(CONFIG.tables.properties, propertyData);
+            const propertyLinkId = propResult.metadata?.createdRecordIds?.[0];
+            console.log('Created property link:', propertyLinkId, 'for property:', qp.propertyId);
+            
+            // 3. Create line items for this property
+            for (const li of qp.lineItems) {
+                if (li.productId) {
+                    var lineData = { 
+                        [lf.relatedQuote]: { value: quoteId }, 
+                        [lf.quantity]: { value: li.quantity || 1 },
+                        [lf.description]: { value: li.description || '' },
+                        [lf.stills]: { value: li.stills || 0 },
+                        [lf.panos]: { value: li.panos || 0 }
+                    };
+                    await createRecord(CONFIG.tables.lineItems3D, lineData);
+                    console.log('Created line item for product:', li.productId);
                 }
             }
-            showSuccess('Quote saved!');
-            resetQuoteForm();
         }
-    } catch (e) { console.error(e); alert('Failed to save quote'); }
+        
+        showSuccess('Quote saved!');
+        resetQuoteForm();
+    } catch (e) { 
+        console.error('Save quote failed:', e); 
+        alert('Failed to save quote: ' + e.message); 
+    } finally {
+        saveBtn.textContent = originalText;
+        saveBtn.disabled = false;
+    }
 }
 
 // ============================================================================

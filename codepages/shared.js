@@ -2,7 +2,7 @@
 // App ID: bvvpht7z6 | Realm: lcp360-5583.quickbase.com
 
 const CONFIG = {
-    version: '1.5.3',
+    version: '1.5.4',
     versionUrl: 'https://raw.githubusercontent.com/lcp-media-quickbase/lcp-sales-portal/main/codepages/version.json',
     
     getRealmHostname: function() { return window.location.hostname; },
@@ -48,7 +48,8 @@ const CONFIG = {
             recordId: 3, relatedOrder: 6, orderQuoteDate: 7, orderExpirationDate: 8, relatedQuote3D: 9,
             quote3DQuoteDate: 10, quote3DExpirationDate: 11, relatedProperty: 12, propertyName: 13,
             propertyAddress: 14, propertyStreet1: 15, propertyStreet2: 16, propertyCity: 17,
-            propertyState: 18, propertyPostalCode: 19, propertyCountry: 20
+            propertyState: 18, propertyPostalCode: 19, propertyCountry: 20,
+            billingContact: 21, billingEmail: 22, billingPhone: 23
         },
         propertiesMaster: {
             recordId: 3, propertyName: 12, address: 13, street1: 14, street2: 15,
