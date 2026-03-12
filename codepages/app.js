@@ -55,7 +55,7 @@ function toggleClientDropdown() {
 async function loadClients() {
     try {
         const f = CONFIG.fields.companies;
-        const r = await queryRecords(CONFIG.tables.companies, [f.recordId, f.name, f.ycrmId], null, [{ fieldId: f.ycrmId, order: 'ASC' }], true);
+        const r = await queryRecords(CONFIG.tables.companies, [f.recordId, f.name, f.ycrmId], null, [{ fieldId: f.ycrmId, order: 'ASC' }]);
         AppState.clients = r.data.map(rec => ({ id: rec[f.recordId].value, name: rec[f.name]?.value || '', ycrmId: rec[f.ycrmId]?.value || '' }));
         renderClientList();
         renderQuoteClientList();
@@ -173,7 +173,7 @@ function selectQuoteClient(id) {
 async function loadProperties() {
     try {
         const f = CONFIG.fields.propertiesMaster;
-        const r = await queryRecords(CONFIG.tables.propertiesMaster, [f.recordId, f.propertyName, f.address, f.billingContact, f.billingEmail, f.billingPhone], "{12.XEX.''}", [{ fieldId: f.propertyName, order: 'ASC' }], true);
+        const r = await queryRecords(CONFIG.tables.propertiesMaster, [f.recordId, f.propertyName, f.address, f.billingContact, f.billingEmail, f.billingPhone], "{12.XEX.''}", [{ fieldId: f.propertyName, order: 'ASC' }]);
         AppState.properties = r.data.map(rec => ({ 
             id: rec[f.recordId].value, 
             name: rec[f.propertyName]?.value || 'Unnamed', 
@@ -503,7 +503,7 @@ async function load3DProducts() {
     try {
         const f = CONFIG.fields.products3D;
         // Filter for FID 12 = '3D Services'
-        const r = await queryRecords(CONFIG.tables.products, [f.recordId, f.productName, f.retailPrice], "{12.EX.'3D Services'}", [{ fieldId: f.productName, order: 'ASC' }], true);
+        const r = await queryRecords(CONFIG.tables.products, [f.recordId, f.productName, f.retailPrice], "{12.EX.'3D Services'}", [{ fieldId: f.productName, order: 'ASC' }]);
         AppState.products3D = r.data.map(rec => ({
             id: rec[f.recordId].value,
             name: rec[f.productName]?.value || 'Unnamed Product',

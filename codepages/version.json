@@ -1,5 +1,5 @@
 {
-  "version": "1.4.1",
+  "version": "1.4.2",
   "updated": "2026-03-12",
-  "notes": "Add detailed API error logging"
+  "notes": "Fix cross-app auth - use single temp token from current app"
 }

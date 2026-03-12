@@ -2,7 +2,7 @@
 // App ID: bvvpht7z6 | Realm: lcp360-5583.quickbase.com
 
 const CONFIG = {
-    version: '1.4.1',
+    version: '1.4.2',
     versionUrl: 'https://raw.githubusercontent.com/lcp-media-quickbase/lcp-sales-portal/main/codepages/version.json',
     
     getRealmHostname: function() { return window.location.hostname; },
@@ -96,18 +96,20 @@ initTheme();
 // API UTILITIES - Auth via QB session cookie
 // ============================================================================
 
-var _tempTokens = {};
 var TEMP_TOKEN_LIFETIME = 4 * 60 * 1000; // 4 min (tokens expire at 5)
+var _appTempToken = null;
+var _appTempTokenExpires = 0;
 
-async function getTempToken(tableId) {
-    var cached = _tempTokens[tableId];
-    if (cached && Date.now() < cached.expiresAt) {
-        return cached.token;
+async function getTempToken() {
+    // Use a single temp token from the orders table (in current app)
+    // This token works for all tables the user has access to
+    if (_appTempToken && Date.now() < _appTempTokenExpires) {
+        return _appTempToken;
     }
     
-    var realm = CONFIG.crossAppRealm; // Use lcpmedia.quickbase.com for API
+    var realm = CONFIG.crossAppRealm;
     var resp = await fetch(
-        'https://api.quickbase.com/v1/auth/temporary/' + tableId,
+        'https://api.quickbase.com/v1/auth/temporary/' + CONFIG.tables.orders,
         {
             method: 'GET',
             headers: {
@@ -119,22 +121,19 @@ async function getTempToken(tableId) {
     );
     
     if (!resp.ok) {
-        throw new Error('Failed to get temp token for ' + tableId);
+        throw new Error('Failed to get temp token');
     }
     
     var data = await resp.json();
-    _tempTokens[tableId] = {
-        token: data.temporaryAuthorization,
-        expiresAt: Date.now() + TEMP_TOKEN_LIFETIME
-    };
-    return data.temporaryAuthorization;
+    _appTempToken = data.temporaryAuthorization;
+    _appTempTokenExpires = Date.now() + TEMP_TOKEN_LIFETIME;
+    return _appTempToken;
 }
 
-async function qbApiRequest(tableId, endpoint, method, body, useCrossAppRealm) {
+async function qbApiRequest(tableId, endpoint, method, body) {
     method = method || 'POST';
-    useCrossAppRealm = useCrossAppRealm !== false; // Default true
     
-    var token = await getTempToken(tableId);
+    var token = await getTempToken();
     var realm = CONFIG.crossAppRealm;
     
     var opts = { 
@@ -159,11 +158,11 @@ async function qbApiRequest(tableId, endpoint, method, body, useCrossAppRealm) {
     return responseData;
 }
 
-async function queryRecords(tableId, select, where = null, sortBy = null, useCrossAppRealm = false) {
+async function queryRecords(tableId, select, where, sortBy) {
     const body = { from: tableId, select };
     if (where) body.where = where;
     if (sortBy) body.sortBy = sortBy;
-    return qbApiRequest(tableId, 'records/query', 'POST', body, useCrossAppRealm);
+    return qbApiRequest(tableId, 'records/query', 'POST', body);
 }
 
 async function createRecord(tableId, data) {
