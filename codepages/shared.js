@@ -2,7 +2,7 @@
 // App ID: bvvpht7z6 | Realm: lcp360-5583.quickbase.com
 
 const CONFIG = {
-    version: '1.4.0',
+    version: '1.4.1',
     versionUrl: 'https://raw.githubusercontent.com/lcp-media-quickbase/lcp-sales-portal/main/codepages/version.json',
     
     getRealmHostname: function() { return window.location.hostname; },
@@ -148,12 +148,15 @@ async function qbApiRequest(tableId, endpoint, method, body, useCrossAppRealm) {
     };
     if (body) opts.body = JSON.stringify(body);
     
+    console.log('QB API Request:', method, endpoint, 'table:', tableId);
     var r = await fetch('https://api.quickbase.com/v1/' + endpoint, opts);
+    var responseData = await r.json().catch(function() { return {}; });
+    
     if (!r.ok) {
-        var errData = await r.json().catch(function() { return {}; });
-        throw new Error(errData.message || 'API failed: ' + r.status);
+        console.error('QB API Error:', r.status, responseData);
+        throw new Error(responseData.message || responseData.description || 'API failed: ' + r.status);
     }
-    return r.json();
+    return responseData;
 }
 
 async function queryRecords(tableId, select, where = null, sortBy = null, useCrossAppRealm = false) {
@@ -164,7 +167,15 @@ async function queryRecords(tableId, select, where = null, sortBy = null, useCro
 }
 
 async function createRecord(tableId, data) {
-    return qbApiRequest(tableId, 'records', 'POST', { to: tableId, data: [data] });
+    try {
+        console.log('Creating record in table:', tableId, 'data:', JSON.stringify(data));
+        var result = await qbApiRequest(tableId, 'records', 'POST', { to: tableId, data: [data] });
+        console.log('Create result:', result);
+        return result;
+    } catch (e) {
+        console.error('createRecord failed for table', tableId, ':', e);
+        throw e;
+    }
 }
 
 // ============================================================================

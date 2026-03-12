@@ -1,5 +1,5 @@
 {
-  "version": "1.4.0",
+  "version": "1.4.1",
   "updated": "2026-03-12",
-  "notes": "Save Order now creates full order with properties and line items"
+  "notes": "Add detailed API error logging"
 }
