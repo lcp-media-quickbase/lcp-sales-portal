@@ -1,5 +1,5 @@
 {
-  "version": "1.4.2",
+  "version": "1.4.3",
   "updated": "2026-03-12",
-  "notes": "Fix cross-app auth - use single temp token from current app"
+  "notes": "Fix temp token - use actual realm hostname not cross-app alias"
 }
