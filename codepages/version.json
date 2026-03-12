@@ -1,5 +1,5 @@
 {
-  "version": "1.4.7",
+  "version": "1.4.8",
   "updated": "2026-03-12",
-  "notes": "Fix line item creation, remove view popup"
+  "notes": "Link line items to properties via FID 23"
 }

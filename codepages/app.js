@@ -916,6 +916,7 @@ async function saveOrder() {
                 if (li.productId) {
                     const lineItemData = { 
                         [lf.relatedOrder]: { value: orderId },
+                        [lf.relatedProperty]: { value: propertyLinkId },
                         [lf.relatedCode]: { value: li.productId },
                         [lf.description]: { value: li.productName }, 
                         [lf.quantity]: { value: li.quantity },
