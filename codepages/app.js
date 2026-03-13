@@ -964,7 +964,8 @@ async function saveOrder() {
         
         // Generate contract documents (PDF and DOCX)
         console.log('Generating contract documents for order:', orderId);
-        await generateOrderDocuments(orderId);
+        const companyName = AppState.selectedClient?.name || '';
+        await generateOrderDocuments(orderId, ycrmOpportunity, companyName);
         
         showSuccess('Order created successfully!');
         resetOrderForm();
@@ -978,11 +979,24 @@ async function saveOrder() {
     }
 }
 
-async function generateOrderDocuments(recordId) {
+async function generateOrderDocuments(recordId, opportunityId, companyName) {
     const templateId = 1; // Contract template ID
     const tableId = CONFIG.tables.orders;
     const realm = CONFIG.getRealmHostname().replace('.quickbase.com', '');
-    const fileName = 'Order_Contract_' + recordId;
+    
+    // Filename: OpportunityID - CompanyName (sanitize for URL)
+    let fileName = '';
+    if (opportunityId && companyName) {
+        fileName = `${opportunityId} - ${companyName}`;
+    } else if (opportunityId) {
+        fileName = opportunityId;
+    } else if (companyName) {
+        fileName = companyName;
+    } else {
+        fileName = 'Order_Contract_' + recordId;
+    }
+    // Sanitize filename for URL (remove special chars)
+    fileName = encodeURIComponent(fileName.replace(/[\/\\:*?"<>|]/g, ''));
     
     try {
         // Generate PDF

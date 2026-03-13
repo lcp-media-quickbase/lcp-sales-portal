@@ -1,5 +1,5 @@
 {
-  "version": "1.5.8",
+  "version": "1.5.9",
   "updated": "2026-03-12",
-  "notes": "Auto-generate PDF and DOCX contracts after order creation"
+  "notes": "Contract filename: OpportunityID - CompanyName"
 }
