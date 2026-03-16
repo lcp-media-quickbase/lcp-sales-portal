@@ -343,12 +343,13 @@ body {
 
 /* Order Detail View */
 .order-detail { padding: 4px; }
-.order-detail-header { margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color); }
+.order-detail-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color); }
+.order-detail-header-left { flex: 1; }
 .order-detail-title { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
 .order-detail-title h2 { margin: 0; font-size: 22px; font-weight: 600; color: var(--text-primary); }
 .order-detail-meta { display: flex; gap: 24px; font-size: 13px; color: var(--text-secondary); }
 .order-detail-meta span { display: flex; gap: 4px; }
-.concession-approval-actions { display: flex; gap: 10px; margin-left: auto; }
+.concession-approval-actions { display: flex; gap: 10px; flex-shrink: 0; }
 .btn-success { background: #22c55e; color: white; border: none; }
 .btn-success:hover { background: #16a34a; }
 .btn-danger { background: #ef4444; color: white; border: none; }

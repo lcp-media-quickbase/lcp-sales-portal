@@ -1233,9 +1233,16 @@ async function viewOrder(id) {
         let html = `
             <div class="order-detail">
                 <div class="order-detail-header">
-                    <div class="order-detail-title">
-                        <h2>${companyName}</h2>
-                        <span class="badge badge-${getStatusClass(status)}">${status}</span>
+                    <div class="order-detail-header-left">
+                        <div class="order-detail-title">
+                            <h2>${companyName}</h2>
+                            <span class="badge badge-${getStatusClass(status)}">${status}</span>
+                        </div>
+                        <div class="order-detail-meta">
+                            <span><strong>Order #:</strong> ${id}</span>
+                            <span><strong>Opportunity ID:</strong> ${opportunityId}</span>
+                            <span><strong>yCRM ID:</strong> ${ycrmId}</span>
+                        </div>
                     </div>
                     ${needsConcessionApproval ? `
                         <div class="concession-approval-actions">
@@ -1249,11 +1256,6 @@ async function viewOrder(id) {
                             </button>
                         </div>
                     ` : ''}
-                    <div class="order-detail-meta">
-                        <span><strong>Order #:</strong> ${id}</span>
-                        <span><strong>Opportunity ID:</strong> ${opportunityId}</span>
-                        <span><strong>yCRM ID:</strong> ${ycrmId}</span>
-                    </div>
                 </div>
                 
                 ${hasConcessionDecision ? `

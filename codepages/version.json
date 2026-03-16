@@ -1,5 +1,5 @@
 {
-  "version": "1.6.2",
+  "version": "1.6.3",
   "updated": "2026-03-15",
-  "notes": "Concession approval workflow in order detail"
+  "notes": "Move approve/deny buttons to right side"
 }
