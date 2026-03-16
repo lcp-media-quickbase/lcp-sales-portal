@@ -1176,5 +1176,163 @@ function resetQuoteForm() {
     prefillCurrentUserEmail();
 }
 
-function viewOrder(id) { window.open(`https://${CONFIG.getRealmHostname()}/db/${CONFIG.tables.orders}?a=dr&rid=${id}`, '_blank'); }
+async function viewOrder(id) { 
+    openModal('order-detail-modal');
+    const content = document.getElementById('order-detail-content');
+    content.innerHTML = '<div class="loading-spinner"></div>';
+    
+    try {
+        const f = CONFIG.fields.orders;
+        const pf = CONFIG.fields.properties;
+        const lf = CONFIG.fields.orderLineItems;
+        const pmf = CONFIG.fields.propertiesMaster;
+        
+        // Fetch order details
+        const orderResult = await queryRecords(CONFIG.tables.orders, 
+            [f.recordId, f.orderStatus, f.quoteDate, f.expirationDate, f.salesRepEmail, f.historyNotes, 
+             f.companyName, f.companyYcrmId, f.ycrmOpportunityId, f.billingContactName, f.billingContactEmail, f.billingContactPhone],
+            `{3.EX.${id}}`
+        );
+        
+        if (!orderResult.data?.length) {
+            content.innerHTML = '<div class="empty-state"><p>Order not found</p></div>';
+            return;
+        }
+        
+        const order = orderResult.data[0];
+        
+        // Fetch properties linked to this order
+        const propsResult = await queryRecords(CONFIG.tables.properties,
+            [pf.recordId, pf.relatedProperty, pf.propertyName, pf.propertyAddress, pf.billingContact, pf.billingEmail, pf.billingPhone],
+            `{${pf.relatedOrder}.EX.${id}}`
+        );
+        
+        // Fetch line items for this order
+        const lineItemsResult = await queryRecords(CONFIG.tables.orderLineItems,
+            [lf.recordId, lf.relatedProperty, lf.description, lf.quantity, lf.total, lf.concession, lf.concessionPercent, lf.codeRetailPrice],
+            `{${lf.relatedOrder}.EX.${id}}`
+        );
+        
+        // Build the detail view
+        const status = order[f.orderStatus]?.value || 'Draft';
+        const companyName = order[f.companyName]?.value || '-';
+        const ycrmId = order[f.companyYcrmId]?.value || '-';
+        const opportunityId = order[f.ycrmOpportunityId]?.value || '-';
+        const salesRep = order[f.salesRepEmail]?.value || '-';
+        const orderDate = formatDate(order[f.quoteDate]?.value);
+        const expDate = formatDate(order[f.expirationDate]?.value);
+        const notes = order[f.historyNotes]?.value || '';
+        
+        let html = `
+            <div class="order-detail">
+                <div class="order-detail-header">
+                    <div class="order-detail-title">
+                        <h2>${companyName}</h2>
+                        <span class="badge badge-${getStatusClass(status)}">${status}</span>
+                    </div>
+                    <div class="order-detail-meta">
+                        <span><strong>Order #:</strong> ${id}</span>
+                        <span><strong>Opportunity ID:</strong> ${opportunityId}</span>
+                        <span><strong>yCRM ID:</strong> ${ycrmId}</span>
+                    </div>
+                </div>
+                
+                <div class="order-detail-grid">
+                    <div class="order-detail-card">
+                        <h4>Order Info</h4>
+                        <p><strong>Sales Rep:</strong> ${salesRep}</p>
+                        <p><strong>Order Date:</strong> ${orderDate}</p>
+                        <p><strong>Expiration:</strong> ${expDate}</p>
+                    </div>
+                    ${notes ? `<div class="order-detail-card"><h4>Notes</h4><div class="order-notes-content">${notes}</div></div>` : ''}
+                </div>
+        `;
+        
+        // Properties and line items
+        const properties = propsResult.data || [];
+        const lineItems = lineItemsResult.data || [];
+        
+        if (properties.length) {
+            html += '<div class="order-detail-section"><h4>Properties & Line Items</h4>';
+            
+            for (const prop of properties) {
+                const propId = prop[pf.recordId]?.value;
+                const propName = prop[pf.propertyName]?.value || 'Unknown Property';
+                const propAddress = prop[pf.propertyAddress]?.value || '';
+                const billingContact = prop[pf.billingContact]?.value || '-';
+                const billingEmail = prop[pf.billingEmail]?.value || '-';
+                const billingPhone = prop[pf.billingPhone]?.value || '-';
+                
+                // Get line items for this property
+                const propLineItems = lineItems.filter(li => li[lf.relatedProperty]?.value === propId);
+                
+                html += `
+                    <div class="property-detail-card">
+                        <div class="property-detail-header">
+                            <div>
+                                <strong>${propName}</strong>
+                                ${propAddress ? `<br><span class="text-muted">${propAddress}</span>` : ''}
+                            </div>
+                            <div class="property-billing-info">
+                                <span><strong>Billing:</strong> ${billingContact}</span>
+                                <span>${billingEmail}</span>
+                                <span>${billingPhone}</span>
+                            </div>
+                        </div>
+                        ${propLineItems.length ? `
+                            <table class="data-table" style="margin-top: 12px;">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th style="width: 80px;">Qty</th>
+                                        <th style="width: 100px;">Unit Price</th>
+                                        <th style="width: 100px;">Concession</th>
+                                        <th style="width: 100px;">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${propLineItems.map(li => {
+                                        const desc = li[lf.description]?.value || '-';
+                                        const qty = li[lf.quantity]?.value || 0;
+                                        const unitPrice = li[lf.codeRetailPrice]?.value || 0;
+                                        const concession = li[lf.concession]?.value;
+                                        const concessionPct = li[lf.concessionPercent]?.value || 0;
+                                        const total = li[lf.total]?.value || 0;
+                                        return `<tr>
+                                            <td>${desc}</td>
+                                            <td>${qty}</td>
+                                            <td>$${Number(unitPrice).toFixed(2)}</td>
+                                            <td>${concession ? concessionPct + '%' : '-'}</td>
+                                            <td>$${Number(total).toFixed(2)}</td>
+                                        </tr>`;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        ` : '<p class="text-muted" style="margin-top: 8px;">No line items</p>'}
+                    </div>
+                `;
+            }
+            html += '</div>';
+        }
+        
+        // Calculate order total
+        const orderTotal = lineItems.reduce((sum, li) => sum + (li[lf.total]?.value || 0), 0);
+        html += `
+            <div class="order-detail-footer">
+                <div class="order-total">
+                    <strong>Order Total:</strong> $${orderTotal.toFixed(2)}
+                </div>
+                <button class="btn btn-secondary" onclick="window.open('https://${CONFIG.getRealmHostname()}/db/${CONFIG.tables.orders}?a=dr&rid=${id}', '_blank')">
+                    Open in QuickBase
+                </button>
+            </div>
+        </div>`;
+        
+        content.innerHTML = html;
+        
+    } catch (e) {
+        console.error('Failed to load order details:', e);
+        content.innerHTML = '<div class="empty-state"><p>Failed to load order details</p></div>';
+    }
+}
 function viewQuote(id) { window.open(`https://${CONFIG.getRealmHostname()}/db/${CONFIG.tables.quotes3D}?a=dr&rid=${id}`, '_blank'); }

@@ -1,5 +1,5 @@
 {
-  "version": "1.6.0",
-  "updated": "2026-03-12",
-  "notes": "Use template ID 3 for contracts"
+  "version": "1.6.1",
+  "updated": "2026-03-15",
+  "notes": "In-app order detail view modal"
 }
