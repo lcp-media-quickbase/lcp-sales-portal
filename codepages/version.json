@@ -1,5 +1,5 @@
 {
-  "version": "1.6.3",
+  "version": "1.6.4",
   "updated": "2026-03-15",
-  "notes": "Move approve/deny buttons to right side"
+  "notes": "Fix approved by display, reorder meta, remove order # and expiration"
 }

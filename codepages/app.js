@@ -1239,9 +1239,8 @@ async function viewOrder(id) {
                             <span class="badge badge-${getStatusClass(status)}">${status}</span>
                         </div>
                         <div class="order-detail-meta">
-                            <span><strong>Order #:</strong> ${id}</span>
-                            <span><strong>Opportunity ID:</strong> ${opportunityId}</span>
                             <span><strong>yCRM ID:</strong> ${ycrmId}</span>
+                            <span><strong>Opportunity ID:</strong> ${opportunityId}</span>
                         </div>
                     </div>
                     ${needsConcessionApproval ? `
@@ -1260,7 +1259,7 @@ async function viewOrder(id) {
                 
                 ${hasConcessionDecision ? `
                     <div class="concession-decision-banner ${concessionsApproval === 'Approved' ? 'approved' : 'denied'}">
-                        <strong>Concessions ${concessionsApproval}</strong> by ${concessionsApprovedBy} on ${formatDateTime(concessionsApprovedDate)}
+                        <strong>Concessions ${concessionsApproval}</strong> by ${typeof concessionsApprovedBy === 'object' ? (concessionsApprovedBy.email || concessionsApprovedBy.name || 'Unknown') : concessionsApprovedBy} on ${formatDateTime(concessionsApprovedDate)}
                     </div>
                 ` : ''}
                 
@@ -1269,7 +1268,6 @@ async function viewOrder(id) {
                         <h4>Order Info</h4>
                         <p><strong>Sales Rep:</strong> ${salesRep}</p>
                         <p><strong>Order Date:</strong> ${orderDate}</p>
-                        <p><strong>Expiration:</strong> ${expDate}</p>
                     </div>
                     ${notes ? `<div class="order-detail-card"><h4>Notes</h4><div class="order-notes-content">${notes}</div></div>` : ''}
                 </div>
