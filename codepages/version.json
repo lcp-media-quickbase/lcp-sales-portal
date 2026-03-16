@@ -1,5 +1,5 @@
 {
-  "version": "1.6.4",
+  "version": "1.6.5",
   "updated": "2026-03-15",
-  "notes": "Fix approved by display, reorder meta, remove order # and expiration"
+  "notes": "Add charge code column to line items"
 }

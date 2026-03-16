@@ -1210,7 +1210,7 @@ async function viewOrder(id) {
         
         // Fetch line items for this order
         const lineItemsResult = await queryRecords(CONFIG.tables.orderLineItems,
-            [lf.recordId, lf.relatedProperty, lf.description, lf.quantity, lf.total, lf.concession, lf.concessionPercent, lf.codeRetailPrice],
+            [lf.recordId, lf.relatedProperty, lf.relatedCode, lf.description, lf.quantity, lf.total, lf.concession, lf.concessionPercent, lf.codeRetailPrice],
             `{${lf.relatedOrder}.EX.${id}}`
         );
         
@@ -1308,6 +1308,7 @@ async function viewOrder(id) {
                             <table class="data-table" style="margin-top: 12px;">
                                 <thead>
                                     <tr>
+                                        <th style="width: 90px;">Code</th>
                                         <th>Product</th>
                                         <th style="width: 80px;">Qty</th>
                                         <th style="width: 100px;">Unit Price</th>
@@ -1317,6 +1318,7 @@ async function viewOrder(id) {
                                 </thead>
                                 <tbody>
                                     ${propLineItems.map(li => {
+                                        const code = li[lf.relatedCode]?.value || '-';
                                         const desc = li[lf.description]?.value || '-';
                                         const qty = li[lf.quantity]?.value || 0;
                                         const unitPrice = li[lf.codeRetailPrice]?.value || 0;
@@ -1324,6 +1326,7 @@ async function viewOrder(id) {
                                         const concessionPct = li[lf.concessionPercent]?.value || 0;
                                         const total = li[lf.total]?.value || 0;
                                         return `<tr>
+                                            <td>${code}</td>
                                             <td>${desc}</td>
                                             <td>${qty}</td>
                                             <td>$${Number(unitPrice).toFixed(2)}</td>
