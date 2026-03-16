@@ -980,7 +980,7 @@ async function saveOrder() {
 }
 
 async function generateOrderDocuments(recordId, opportunityId, companyName) {
-    const templateId = 1; // Contract template ID
+    const templateId = 3; // Contract template ID
     const tableId = CONFIG.tables.orders;
     const realm = CONFIG.getRealmHostname().replace('.quickbase.com', '');
     
