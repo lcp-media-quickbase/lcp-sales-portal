@@ -1,5 +1,5 @@
 {
-  "version": "1.6.1",
+  "version": "1.6.2",
   "updated": "2026-03-15",
-  "notes": "In-app order detail view modal"
+  "notes": "Concession approval workflow in order detail"
 }

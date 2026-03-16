@@ -2,7 +2,7 @@
 // App ID: bvvpht7z6 | Realm: lcp360-5583.quickbase.com
 
 const CONFIG = {
-    version: '1.6.1',
+    version: '1.6.2',
     versionUrl: 'https://raw.githubusercontent.com/lcp-media-quickbase/lcp-sales-portal/main/codepages/version.json',
     
     getRealmHostname: function() { return window.location.hostname; },
@@ -26,7 +26,8 @@ const CONFIG = {
             recordId: 3, dateCreated: 1, dateModified: 2, quoteDate: 6, expirationDate: 7,
             salesRepEmail: 8, historyNotes: 9, orderStatus: 10, orderName: 11, orderPDF: 12,
             propertyWorksheet: 13, relatedCompany: 18, companyYcrmId: 19, companyYcrmName: 20, companyName: 21,
-            billingContactName: 22, billingContactEmail: 23, billingContactPhone: 24, ycrmOpportunityId: 39
+            billingContactName: 22, billingContactEmail: 23, billingContactPhone: 24, ycrmOpportunityId: 39,
+            concessionsApproval: 42, concessionsApprovedBy: 43, concessionsApprovedDate: 44
         },
         orderLineItems: {
             recordId: 3, quantity: 6, total: 7, description: 8, notes: 9, relatedOrder: 10,
@@ -186,6 +187,18 @@ async function createRecord(tableId, data) {
     }
 }
 
+async function updateRecord(tableId, data) {
+    try {
+        console.log('Updating record in table:', tableId, 'data:', JSON.stringify(data));
+        var result = await qbApiRequest(tableId, 'records', 'POST', { to: tableId, data: [data] });
+        console.log('Update result:', result);
+        return result;
+    } catch (e) {
+        console.error('updateRecord failed for table', tableId, ':', e);
+        throw e;
+    }
+}
+
 async function getCurrentUser() {
     try {
         var realm = CONFIG.getRealmHostname();
@@ -233,6 +246,7 @@ function showSuccess(msg) {
 
 function formatCurrency(v) { return (v || v === 0) ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v) : '$0.00'; }
 function formatDate(d) { return d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : ''; }
+function formatDateTime(d) { return d ? new Date(d).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''; }
 function getTodayISO() { return new Date().toISOString().split('T')[0]; }
 function getExpirationDate(days = 30) { const d = new Date(); d.setDate(d.getDate() + days); return d.toISOString().split('T')[0]; }
 

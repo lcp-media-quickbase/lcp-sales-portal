@@ -1190,7 +1190,8 @@ async function viewOrder(id) {
         // Fetch order details
         const orderResult = await queryRecords(CONFIG.tables.orders, 
             [f.recordId, f.orderStatus, f.quoteDate, f.expirationDate, f.salesRepEmail, f.historyNotes, 
-             f.companyName, f.companyYcrmId, f.ycrmOpportunityId, f.billingContactName, f.billingContactEmail, f.billingContactPhone],
+             f.companyName, f.companyYcrmId, f.ycrmOpportunityId, f.billingContactName, f.billingContactEmail, f.billingContactPhone,
+             f.concessionsApproval, f.concessionsApprovedBy, f.concessionsApprovedDate],
             `{3.EX.${id}}`
         );
         
@@ -1222,6 +1223,12 @@ async function viewOrder(id) {
         const orderDate = formatDate(order[f.quoteDate]?.value);
         const expDate = formatDate(order[f.expirationDate]?.value);
         const notes = order[f.historyNotes]?.value || '';
+        const concessionsApproval = order[f.concessionsApproval]?.value || '';
+        const concessionsApprovedBy = order[f.concessionsApprovedBy]?.value || '';
+        const concessionsApprovedDate = order[f.concessionsApprovedDate]?.value || '';
+        
+        const needsConcessionApproval = status === 'Concessions Approval Needed';
+        const hasConcessionDecision = concessionsApproval === 'Approved' || concessionsApproval === 'Denied';
         
         let html = `
             <div class="order-detail">
@@ -1230,12 +1237,30 @@ async function viewOrder(id) {
                         <h2>${companyName}</h2>
                         <span class="badge badge-${getStatusClass(status)}">${status}</span>
                     </div>
+                    ${needsConcessionApproval ? `
+                        <div class="concession-approval-actions">
+                            <button class="btn btn-success" onclick="approveConcession(${id})">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                Approve
+                            </button>
+                            <button class="btn btn-danger" onclick="denyConcession(${id})">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                Deny
+                            </button>
+                        </div>
+                    ` : ''}
                     <div class="order-detail-meta">
                         <span><strong>Order #:</strong> ${id}</span>
                         <span><strong>Opportunity ID:</strong> ${opportunityId}</span>
                         <span><strong>yCRM ID:</strong> ${ycrmId}</span>
                     </div>
                 </div>
+                
+                ${hasConcessionDecision ? `
+                    <div class="concession-decision-banner ${concessionsApproval === 'Approved' ? 'approved' : 'denied'}">
+                        <strong>Concessions ${concessionsApproval}</strong> by ${concessionsApprovedBy} on ${formatDateTime(concessionsApprovedDate)}
+                    </div>
+                ` : ''}
                 
                 <div class="order-detail-grid">
                     <div class="order-detail-card">
@@ -1322,9 +1347,6 @@ async function viewOrder(id) {
                 <div class="order-total">
                     <strong>Order Total:</strong> $${orderTotal.toFixed(2)}
                 </div>
-                <button class="btn btn-secondary" onclick="window.open('https://${CONFIG.getRealmHostname()}/db/${CONFIG.tables.orders}?a=dr&rid=${id}', '_blank')">
-                    Open in QuickBase
-                </button>
             </div>
         </div>`;
         
@@ -1333,6 +1355,48 @@ async function viewOrder(id) {
     } catch (e) {
         console.error('Failed to load order details:', e);
         content.innerHTML = '<div class="empty-state"><p>Failed to load order details</p></div>';
+    }
+}
+
+async function approveConcession(orderId) {
+    if (!confirm('Approve concessions for this order?')) return;
+    await updateConcessionStatus(orderId, 'Approved');
+}
+
+async function denyConcession(orderId) {
+    if (!confirm('Deny concessions for this order?')) return;
+    await updateConcessionStatus(orderId, 'Denied');
+}
+
+async function updateConcessionStatus(orderId, decision) {
+    try {
+        const f = CONFIG.fields.orders;
+        const user = await getCurrentUser();
+        const userEmail = user?.email || 'Unknown';
+        const now = new Date().toISOString();
+        
+        const newStatus = decision === 'Approved' ? 'Concessions Approved' : 'Concessions Denied';
+        
+        const updateData = {
+            [f.recordId]: { value: orderId },
+            [f.orderStatus]: { value: newStatus },
+            [f.concessionsApproval]: { value: decision },
+            [f.concessionsApprovedBy]: { value: userEmail },
+            [f.concessionsApprovedDate]: { value: now }
+        };
+        
+        await updateRecord(CONFIG.tables.orders, updateData);
+        showSuccess(`Concessions ${decision.toLowerCase()}!`);
+        
+        // Refresh the order detail view
+        await viewOrder(orderId);
+        
+        // Also refresh the order history list
+        loadOrderHistory();
+        
+    } catch (e) {
+        console.error('Failed to update concession status:', e);
+        alert('Failed to update concession status: ' + e.message);
     }
 }
 function viewQuote(id) { window.open(`https://${CONFIG.getRealmHostname()}/db/${CONFIG.tables.quotes3D}?a=dr&rid=${id}`, '_blank'); }
