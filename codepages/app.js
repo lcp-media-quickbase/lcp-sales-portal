@@ -878,12 +878,21 @@ async function saveOrder() {
     const notes = getRichTextContent('order-notes-editor');
     
     if (!email) { alert('Sales rep email required'); return; }
+    if (!ycrmOpportunity) { alert('yCRM Opportunity ID required'); return; }
     if (!AppState.selectedClient) { alert('Please select a client'); return; }
     if (!AppState.orderProperties.length) { alert('Please add at least one property'); return; }
     
     // Check each property has at least one line item with a product selected
     var hasLineItems = AppState.orderProperties.some(op => op.lineItems.some(li => li.productId));
     if (!hasLineItems) { alert('Please add at least one product to a line item'); return; }
+    
+    // Check each property has billing contact info
+    for (const op of AppState.orderProperties) {
+        if (!op.billingContact || !op.billingEmail || !op.billingPhone) {
+            alert('Billing contact information (name, email, phone) required for all properties');
+            return;
+        }
+    }
     
     // Show saving indicator
     var saveBtn = document.querySelector('#order-form .btn-primary');
@@ -1041,6 +1050,14 @@ async function saveQuote() {
     
     var hasLineItems = AppState.quoteProperties.some(qp => qp.lineItems.length > 0);
     if (!hasLineItems) { alert('Please add at least one product'); return; }
+    
+    // Check each property has billing contact info
+    for (const qp of AppState.quoteProperties) {
+        if (!qp.billingContact || !qp.billingEmail || !qp.billingPhone) {
+            alert('Billing contact information (name, email, phone) required for all properties');
+            return;
+        }
+    }
     
     var saveBtn = document.querySelector('#quote-form .btn-primary');
     var originalText = saveBtn.textContent;
