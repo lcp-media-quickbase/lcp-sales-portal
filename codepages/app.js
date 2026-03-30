@@ -1107,6 +1107,8 @@ async function saveQuote() {
             // 3. Create line items for this property
             for (const li of qp.lineItems) {
                 if (li.productId) {
+                    console.log('Line item object:', JSON.stringify(li));
+                    console.log('lf.relatedProduct =', lf.relatedProduct, 'li.productId =', li.productId);
                     var lineData = { 
                         [lf.relatedQuote]: { value: quoteId }, 
                         [lf.relatedProduct]: { value: li.productId },
@@ -1115,6 +1117,7 @@ async function saveQuote() {
                         [lf.stills]: { value: li.stills || 0 },
                         [lf.panos]: { value: li.panos || 0 }
                     };
+                    console.log('lineData before send:', JSON.stringify(lineData));
                     const liResult = await createRecord(CONFIG.tables.lineItems3D, lineData);
                     if (liResult.metadata?.lineErrors && Object.keys(liResult.metadata.lineErrors).length > 0) {
                         console.error('Line item creation error:', liResult.metadata.lineErrors);
