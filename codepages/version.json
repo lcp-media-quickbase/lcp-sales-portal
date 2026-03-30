@@ -1,5 +1,5 @@
 {
-  "version": "1.7.6",
+  "version": "1.7.7",
   "updated": "2026-03-30",
-  "notes": "Add Quote Price (FID 18) support - shows quote price if set, otherwise retail price"
+  "notes": "Convert to Order now pre-fills order form instead of creating in background"
 }

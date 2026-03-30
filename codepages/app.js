@@ -923,6 +923,10 @@ async function saveOrder() {
         if (ycrmOpportunity) {
             orderData[f.ycrmOpportunityId] = { value: ycrmOpportunity };
         }
+        // If converting from a quote, link the order back to the quote
+        if (AppState.convertingQuoteId) {
+            orderData[f.relatedQuote3D] = { value: AppState.convertingQuoteId };
+        }
         
         const orderResult = await createRecord(CONFIG.tables.orders, orderData);
         // QB returns created record IDs in metadata, not data
@@ -975,6 +979,17 @@ async function saveOrder() {
         console.log('Generating contract documents for order:', orderId);
         const companyName = AppState.selectedClient?.name || '';
         await generateOrderDocuments(orderId, ycrmOpportunity, companyName);
+        
+        // If this order was converted from a quote, update the quote status
+        if (AppState.convertingQuoteId) {
+            const qf = CONFIG.fields.quotes3D;
+            await updateRecord(CONFIG.tables.quotes3D, {
+                [qf.recordId]: { value: AppState.convertingQuoteId },
+                [qf.quoteStatus]: { value: 'Converted to Order' }
+            });
+            console.log('Updated quote', AppState.convertingQuoteId, 'status to Converted to Order');
+            AppState.convertingQuoteId = null;
+        }
         
         showSuccess('Order created successfully!');
         resetOrderForm();
@@ -1204,6 +1219,7 @@ function resetOrderForm() {
     setRichTextContent('order-notes-editor', '');
     AppState.orderProperties = [];
     AppState.selectedClient = null;
+    AppState.convertingQuoteId = null;
     lineItemCounter = 0;
     document.getElementById('selected-client-name').textContent = 'Select a client...';
     document.getElementById('order-company-id').value = '';
@@ -1654,15 +1670,9 @@ async function viewQuote(id) {
 const RENDERING_CHARGE_CODE = '9480'; // LCP Media 3D Rendering Projects
 
 async function convertQuoteToOrder(quoteId) {
-    if (!confirm('Convert this 3D quote to an order?\n\nThis will create a new order with a single line item for the quote total.')) {
-        return;
-    }
-    
     try {
         const qf = CONFIG.fields.quotes3D;
         const pf = CONFIG.fields.properties;
-        const of = CONFIG.fields.orders;
-        const lf = CONFIG.fields.orderLineItems;
         
         // 1. Fetch the quote
         const quoteResult = await queryRecords(CONFIG.tables.quotes3D, 
@@ -1695,10 +1705,6 @@ async function convertQuoteToOrder(quoteId) {
             throw new Error('Quote has no associated company');
         }
         
-        if (quoteTotal <= 0) {
-            throw new Error('Quote has no total amount');
-        }
-        
         // 2. Fetch properties linked to this quote
         const propsResult = await queryRecords(CONFIG.tables.properties,
             [pf.recordId, pf.relatedProperty, pf.propertyName, pf.propertyAddress,
@@ -1708,105 +1714,74 @@ async function convertQuoteToOrder(quoteId) {
         
         const quoteProperties = propsResult.data || [];
         
-        // 3. Prompt for yCRM Opportunity ID (required for orders)
-        const ycrmOpportunityId = prompt('Enter yCRM Opportunity ID for this order:');
-        if (!ycrmOpportunityId || !ycrmOpportunityId.trim()) {
-            alert('yCRM Opportunity ID is required to create an order.');
-            return;
+        // 3. Close quote modal
+        closeModal('quote-detail-modal');
+        
+        // 4. Reset order form and switch to New Order tab
+        resetOrderForm();
+        switchTab('tab-new-order');
+        
+        // 5. Set the client/company
+        const client = AppState.clients.find(c => c.id === relatedCompany);
+        if (client) {
+            selectClient(client.id);
         }
         
-        // Show progress
-        showSuccess('Converting quote to order...');
+        // 6. Set sales rep email
+        document.getElementById('order-sales-email').value = salesRepEmail;
         
-        // 4. Create the Order record
-        const orderData = {
-            [of.salesRepEmail]: { value: salesRepEmail },
-            [of.quoteDate]: { value: getTodayISO() },
-            [of.expirationDate]: { value: getExpirationDate(30) },
-            [of.orderStatus]: { value: 'Contract Needed' },
-            [of.historyNotes]: { value: historyNotes + (historyNotes ? '\n\n' : '') + `Converted from 3D Quote: ${quoteName} (ID: ${quoteId})` },
-            [of.relatedCompany]: { value: relatedCompany },
-            [of.ycrmOpportunityId]: { value: ycrmOpportunityId.trim() },
-            [of.relatedQuote3D]: { value: quoteId }
-        };
+        // 7. Set notes with conversion reference
+        const conversionNote = `Converted from 3D Quote: ${quoteName} (ID: ${quoteId})`;
+        setRichTextContent('order-notes-editor', historyNotes + (historyNotes ? '\n\n' : '') + conversionNote);
         
-        const orderResult = await createRecord(CONFIG.tables.orders, orderData);
-        const orderId = orderResult.metadata?.createdRecordIds?.[0];
+        // 8. Find the 3D Rendering product
+        const renderingProduct = AppState.products.find(p => p.code === RENDERING_CHARGE_CODE);
         
-        if (!orderId) {
-            console.error('Order create response:', orderResult);
-            throw new Error('Failed to create order record');
-        }
-        
-        console.log('Created order:', orderId, 'from quote:', quoteId);
-        
-        // 5. Create property link records (copy from quote properties)
-        let firstPropertyLinkId = null;
-        
+        // 9. Add properties with line items
         for (const prop of quoteProperties) {
-            const propertyData = {
-                [pf.relatedOrder]: { value: orderId },
-                [pf.relatedProperty]: { value: prop[pf.relatedProperty]?.value },
-                [pf.billingContact]: { value: prop[pf.billingContact]?.value || '' },
-                [pf.billingEmail]: { value: prop[pf.billingEmail]?.value || '' },
-                [pf.billingPhone]: { value: prop[pf.billingPhone]?.value || '' }
+            const propertyId = prop[pf.relatedProperty]?.value;
+            const property = AppState.properties.find(p => p.id === propertyId);
+            
+            if (!property) continue;
+            
+            // Check if already added
+            if (AppState.orderProperties.find(op => op.propertyId === propertyId)) continue;
+            
+            lineItemCounter++;
+            
+            // Create the 3D rendering line item
+            const lineItem = {
+                id: lineItemCounter,
+                productId: renderingProduct?.id || null,
+                productCode: RENDERING_CHARGE_CODE,
+                productName: renderingProduct?.name || '3D Rendering Services',
+                quantity: 1,
+                unitPrice: quoteTotal,
+                total: quoteTotal,
+                concession: false,
+                concessionPercent: 0
             };
             
-            const propResult = await createRecord(CONFIG.tables.properties, propertyData);
-            const propertyLinkId = propResult.metadata?.createdRecordIds?.[0];
-            
-            if (!firstPropertyLinkId && propertyLinkId) {
-                firstPropertyLinkId = propertyLinkId;
-            }
-            
-            console.log('Created property link:', propertyLinkId);
+            AppState.orderProperties.push({
+                propertyId: propertyId,
+                property: property,
+                lineItems: [lineItem],
+                billingContact: prop[pf.billingContact]?.value || property.billingContact || '',
+                billingEmail: prop[pf.billingEmail]?.value || property.billingEmail || '',
+                billingPhone: prop[pf.billingPhone]?.value || property.billingPhone || ''
+            });
         }
         
-        // 6. Create single line item for the 3D rendering total
-        // If we have properties, attach to first one; otherwise just attach to order
-        const lineItemData = {
-            [lf.relatedOrder]: { value: orderId },
-            [lf.relatedCode]: { value: RENDERING_CHARGE_CODE },
-            [lf.description]: { value: `3D Rendering Services - ${quoteName}` },
-            [lf.quantity]: { value: 1 },
-            [lf.concession]: { value: false },
-            [lf.concessionPercent]: { value: 0 }
-        };
+        // 10. Render the form
+        renderOrderProperties();
         
-        if (firstPropertyLinkId) {
-            lineItemData[lf.relatedProperty] = { value: firstPropertyLinkId };
-        }
+        // 11. Store quote ID for later (to update status after save)
+        AppState.convertingQuoteId = quoteId;
         
-        const liResult = await createRecord(CONFIG.tables.orderLineItems, lineItemData);
-        
-        if (liResult.metadata?.lineErrors && Object.keys(liResult.metadata.lineErrors).length > 0) {
-            console.error('Line item creation warning:', liResult.metadata.lineErrors);
-        } else {
-            console.log('Created line item for 3D rendering, total:', quoteTotal);
-        }
-        
-        // 7. Update quote status to "Converted to Order"
-        await updateRecord(CONFIG.tables.quotes3D, {
-            [qf.recordId]: { value: quoteId },
-            [qf.quoteStatus]: { value: 'Converted to Order' }
-        });
-        
-        console.log('Updated quote status to Converted to Order');
-        
-        // 8. Generate contract documents
-        console.log('Generating contract documents for order:', orderId);
-        await generateOrderDocuments(orderId, ycrmOpportunityId.trim(), companyName);
-        
-        // 9. Success - refresh and offer to view
-        showSuccess('Quote converted to order successfully!');
-        loadQuoteHistory();
-        
-        if (confirm(`Order created successfully!\n\nOrder ID: ${orderId}\nTotal: ${formatCurrency(quoteTotal)}\n\nView the new order?`)) {
-            viewOrder(orderId);
-        }
+        showSuccess(`Quote loaded into order form. Add additional items if needed, then save the order.`);
         
     } catch (e) {
         console.error('Convert quote to order failed:', e);
-        alert('Failed to convert quote: ' + e.message);
+        alert('Failed to load quote: ' + e.message);
     }
 }
