@@ -1109,13 +1109,18 @@ async function saveQuote() {
                 if (li.productId) {
                     var lineData = { 
                         [lf.relatedQuote]: { value: quoteId }, 
+                        [lf.relatedProduct]: { value: li.productId },
                         [lf.quantity]: { value: li.quantity || 1 },
                         [lf.description]: { value: li.description || '' },
                         [lf.stills]: { value: li.stills || 0 },
                         [lf.panos]: { value: li.panos || 0 }
                     };
-                    await createRecord(CONFIG.tables.lineItems3D, lineData);
-                    console.log('Created line item for product:', li.productId);
+                    const liResult = await createRecord(CONFIG.tables.lineItems3D, lineData);
+                    if (liResult.metadata?.lineErrors && Object.keys(liResult.metadata.lineErrors).length > 0) {
+                        console.error('Line item creation error:', liResult.metadata.lineErrors);
+                    } else {
+                        console.log('Created line item for product:', li.productId, li.productName);
+                    }
                 }
             }
         }
