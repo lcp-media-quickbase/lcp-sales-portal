@@ -2,7 +2,7 @@
 // App ID: bvvpht7z6 | Realm: lcp360-5583.quickbase.com
 
 const CONFIG = {
-    version: '1.6.6',
+    version: '1.7.0',
     versionUrl: 'https://raw.githubusercontent.com/lcp-media-quickbase/lcp-sales-portal/main/codepages/version.json',
     
     getRealmHostname: function() { return window.location.hostname; },
@@ -27,7 +27,8 @@ const CONFIG = {
             salesRepEmail: 8, historyNotes: 9, orderStatus: 10, orderName: 11, orderPDF: 12,
             propertyWorksheet: 13, relatedCompany: 18, companyYcrmId: 19, companyYcrmName: 20, companyName: 21,
             billingContactName: 22, billingContactEmail: 23, billingContactPhone: 24, ycrmOpportunityId: 39,
-            concessionsApproval: 42, concessionsApprovedBy: 43, concessionsApprovedDate: 44
+            concessionsApproval: 42, concessionsApprovedBy: 43, concessionsApprovedDate: 44,
+            relatedQuote3D: 47
         },
         orderLineItems: {
             recordId: 3, quantity: 6, total: 7, description: 8, notes: 9, relatedOrder: 10,
@@ -38,7 +39,8 @@ const CONFIG = {
         quotes3D: {
             recordId: 3, dateCreated: 1, dateModified: 2, quoteDate: 6, expirationDate: 7,
             salesRepEmail: 8, historyNotes: 9, quoteStatus: 10, quoteName: 11, quotePDF: 12,
-            relatedCompany: 17, companyName: 18, companyYcrmId: 19, companyYcrmName: 20
+            relatedCompany: 17, companyName: 18, companyYcrmId: 19, companyYcrmName: 20,
+            quoteTotal: 27
         },
         lineItems3D: {
             recordId: 3, quantity: 6, total: 7, description: 8, notes: 9, relatedQuote: 10,
@@ -67,7 +69,7 @@ const CONFIG = {
         }
     },
     
-    quoteStatuses: ['Draft', 'Pending Review', 'Sent to Client', 'Approved', 'Rejected', 'Expired'],
+    quoteStatuses: ['Draft', 'Pending Review', 'Sent to Client', 'Approved', 'Rejected', 'Expired', 'Converted to Order'],
     orderStatuses: ['Draft', 'Pending', 'Processing', 'Completed', 'Cancelled']
 };
 

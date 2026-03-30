@@ -1152,17 +1152,37 @@ async function loadQuoteHistory() {
     showLoading(c);
     try {
         const f = CONFIG.fields.quotes3D;
-        const r = await queryRecords(CONFIG.tables.quotes3D, [f.recordId, f.quoteName, f.quoteStatus, f.quoteDate, f.salesRepEmail, f.companyName], null, [{ fieldId: f.dateModified, order: 'DESC' }]);
+        const r = await queryRecords(CONFIG.tables.quotes3D, [f.recordId, f.quoteName, f.quoteStatus, f.quoteDate, f.salesRepEmail, f.companyName, f.quoteTotal], null, [{ fieldId: f.dateModified, order: 'DESC' }]);
         AppState.quotes = r.data;
         if (!AppState.quotes.length) { c.innerHTML = '<div class="empty-state"><p class="empty-state-title">No quotes yet</p><button class="btn btn-primary" onclick="switchTab(\'tab-new-quote\')">Create Quote</button></div>'; return; }
         document.getElementById('stat-total-quotes').textContent = AppState.quotes.length;
         document.getElementById('stat-pending-quotes').textContent = AppState.quotes.filter(q => ['Pending Review','Sent to Client'].includes(q[f.quoteStatus]?.value)).length;
         document.getElementById('stat-approved-quotes').textContent = AppState.quotes.filter(q => q[f.quoteStatus]?.value === 'Approved').length;
-        c.innerHTML = `<table class="data-table"><thead><tr><th>Quote Name</th><th>Company</th><th>Status</th><th>Date</th><th>Sales Rep</th><th>Actions</th></tr></thead><tbody>${AppState.quotes.map(q => `<tr><td>${q[f.quoteName]?.value||'-'}</td><td>${q[f.companyName]?.value||'-'}</td><td><span class="badge badge-${getStatusClass(q[f.quoteStatus]?.value)}">${q[f.quoteStatus]?.value||'Draft'}</span></td><td>${formatDate(q[f.quoteDate]?.value)}</td><td>${q[f.salesRepEmail]?.value||'-'}</td><td class="actions"><button class="btn btn-ghost btn-sm" onclick="viewQuote(${q[f.recordId].value})"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></td></tr>`).join('')}</tbody></table>`;
+        c.innerHTML = `<table class="data-table"><thead><tr><th>Quote Name</th><th>Company</th><th>Status</th><th>Total</th><th>Date</th><th>Sales Rep</th><th>Actions</th></tr></thead><tbody>${AppState.quotes.map(q => {
+            const status = q[f.quoteStatus]?.value || 'Draft';
+            const isConverted = status === 'Converted to Order';
+            const canConvert = !isConverted && status !== 'Rejected' && status !== 'Expired';
+            return `<tr>
+                <td>${q[f.quoteName]?.value||'-'}</td>
+                <td>${q[f.companyName]?.value||'-'}</td>
+                <td><span class="badge badge-${getStatusClass(status)}">${status}</span></td>
+                <td style="color:var(--lcp-blue);font-weight:500;">${formatCurrency(q[f.quoteTotal]?.value)}</td>
+                <td>${formatDate(q[f.quoteDate]?.value)}</td>
+                <td>${q[f.salesRepEmail]?.value||'-'}</td>
+                <td class="actions">
+                    <button class="btn btn-ghost btn-sm" onclick="viewQuote(${q[f.recordId].value})" title="View in QuickBase">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                    ${canConvert ? `<button class="btn btn-ghost btn-sm" onclick="convertQuoteToOrder(${q[f.recordId].value})" title="Convert to Order" style="color:var(--lcp-blue);">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </button>` : ''}
+                </td>
+            </tr>`;
+        }).join('')}</tbody></table>`;
     } catch (e) { showError(c, 'Failed to load quotes'); }
 }
 
-function getStatusClass(s) { if (!s) return 'draft'; const l = s.toLowerCase(); if (l.includes('pending')||l.includes('processing')||l.includes('review')||l.includes('sent')) return 'pending'; if (l.includes('completed')||l.includes('approved')) return 'approved'; if (l.includes('rejected')||l.includes('cancelled')||l.includes('expired')) return 'rejected'; return 'draft'; }
+function getStatusClass(s) { if (!s) return 'draft'; const l = s.toLowerCase(); if (l.includes('pending')||l.includes('processing')||l.includes('review')||l.includes('sent')) return 'pending'; if (l.includes('completed')||l.includes('approved')||l.includes('converted')) return 'approved'; if (l.includes('rejected')||l.includes('cancelled')||l.includes('expired')||l.includes('denied')) return 'rejected'; return 'draft'; }
 
 // ============================================================================
 // FORM RESET & VIEW
@@ -1420,3 +1440,167 @@ async function updateConcessionStatus(orderId, decision) {
     }
 }
 function viewQuote(id) { window.open(`https://${CONFIG.getRealmHostname()}/db/${CONFIG.tables.quotes3D}?a=dr&rid=${id}`, '_blank'); }
+
+// ============================================================================
+// CONVERT 3D QUOTE TO ORDER
+// ============================================================================
+
+const RENDERING_CHARGE_CODE = '9480'; // LCP Media 3D Rendering Projects
+
+async function convertQuoteToOrder(quoteId) {
+    if (!confirm('Convert this 3D quote to an order?\n\nThis will create a new order with a single line item for the quote total.')) {
+        return;
+    }
+    
+    try {
+        const qf = CONFIG.fields.quotes3D;
+        const pf = CONFIG.fields.properties;
+        const of = CONFIG.fields.orders;
+        const lf = CONFIG.fields.orderLineItems;
+        
+        // 1. Fetch the quote
+        const quoteResult = await queryRecords(CONFIG.tables.quotes3D, 
+            [qf.recordId, qf.quoteName, qf.quoteStatus, qf.salesRepEmail, qf.relatedCompany, 
+             qf.companyName, qf.historyNotes, qf.quoteTotal],
+            `{3.EX.${quoteId}}`
+        );
+        
+        if (!quoteResult.data?.length) {
+            throw new Error('Quote not found');
+        }
+        
+        const quote = quoteResult.data[0];
+        const quoteStatus = quote[qf.quoteStatus]?.value;
+        
+        // Check if already converted
+        if (quoteStatus === 'Converted to Order') {
+            alert('This quote has already been converted to an order.');
+            return;
+        }
+        
+        const quoteName = quote[qf.quoteName]?.value || '';
+        const quoteTotal = quote[qf.quoteTotal]?.value || 0;
+        const salesRepEmail = quote[qf.salesRepEmail]?.value || '';
+        const relatedCompany = quote[qf.relatedCompany]?.value;
+        const companyName = quote[qf.companyName]?.value || '';
+        const historyNotes = quote[qf.historyNotes]?.value || '';
+        
+        if (!relatedCompany) {
+            throw new Error('Quote has no associated company');
+        }
+        
+        if (quoteTotal <= 0) {
+            throw new Error('Quote has no total amount');
+        }
+        
+        // 2. Fetch properties linked to this quote
+        const propsResult = await queryRecords(CONFIG.tables.properties,
+            [pf.recordId, pf.relatedProperty, pf.propertyName, pf.propertyAddress,
+             pf.billingContact, pf.billingEmail, pf.billingPhone],
+            `{${pf.relatedQuote3D}.EX.${quoteId}}`
+        );
+        
+        const quoteProperties = propsResult.data || [];
+        
+        // 3. Prompt for yCRM Opportunity ID (required for orders)
+        const ycrmOpportunityId = prompt('Enter yCRM Opportunity ID for this order:');
+        if (!ycrmOpportunityId || !ycrmOpportunityId.trim()) {
+            alert('yCRM Opportunity ID is required to create an order.');
+            return;
+        }
+        
+        // Show progress
+        showSuccess('Converting quote to order...');
+        
+        // 4. Create the Order record
+        const orderData = {
+            [of.salesRepEmail]: { value: salesRepEmail },
+            [of.quoteDate]: { value: getTodayISO() },
+            [of.expirationDate]: { value: getExpirationDate(30) },
+            [of.orderStatus]: { value: 'Contract Needed' },
+            [of.historyNotes]: { value: historyNotes + (historyNotes ? '\n\n' : '') + `Converted from 3D Quote: ${quoteName} (ID: ${quoteId})` },
+            [of.relatedCompany]: { value: relatedCompany },
+            [of.ycrmOpportunityId]: { value: ycrmOpportunityId.trim() },
+            [of.relatedQuote3D]: { value: quoteId }
+        };
+        
+        const orderResult = await createRecord(CONFIG.tables.orders, orderData);
+        const orderId = orderResult.metadata?.createdRecordIds?.[0];
+        
+        if (!orderId) {
+            console.error('Order create response:', orderResult);
+            throw new Error('Failed to create order record');
+        }
+        
+        console.log('Created order:', orderId, 'from quote:', quoteId);
+        
+        // 5. Create property link records (copy from quote properties)
+        let firstPropertyLinkId = null;
+        
+        for (const prop of quoteProperties) {
+            const propertyData = {
+                [pf.relatedOrder]: { value: orderId },
+                [pf.relatedProperty]: { value: prop[pf.relatedProperty]?.value },
+                [pf.billingContact]: { value: prop[pf.billingContact]?.value || '' },
+                [pf.billingEmail]: { value: prop[pf.billingEmail]?.value || '' },
+                [pf.billingPhone]: { value: prop[pf.billingPhone]?.value || '' }
+            };
+            
+            const propResult = await createRecord(CONFIG.tables.properties, propertyData);
+            const propertyLinkId = propResult.metadata?.createdRecordIds?.[0];
+            
+            if (!firstPropertyLinkId && propertyLinkId) {
+                firstPropertyLinkId = propertyLinkId;
+            }
+            
+            console.log('Created property link:', propertyLinkId);
+        }
+        
+        // 6. Create single line item for the 3D rendering total
+        // If we have properties, attach to first one; otherwise just attach to order
+        const lineItemData = {
+            [lf.relatedOrder]: { value: orderId },
+            [lf.relatedCode]: { value: RENDERING_CHARGE_CODE },
+            [lf.description]: { value: `3D Rendering Services - ${quoteName}` },
+            [lf.quantity]: { value: 1 },
+            [lf.concession]: { value: false },
+            [lf.concessionPercent]: { value: 0 }
+        };
+        
+        if (firstPropertyLinkId) {
+            lineItemData[lf.relatedProperty] = { value: firstPropertyLinkId };
+        }
+        
+        const liResult = await createRecord(CONFIG.tables.orderLineItems, lineItemData);
+        
+        if (liResult.metadata?.lineErrors && Object.keys(liResult.metadata.lineErrors).length > 0) {
+            console.error('Line item creation warning:', liResult.metadata.lineErrors);
+        } else {
+            console.log('Created line item for 3D rendering, total:', quoteTotal);
+        }
+        
+        // 7. Update quote status to "Converted to Order"
+        await updateRecord(CONFIG.tables.quotes3D, {
+            [qf.recordId]: { value: quoteId },
+            [qf.quoteStatus]: { value: 'Converted to Order' }
+        });
+        
+        console.log('Updated quote status to Converted to Order');
+        
+        // 8. Generate contract documents
+        console.log('Generating contract documents for order:', orderId);
+        await generateOrderDocuments(orderId, ycrmOpportunityId.trim(), companyName);
+        
+        // 9. Success - refresh and offer to view
+        showSuccess('Quote converted to order successfully!');
+        loadQuoteHistory();
+        
+        if (confirm(`Order created successfully!\n\nOrder ID: ${orderId}\nTotal: ${formatCurrency(quoteTotal)}\n\nView the new order?`)) {
+            viewOrder(orderId);
+        }
+        
+    } catch (e) {
+        console.error('Convert quote to order failed:', e);
+        alert('Failed to convert quote: ' + e.message);
+    }
+}
