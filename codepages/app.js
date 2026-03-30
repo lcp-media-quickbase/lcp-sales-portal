@@ -1069,19 +1069,22 @@ async function saveQuote() {
         const pf = CONFIG.fields.properties;
         const lf = CONFIG.fields.lineItems3D;
         
-        // 1. Create the Quote record
+        // 1. Create the Quote record (don't set status - let QB use default)
         const data = { 
             [f.quoteName]: { value: name }, 
             [f.salesRepEmail]: { value: email }, 
             [f.quoteDate]: { value: getTodayISO() }, 
             [f.expirationDate]: { value: getExpirationDate(30) }, 
-            [f.quoteStatus]: { value: 'Draft' }, 
             [f.historyNotes]: { value: notes },
             [f.relatedCompany]: { value: parseInt(companyId) }
         };
         const r = await createRecord(CONFIG.tables.quotes3D, data);
         const quoteId = r.metadata?.createdRecordIds?.[0];
         if (!quoteId) {
+            // Log lineErrors if present
+            if (r.metadata?.lineErrors) {
+                console.error('QB lineErrors:', r.metadata.lineErrors);
+            }
             throw new Error('Failed to create quote record');
         }
         console.log('Created quote:', quoteId);

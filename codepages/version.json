@@ -1,5 +1,5 @@
 {
-  "version": "1.7.1",
+  "version": "1.7.2",
   "updated": "2026-03-29",
-  "notes": "Fix filterProducts undefined error, improve createRecord logging"
+  "notes": "Fix quote creation - remove hardcoded status, let QB use default"
 }
