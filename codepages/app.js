@@ -1485,7 +1485,7 @@ async function viewQuote(id) {
         // Fetch line items for this quote
         const lineItemsResult = await queryRecords(CONFIG.tables.lineItems3D,
             [lf.recordId, lf.relatedProduct, lf.productName, lf.description, lf.quantity, 
-             lf.total, lf.stills, lf.panos, lf.productRetailPrice],
+             lf.total, lf.stills, lf.panos, lf.productRetailPrice, lf.quotePrice],
             `{${lf.relatedQuote}.EX.${id}}`
         );
         
@@ -1606,7 +1606,9 @@ async function viewQuote(id) {
                 const qty = li[lf.quantity]?.value || 0;
                 const stills = li[lf.stills]?.value || 0;
                 const panos = li[lf.panos]?.value || 0;
-                const unitPrice = li[lf.productRetailPrice]?.value || 0;
+                const quotePrice = li[lf.quotePrice]?.value;
+                const retailPrice = li[lf.productRetailPrice]?.value || 0;
+                const unitPrice = quotePrice != null && quotePrice !== '' ? quotePrice : retailPrice;
                 const total = li[lf.total]?.value || 0;
                 
                 html += `

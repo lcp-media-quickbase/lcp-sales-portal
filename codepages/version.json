@@ -1,5 +1,5 @@
 {
-  "version": "1.7.5",
-  "updated": "2026-03-29",
-  "notes": "Debug logging for line item product save"
+  "version": "1.7.6",
+  "updated": "2026-03-30",
+  "notes": "Add Quote Price (FID 18) support - shows quote price if set, otherwise retail price"
 }
