@@ -964,6 +964,10 @@ async function saveOrder() {
                         [lf.concession]: { value: li.concession || false },
                         [lf.concessionPercent]: { value: li.concessionPercent || 0 }
                     };
+                    // If unitPrice differs from product retail price, save as quotePrice
+                    if (li.unitPrice && li.unitPrice > 0) {
+                        lineItemData[lf.quotePrice] = { value: li.unitPrice };
+                    }
                     
                     const liResult = await createRecord(CONFIG.tables.orderLineItems, lineItemData);
                     if (liResult.metadata?.lineErrors && Object.keys(liResult.metadata.lineErrors).length > 0) {
@@ -1274,7 +1278,7 @@ async function viewOrder(id) {
         
         // Fetch line items for this order
         const lineItemsResult = await queryRecords(CONFIG.tables.orderLineItems,
-            [lf.recordId, lf.relatedProperty, lf.relatedCode, lf.description, lf.quantity, lf.total, lf.concession, lf.concessionPercent, lf.codeRetailPrice],
+            [lf.recordId, lf.relatedProperty, lf.relatedCode, lf.description, lf.quantity, lf.total, lf.concession, lf.concessionPercent, lf.codeRetailPrice, lf.quotePrice],
             `{${lf.relatedOrder}.EX.${id}}`
         );
         
@@ -1385,7 +1389,9 @@ async function viewOrder(id) {
                                         const code = li[lf.relatedCode]?.value || '-';
                                         const desc = li[lf.description]?.value || '-';
                                         const qty = li[lf.quantity]?.value || 0;
-                                        const unitPrice = li[lf.codeRetailPrice]?.value || 0;
+                                        const quotePrice = li[lf.quotePrice]?.value;
+                                        const retailPrice = li[lf.codeRetailPrice]?.value || 0;
+                                        const unitPrice = quotePrice != null && quotePrice !== '' && quotePrice > 0 ? quotePrice : retailPrice;
                                         const concession = li[lf.concession]?.value;
                                         const concessionPct = li[lf.concessionPercent]?.value || 0;
                                         const total = li[lf.total]?.value || 0;

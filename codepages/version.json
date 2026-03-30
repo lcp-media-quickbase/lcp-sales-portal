@@ -1,5 +1,5 @@
 {
-  "version": "1.7.7",
+  "version": "1.7.8",
   "updated": "2026-03-30",
-  "notes": "Convert to Order now pre-fills order form instead of creating in background"
+  "notes": "Add Quote Price (FID 34) to order line items - saves quote total on conversion"
 }
