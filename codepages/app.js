@@ -543,9 +543,9 @@ function filterProducts() {
     var typeFilter = document.getElementById('product-type-filter');
     var type = typeFilter ? typeFilter.value : '';
     document.querySelectorAll('.product-row').forEach(row => { 
-        var rowType = row.dataset.type;
-        var rowName = row.dataset.name;
-        var rowCode = row.dataset.code;
+        var rowType = row.dataset.type || '';
+        var rowName = row.dataset.name || '';
+        var rowCode = row.dataset.code || '';
         var matchType = !type || rowType === type;
         var matchSearch = !search || rowName.includes(search) || rowCode.includes(search);
         row.style.display = (matchType && matchSearch) ? '' : 'none'; 

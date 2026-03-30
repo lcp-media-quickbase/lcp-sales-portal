@@ -2,7 +2,7 @@
 // App ID: bvvpht7z6 | Realm: lcp360-5583.quickbase.com
 
 const CONFIG = {
-    version: '1.7.0',
+    version: '1.7.1',
     versionUrl: 'https://raw.githubusercontent.com/lcp-media-quickbase/lcp-sales-portal/main/codepages/version.json',
     
     getRealmHostname: function() { return window.location.hostname; },
@@ -181,7 +181,7 @@ async function createRecord(tableId, data) {
     try {
         console.log('Creating record in table:', tableId, 'data:', JSON.stringify(data));
         var result = await qbApiRequest(tableId, 'records', 'POST', { to: tableId, data: [data] });
-        console.log('Create result:', result);
+        console.log('Create result:', JSON.stringify(result));
         return result;
     } catch (e) {
         console.error('createRecord failed for table', tableId, ':', e);
