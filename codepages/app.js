@@ -1442,7 +1442,200 @@ async function updateConcessionStatus(orderId, decision) {
         alert('Failed to update concession status: ' + e.message);
     }
 }
-function viewQuote(id) { window.open(`https://${CONFIG.getRealmHostname()}/db/${CONFIG.tables.quotes3D}?a=dr&rid=${id}`, '_blank'); }
+
+async function viewQuote(id) {
+    openModal('quote-detail-modal');
+    const content = document.getElementById('quote-detail-content');
+    content.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p>Loading...</p></div>';
+    
+    try {
+        const f = CONFIG.fields.quotes3D;
+        const pf = CONFIG.fields.properties;
+        const lf = CONFIG.fields.lineItems3D;
+        
+        // Fetch quote details
+        const quoteResult = await queryRecords(CONFIG.tables.quotes3D, 
+            [f.recordId, f.quoteName, f.quoteStatus, f.quoteDate, f.expirationDate, f.salesRepEmail, 
+             f.historyNotes, f.companyName, f.companyYcrmId, f.quoteTotal],
+            `{3.EX.${id}}`
+        );
+        
+        if (!quoteResult.data?.length) {
+            content.innerHTML = '<div class="empty-state"><p>Quote not found</p></div>';
+            return;
+        }
+        
+        const quote = quoteResult.data[0];
+        
+        // Fetch properties linked to this quote
+        const propsResult = await queryRecords(CONFIG.tables.properties,
+            [pf.recordId, pf.relatedProperty, pf.propertyName, pf.propertyAddress, 
+             pf.billingContact, pf.billingEmail, pf.billingPhone],
+            `{${pf.relatedQuote3D}.EX.${id}}`
+        );
+        
+        // Fetch line items for this quote
+        const lineItemsResult = await queryRecords(CONFIG.tables.lineItems3D,
+            [lf.recordId, lf.relatedProduct, lf.productName, lf.description, lf.quantity, 
+             lf.total, lf.stills, lf.panos, lf.productRetailPrice],
+            `{${lf.relatedQuote}.EX.${id}}`
+        );
+        
+        // Build the detail view
+        const status = quote[f.quoteStatus]?.value || 'Draft';
+        const quoteName = quote[f.quoteName]?.value || 'Untitled Quote';
+        const companyName = quote[f.companyName]?.value || '-';
+        const ycrmId = quote[f.companyYcrmId]?.value || '-';
+        const salesRep = quote[f.salesRepEmail]?.value || '-';
+        const quoteDate = formatDate(quote[f.quoteDate]?.value);
+        const expDate = formatDate(quote[f.expirationDate]?.value);
+        const quoteTotal = quote[f.quoteTotal]?.value || 0;
+        const notes = quote[f.historyNotes]?.value || '';
+        
+        const isConverted = status === 'Converted to Order';
+        const canConvert = !isConverted && status !== 'Rejected' && status !== 'Expired';
+        
+        let html = `
+            <div class="order-detail">
+                <div class="order-detail-header">
+                    <div class="order-detail-header-left">
+                        <div class="order-detail-title">
+                            <h2>${quoteName}</h2>
+                            <span class="badge badge-${getStatusClass(status)}">${status}</span>
+                        </div>
+                        <div class="order-detail-meta">
+                            <span><strong>Company:</strong> ${companyName}</span>
+                            <span><strong>yCRM ID:</strong> ${ycrmId}</span>
+                        </div>
+                    </div>
+                    ${canConvert ? `
+                        <div class="concession-approval-actions">
+                            <button class="btn btn-primary" onclick="closeModal('quote-detail-modal'); convertQuoteToOrder(${id});">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                                Convert to Order
+                            </button>
+                        </div>
+                    ` : ''}
+                </div>
+                
+                ${isConverted ? `
+                    <div class="concession-decision-banner approved">
+                        <strong>This quote has been converted to an order</strong>
+                    </div>
+                ` : ''}
+                
+                <div class="order-detail-grid">
+                    <div class="order-detail-card">
+                        <h4>Quote Info</h4>
+                        <p><strong>Sales Rep:</strong> ${salesRep}</p>
+                        <p><strong>Quote Date:</strong> ${quoteDate}</p>
+                        <p><strong>Expires:</strong> ${expDate}</p>
+                    </div>
+                    <div class="order-detail-card">
+                        <h4>Quote Total</h4>
+                        <p style="font-size: 28px; font-weight: 600; color: var(--lcp-blue); margin: 0;">${formatCurrency(quoteTotal)}</p>
+                    </div>
+                    ${notes ? `<div class="order-detail-card"><h4>Notes</h4><div class="order-notes-content">${notes}</div></div>` : ''}
+                </div>
+        `;
+        
+        // Properties and line items
+        const properties = propsResult.data || [];
+        const lineItems = lineItemsResult.data || [];
+        
+        if (properties.length) {
+            html += '<div class="order-detail-section"><h4>Properties</h4>';
+            
+            for (const prop of properties) {
+                const propName = prop[pf.propertyName]?.value || 'Unknown Property';
+                const propAddress = prop[pf.propertyAddress]?.value || '';
+                const billingContact = prop[pf.billingContact]?.value || '-';
+                const billingEmail = prop[pf.billingEmail]?.value || '-';
+                const billingPhone = prop[pf.billingPhone]?.value || '-';
+                
+                html += `
+                    <div class="property-detail-card">
+                        <div class="property-detail-header">
+                            <div>
+                                <strong>${propName}</strong>
+                                ${propAddress ? `<br><span class="text-muted">${propAddress}</span>` : ''}
+                            </div>
+                            <div class="property-billing-info">
+                                <span><strong>Billing:</strong> ${billingContact}</span>
+                                <span>${billingEmail}</span>
+                                <span>${billingPhone}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            html += '</div>';
+        }
+        
+        // Line items section
+        if (lineItems.length) {
+            html += `
+                <div class="order-detail-section">
+                    <h4>Line Items</h4>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Description</th>
+                                <th style="width: 60px;">Qty</th>
+                                <th style="width: 60px;">Stills</th>
+                                <th style="width: 60px;">Panos</th>
+                                <th style="width: 100px;">Unit Price</th>
+                                <th style="width: 100px;">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            for (const li of lineItems) {
+                const productName = li[lf.productName]?.value || '-';
+                const description = li[lf.description]?.value || '-';
+                const qty = li[lf.quantity]?.value || 0;
+                const stills = li[lf.stills]?.value || 0;
+                const panos = li[lf.panos]?.value || 0;
+                const unitPrice = li[lf.productRetailPrice]?.value || 0;
+                const total = li[lf.total]?.value || 0;
+                
+                html += `
+                    <tr>
+                        <td>${productName}</td>
+                        <td>${description}</td>
+                        <td>${qty}</td>
+                        <td>${stills}</td>
+                        <td>${panos}</td>
+                        <td>${formatCurrency(unitPrice)}</td>
+                        <td style="font-weight: 500; color: var(--lcp-blue);">${formatCurrency(total)}</td>
+                    </tr>
+                `;
+            }
+            
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+        
+        html += `
+            <div class="order-detail-footer">
+                <div class="order-total">
+                    <strong>Quote Total:</strong> ${formatCurrency(quoteTotal)}
+                </div>
+            </div>
+        </div>`;
+        
+        content.innerHTML = html;
+        
+    } catch (e) {
+        console.error('Failed to load quote details:', e);
+        content.innerHTML = '<div class="empty-state"><p>Failed to load quote details</p></div>';
+    }
+}
 
 // ============================================================================
 // CONVERT 3D QUOTE TO ORDER
