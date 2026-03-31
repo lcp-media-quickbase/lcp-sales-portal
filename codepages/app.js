@@ -392,9 +392,46 @@ function selectProductForPropertyLine(propertyId, lineItemId) {
             li.productName = product.name;
             li.unitPrice = product.price;
             recalcLineItemTotal(li);
+            
+            // Auto-add 9430 (Virtual Tour Hosting) when 9461 or 9456 is selected
+            if (product.code === '9461' || product.code === '9456') {
+                autoAddHostingProduct(orderProp, '9430');
+            }
+            
             renderOrderProperties();
         }
     });
+}
+
+// Auto-add a product by code if not already present on this property
+function autoAddHostingProduct(orderProp, productCode) {
+    // Check if already exists on this property
+    if (orderProp.lineItems.find(li => li.productCode === productCode)) {
+        return; // Already added
+    }
+    
+    // Find the product
+    const product = AppState.products.find(p => p.code === productCode);
+    if (!product) {
+        console.warn('Auto-add product not found:', productCode);
+        return;
+    }
+    
+    lineItemCounter++;
+    const newLineItem = {
+        id: lineItemCounter,
+        productId: product.id,
+        productCode: product.code,
+        productName: product.name,
+        quantity: 1,
+        unitPrice: product.price,
+        total: product.price,
+        concession: false,
+        concessionPercent: 0
+    };
+    
+    orderProp.lineItems.push(newLineItem);
+    showSuccess(`Auto-added: ${product.name}`);
 }
 
 function renderOrderProperties() {

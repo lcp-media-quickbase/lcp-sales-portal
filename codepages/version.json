@@ -1,5 +1,5 @@
 {
-  "version": "1.7.8",
+  "version": "1.7.9",
   "updated": "2026-03-30",
-  "notes": "Add Quote Price (FID 34) to order line items - saves quote total on conversion"
+  "notes": "Auto-add 9430 (Virtual Tour Hosting) when 9461 or 9456 is added to order"
 }
