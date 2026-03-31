@@ -2,7 +2,7 @@
 // App ID: bvvpht7z6 | Realm: lcp360-5583.quickbase.com
 
 const CONFIG = {
-    version: '1.7.9',
+    version: '1.7.10',
     versionUrl: 'https://raw.githubusercontent.com/lcp-media-quickbase/lcp-sales-portal/main/codepages/version.json',
     
     getRealmHostname: function() { return window.location.hostname; },
@@ -26,8 +26,9 @@ const CONFIG = {
             recordId: 3, dateCreated: 1, dateModified: 2, quoteDate: 6, expirationDate: 7,
             salesRepEmail: 8, historyNotes: 9, orderStatus: 10, orderName: 11, orderPDF: 12,
             propertyWorksheet: 13, relatedCompany: 18, companyYcrmId: 19, companyYcrmName: 20, companyName: 21,
-            billingContactName: 22, billingContactEmail: 23, billingContactPhone: 24, ycrmOpportunityId: 39,
-            concessionsApproval: 42, concessionsApprovedBy: 43, concessionsApprovedDate: 44,
+            billingContactName: 22, billingContactEmail: 23, billingContactPhone: 24,
+            contractContact: 35, contractEmail: 36, contractPhone: 37,
+            ycrmOpportunityId: 39, concessionsApproval: 42, concessionsApprovedBy: 43, concessionsApprovedDate: 44,
             relatedQuote3D: 47
         },
         orderLineItems: {

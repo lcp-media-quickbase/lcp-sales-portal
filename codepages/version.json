@@ -1,5 +1,5 @@
 {
-  "version": "1.7.9",
+  "version": "1.7.10",
   "updated": "2026-03-30",
-  "notes": "Auto-add 9430 (Virtual Tour Hosting) when 9461 or 9456 is added to order"
+  "notes": "Add Contract Contact fields (FID 35, 36, 37) to order details"
 }

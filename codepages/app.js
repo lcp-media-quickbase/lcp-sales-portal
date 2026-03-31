@@ -1296,6 +1296,7 @@ async function viewOrder(id) {
         const orderResult = await queryRecords(CONFIG.tables.orders, 
             [f.recordId, f.orderStatus, f.quoteDate, f.expirationDate, f.salesRepEmail, f.historyNotes, 
              f.companyName, f.companyYcrmId, f.ycrmOpportunityId, f.billingContactName, f.billingContactEmail, f.billingContactPhone,
+             f.contractContact, f.contractEmail, f.contractPhone,
              f.concessionsApproval, f.concessionsApprovedBy, f.concessionsApprovedDate],
             `{3.EX.${id}}`
         );
@@ -1328,12 +1329,16 @@ async function viewOrder(id) {
         const orderDate = formatDate(order[f.quoteDate]?.value);
         const expDate = formatDate(order[f.expirationDate]?.value);
         const notes = order[f.historyNotes]?.value || '';
+        const contractContact = order[f.contractContact]?.value || '';
+        const contractEmail = order[f.contractEmail]?.value || '';
+        const contractPhone = order[f.contractPhone]?.value || '';
         const concessionsApproval = order[f.concessionsApproval]?.value || '';
         const concessionsApprovedBy = order[f.concessionsApprovedBy]?.value || '';
         const concessionsApprovedDate = order[f.concessionsApprovedDate]?.value || '';
         
         const needsConcessionApproval = status === 'Concessions Approval Needed';
         const hasConcessionDecision = concessionsApproval === 'Approved' || concessionsApproval === 'Denied';
+        const hasContractContact = contractContact || contractEmail || contractPhone;
         
         let html = `
             <div class="order-detail">
@@ -1374,6 +1379,14 @@ async function viewOrder(id) {
                         <p><strong>Sales Rep:</strong> ${salesRep}</p>
                         <p><strong>Order Date:</strong> ${orderDate}</p>
                     </div>
+                    ${hasContractContact ? `
+                        <div class="order-detail-card">
+                            <h4>Contract Contact</h4>
+                            ${contractContact ? `<p><strong>Name:</strong> ${contractContact}</p>` : ''}
+                            ${contractEmail ? `<p><strong>Email:</strong> <a href="mailto:${contractEmail}" style="color:var(--lcp-blue);">${contractEmail}</a></p>` : ''}
+                            ${contractPhone ? `<p><strong>Phone:</strong> ${contractPhone}</p>` : ''}
+                        </div>
+                    ` : ''}
                     ${notes ? `<div class="order-detail-card"><h4>Notes</h4><div class="order-notes-content">${notes}</div></div>` : ''}
                 </div>
         `;
