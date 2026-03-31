@@ -912,6 +912,9 @@ function renderQuoteProperties() {
 async function saveOrder() {
     const email = document.getElementById('order-sales-email').value.trim();
     const ycrmOpportunity = document.getElementById('order-ycrm-opportunity').value.trim();
+    const contractContact = document.getElementById('order-contract-contact').value.trim();
+    const contractEmail = document.getElementById('order-contract-email').value.trim();
+    const contractPhone = document.getElementById('order-contract-phone').value.trim();
     const notes = getRichTextContent('order-notes-editor');
     
     if (!email) { alert('Sales rep email required'); return; }
@@ -959,6 +962,15 @@ async function saveOrder() {
         };
         if (ycrmOpportunity) {
             orderData[f.ycrmOpportunityId] = { value: ycrmOpportunity };
+        }
+        if (contractContact) {
+            orderData[f.contractContact] = { value: contractContact };
+        }
+        if (contractEmail) {
+            orderData[f.contractEmail] = { value: contractEmail };
+        }
+        if (contractPhone) {
+            orderData[f.contractPhone] = { value: contractPhone };
         }
         // If converting from a quote, link the order back to the quote
         if (AppState.convertingQuoteId) {
@@ -1258,6 +1270,9 @@ function getStatusClass(s) { if (!s) return 'draft'; const l = s.toLowerCase(); 
 function resetOrderForm() {
     document.getElementById('order-form').reset();
     setRichTextContent('order-notes-editor', '');
+    document.getElementById('order-contract-contact').value = '';
+    document.getElementById('order-contract-email').value = '';
+    document.getElementById('order-contract-phone').value = '';
     AppState.orderProperties = [];
     AppState.selectedClient = null;
     AppState.convertingQuoteId = null;
