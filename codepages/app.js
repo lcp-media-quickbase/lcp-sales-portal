@@ -272,7 +272,90 @@ function openPropertySelector() {
     AppState.currentPropertyCallback = 'order';
     renderPropertyList();
     document.getElementById('property-search-input').value = '';
+    hideCreatePropertyForm();
     openModal('property-modal');
+}
+
+function showCreatePropertyForm() {
+    document.getElementById('property-list-view').style.display = 'none';
+    document.getElementById('property-create-view').style.display = 'block';
+    document.getElementById('new-property-name').value = '';
+    document.getElementById('new-property-street').value = '';
+    document.getElementById('new-property-city').value = '';
+    document.getElementById('new-property-state').value = '';
+    document.getElementById('new-property-zip').value = '';
+    document.getElementById('new-property-name').focus();
+}
+
+function hideCreatePropertyForm() {
+    document.getElementById('property-list-view').style.display = 'block';
+    document.getElementById('property-create-view').style.display = 'none';
+}
+
+async function createNewProperty() {
+    const name = document.getElementById('new-property-name').value.trim();
+    const street = document.getElementById('new-property-street').value.trim();
+    const city = document.getElementById('new-property-city').value.trim();
+    const state = document.getElementById('new-property-state').value.trim().toUpperCase();
+    const zip = document.getElementById('new-property-zip').value.trim();
+    
+    if (!name) {
+        alert('Property name is required');
+        return;
+    }
+    
+    // Build address string
+    let address = street;
+    if (city || state || zip) {
+        const cityStateZip = [city, state, zip].filter(Boolean).join(city && (state || zip) ? ', ' : ' ');
+        address = address ? `${address}, ${cityStateZip}` : cityStateZip;
+    }
+    
+    try {
+        const pmf = CONFIG.fields.propertiesMaster;
+        const propertyData = {
+            [pmf.propertyName]: { value: name }
+        };
+        if (street) propertyData[pmf.street1] = { value: street };
+        if (city) propertyData[pmf.city] = { value: city };
+        if (state) propertyData[pmf.state] = { value: state };
+        if (zip) propertyData[pmf.postalCode] = { value: zip };
+        if (address) propertyData[pmf.address] = { value: address };
+        
+        const result = await createRecord(CONFIG.tables.propertiesMaster, propertyData);
+        const newPropertyId = result.metadata?.createdRecordIds?.[0];
+        
+        if (!newPropertyId) {
+            if (result.metadata?.lineErrors) {
+                console.error('Property creation error:', result.metadata.lineErrors);
+            }
+            throw new Error('Failed to create property');
+        }
+        
+        // Add to local state
+        const newProperty = {
+            id: newPropertyId,
+            name: name,
+            address: address,
+            street1: street,
+            city: city,
+            state: state,
+            postalCode: zip,
+            billingContact: '',
+            billingEmail: '',
+            billingPhone: ''
+        };
+        AppState.properties.push(newProperty);
+        
+        // Add to order/quote
+        addPropertyFromSelector(newPropertyId);
+        
+        showSuccess(`Property "${name}" created!`);
+        
+    } catch (e) {
+        console.error('Create property failed:', e);
+        alert('Failed to create property: ' + e.message);
+    }
 }
 
 function addPropertyToOrder(propertyId) {
@@ -699,6 +782,7 @@ function openQuotePropertySelector() {
     renderQuotePropertyList();
     document.getElementById('property-search-input').value = '';
     AppState.currentPropertyCallback = 'quote';
+    hideCreatePropertyForm();
     openModal('property-modal');
 }
 

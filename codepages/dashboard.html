@@ -374,10 +374,14 @@
                 <button class="modal-close" onclick="closeModal('property-modal')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
             <div class="modal-body" style="padding: 0;">
-                <div style="padding: 20px 24px; border-bottom: 1px solid var(--border-color);">
-                    <input type="text" class="form-input" style="width: 100%; font-size: 15px;" placeholder="Search by property name or address..." id="property-search-input" oninput="debouncedFilterProperties()">
+                <div style="padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; gap: 12px; align-items: center;">
+                    <input type="text" class="form-input" style="flex: 1; font-size: 15px;" placeholder="Search by property name or address..." id="property-search-input" oninput="debouncedFilterProperties()">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="showCreatePropertyForm()">
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                        New
+                    </button>
                 </div>
-                <div style="max-height: 400px; overflow-y: auto;">
+                <div id="property-list-view" style="max-height: 400px; overflow-y: auto;">
                     <table class="data-table" id="property-table">
                         <thead>
                             <tr>
@@ -386,6 +390,38 @@
                         </thead>
                         <tbody id="property-table-body"></tbody>
                     </table>
+                </div>
+                <div id="property-create-view" style="display: none; padding: 20px 24px;">
+                    <h4 style="margin: 0 0 16px 0;">Create New Property</h4>
+                    <div class="form-group">
+                        <label class="form-label required">Property Name</label>
+                        <input type="text" class="form-input" id="new-property-name" placeholder="e.g., Sunset Apartments">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Street Address</label>
+                        <input type="text" class="form-input" id="new-property-street" placeholder="123 Main St">
+                    </div>
+                    <div style="display: flex; gap: 12px;">
+                        <div class="form-group" style="flex: 2;">
+                            <label class="form-label">City</label>
+                            <input type="text" class="form-input" id="new-property-city" placeholder="Chicago">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label class="form-label">State</label>
+                            <input type="text" class="form-input" id="new-property-state" placeholder="IL" maxlength="2">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label class="form-label">Zip</label>
+                            <input type="text" class="form-input" id="new-property-zip" placeholder="60601">
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 12px; margin-top: 16px;">
+                        <button type="button" class="btn btn-secondary" onclick="hideCreatePropertyForm()">Cancel</button>
+                        <button type="button" class="btn btn-primary" onclick="createNewProperty()">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                            Create & Select
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
