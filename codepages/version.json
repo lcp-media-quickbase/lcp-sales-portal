@@ -1,5 +1,5 @@
 {
-  "version": "1.7.19",
+  "version": "1.7.20",
   "updated": "2026-03-31",
-  "notes": "Save total field on line items"
+  "notes": "Revert total write - update QB formula to use Quote Price instead"
 }

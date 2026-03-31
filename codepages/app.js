@@ -1123,11 +1123,10 @@ async function saveOrder() {
                         [lf.relatedCode]: { value: li.productCode },
                         [lf.description]: { value: li.productName }, 
                         [lf.quantity]: { value: li.quantity },
-                        [lf.total]: { value: li.total || (li.quantity * li.unitPrice) },
                         [lf.concession]: { value: li.concession || false },
                         [lf.concessionPercent]: { value: li.concessionPercent || 0 }
                     };
-                    // If unitPrice differs from product retail price, save as quotePrice
+                    // Save quotePrice - formula will use this over retail price
                     if (li.unitPrice && li.unitPrice > 0) {
                         lineItemData[lf.quotePrice] = { value: li.unitPrice };
                     }
@@ -1136,7 +1135,7 @@ async function saveOrder() {
                     if (liResult.metadata?.lineErrors && Object.keys(liResult.metadata.lineErrors).length > 0) {
                         console.error('Line item creation error:', liResult.metadata.lineErrors);
                     } else {
-                        console.log('Created line item for product:', li.productName, 'code:', li.productCode, 'total:', li.total);
+                        console.log('Created line item for product:', li.productName, 'code:', li.productCode);
                     }
                 }
             }
