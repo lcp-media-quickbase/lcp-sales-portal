@@ -1,5 +1,5 @@
 {
-  "version": "1.7.16",
+  "version": "1.7.17",
   "updated": "2026-03-30",
-  "notes": "Fix auto-add string/number comparison, disable contract fields pending FID verification"
+  "notes": "Fix contract contact fields - use correct FIDs 48-51 with first/last name"
 }

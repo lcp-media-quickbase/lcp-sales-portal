@@ -1021,7 +1021,8 @@ function renderQuoteProperties() {
 async function saveOrder() {
     const email = document.getElementById('order-sales-email').value.trim();
     const ycrmOpportunity = document.getElementById('order-ycrm-opportunity').value.trim();
-    const contractContact = document.getElementById('order-contract-contact').value.trim();
+    const contractFirst = document.getElementById('order-contract-first').value.trim();
+    const contractLast = document.getElementById('order-contract-last').value.trim();
     const contractEmail = document.getElementById('order-contract-email').value.trim();
     const contractPhone = document.getElementById('order-contract-phone').value.trim();
     const notes = getRichTextContent('order-notes-editor');
@@ -1072,14 +1073,15 @@ async function saveOrder() {
         if (ycrmOpportunity) {
             orderData[f.ycrmOpportunityId] = { value: ycrmOpportunity };
         }
-        // TODO: Contract fields disabled - FID 36 is a formula field in QB
-        // Need to verify correct FIDs for Contract Contact, Email, Phone
-        // if (contractContact) {
-        //     orderData[f.contractContact] = { value: contractContact };
-        // }
-        // if (contractEmail) {
-        //     orderData[f.contractEmail] = { value: contractEmail };
-        // }
+        if (contractFirst) {
+            orderData[f.contractContactFirst] = { value: contractFirst };
+        }
+        if (contractLast) {
+            orderData[f.contractContactLast] = { value: contractLast };
+        }
+        if (contractEmail) {
+            orderData[f.contractEmail] = { value: contractEmail };
+        }
         if (contractPhone) {
             orderData[f.contractPhone] = { value: contractPhone };
         }
@@ -1381,7 +1383,8 @@ function getStatusClass(s) { if (!s) return 'draft'; const l = s.toLowerCase(); 
 function resetOrderForm() {
     document.getElementById('order-form').reset();
     setRichTextContent('order-notes-editor', '');
-    document.getElementById('order-contract-contact').value = '';
+    document.getElementById('order-contract-first').value = '';
+    document.getElementById('order-contract-last').value = '';
     document.getElementById('order-contract-email').value = '';
     document.getElementById('order-contract-phone').value = '';
     AppState.orderProperties = [];
@@ -1422,7 +1425,7 @@ async function viewOrder(id) {
         const orderResult = await queryRecords(CONFIG.tables.orders, 
             [f.recordId, f.orderStatus, f.quoteDate, f.expirationDate, f.salesRepEmail, f.historyNotes, 
              f.companyName, f.companyYcrmId, f.ycrmOpportunityId, f.billingContactName, f.billingContactEmail, f.billingContactPhone,
-             f.contractContact, f.contractEmail, f.contractPhone,
+             f.contractContactFirst, f.contractContactLast, f.contractEmail, f.contractPhone,
              f.concessionsApproval, f.concessionsApprovedBy, f.concessionsApprovedDate],
             `{3.EX.${id}}`
         );
@@ -1455,7 +1458,9 @@ async function viewOrder(id) {
         const orderDate = formatDate(order[f.quoteDate]?.value);
         const expDate = formatDate(order[f.expirationDate]?.value);
         const notes = order[f.historyNotes]?.value || '';
-        const contractContact = order[f.contractContact]?.value || '';
+        const contractFirst = order[f.contractContactFirst]?.value || '';
+        const contractLast = order[f.contractContactLast]?.value || '';
+        const contractContact = [contractFirst, contractLast].filter(Boolean).join(' ');
         const contractEmail = order[f.contractEmail]?.value || '';
         const contractPhone = order[f.contractPhone]?.value || '';
         const concessionsApproval = order[f.concessionsApproval]?.value || '';
