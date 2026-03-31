@@ -1,5 +1,5 @@
 {
-  "version": "1.7.13",
+  "version": "1.7.14",
   "updated": "2026-03-30",
-  "notes": "Fix property creation - don't write to composite Address field"
+  "notes": "Convert state abbreviations to full names for property creation"
 }
