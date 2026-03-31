@@ -1123,6 +1123,7 @@ async function saveOrder() {
                         [lf.relatedCode]: { value: li.productCode },
                         [lf.description]: { value: li.productName }, 
                         [lf.quantity]: { value: li.quantity },
+                        [lf.total]: { value: li.total || (li.quantity * li.unitPrice) },
                         [lf.concession]: { value: li.concession || false },
                         [lf.concessionPercent]: { value: li.concessionPercent || 0 }
                     };
@@ -1135,7 +1136,7 @@ async function saveOrder() {
                     if (liResult.metadata?.lineErrors && Object.keys(liResult.metadata.lineErrors).length > 0) {
                         console.error('Line item creation error:', liResult.metadata.lineErrors);
                     } else {
-                        console.log('Created line item for product:', li.productName, 'code:', li.productCode);
+                        console.log('Created line item for product:', li.productName, 'code:', li.productCode, 'total:', li.total);
                     }
                 }
             }
