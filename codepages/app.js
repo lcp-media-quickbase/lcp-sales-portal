@@ -1116,7 +1116,7 @@ async function saveOrder() {
             
             // 3. Create line items for this property
             for (const li of op.lineItems) {
-                if (li.productId) {
+                if (li.productId || li.productCode) {
                     const lineItemData = { 
                         [lf.relatedOrder]: { value: orderId },
                         [lf.relatedProperty]: { value: propertyLinkId },
@@ -1362,12 +1362,9 @@ async function loadQuoteHistory() {
                 <td>${formatDate(q[f.quoteDate]?.value)}</td>
                 <td>${q[f.salesRepEmail]?.value||'-'}</td>
                 <td class="actions">
-                    <button class="btn btn-ghost btn-sm" onclick="viewQuote(${q[f.recordId].value})" title="View in QuickBase">
+                    <button class="btn btn-ghost btn-sm" onclick="viewQuote(${q[f.recordId].value})" title="View Quote">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                     </button>
-                    ${canConvert ? `<button class="btn btn-ghost btn-sm" onclick="convertQuoteToOrder(${q[f.recordId].value})" title="Convert to Order" style="color:var(--lcp-blue);">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                    </button>` : ''}
                 </td>
             </tr>`;
         }).join('')}</tbody></table>`;
@@ -1921,8 +1918,9 @@ async function convertQuoteToOrder(quoteId) {
         const conversionNote = `Converted from 3D Quote: ${quoteName} (ID: ${quoteId})`;
         setRichTextContent('order-notes-editor', historyNotes + (historyNotes ? '\n\n' : '') + conversionNote);
         
-        // 8. Find the 3D Rendering product
-        const renderingProduct = AppState.products.find(p => p.code === RENDERING_CHARGE_CODE);
+        // 8. Find the 3D Rendering product (compare as strings since QB may return number)
+        const renderingProduct = AppState.products.find(p => String(p.code) === String(RENDERING_CHARGE_CODE));
+        console.log('Looking for rendering product:', RENDERING_CHARGE_CODE, 'Found:', renderingProduct);
         
         // 9. Add properties with line items
         for (const prop of quoteProperties) {

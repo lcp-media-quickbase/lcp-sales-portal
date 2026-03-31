@@ -1,5 +1,5 @@
 {
-  "version": "1.7.17",
+  "version": "1.7.18",
   "updated": "2026-03-30",
-  "notes": "Fix contract contact fields - use correct FIDs 48-51 with first/last name"
+  "notes": "Remove convert arrow from quote list, fix 3D rendering line item save"
 }
