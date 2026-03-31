@@ -500,7 +500,9 @@ function selectProductForPropertyLine(propertyId, lineItemId) {
             recalcLineItemTotal(li);
             
             // Auto-add 9430 (Virtual Tour Hosting) when 9461 or 9456 is selected
-            if (product.code === '9461' || product.code === '9456') {
+            console.log('Selected product code:', product.code, 'type:', typeof product.code);
+            if (product.code === '9461' || product.code === '9456' || product.code === 9461 || product.code === 9456) {
+                console.log('Triggering auto-add for 9430');
                 autoAddHostingProduct(orderProp, '9430');
             }
             

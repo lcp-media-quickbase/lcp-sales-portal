@@ -1,5 +1,5 @@
 {
-  "version": "1.7.14",
+  "version": "1.7.15",
   "updated": "2026-03-30",
-  "notes": "Convert state abbreviations to full names for property creation"
+  "notes": "Debug logging for auto-add product, fix type comparison"
 }
