@@ -1,5 +1,5 @@
 {
-  "version": "1.7.12",
+  "version": "1.7.13",
   "updated": "2026-03-30",
-  "notes": "Add ability to create new property from order/quote forms"
+  "notes": "Fix property creation - don't write to composite Address field"
 }

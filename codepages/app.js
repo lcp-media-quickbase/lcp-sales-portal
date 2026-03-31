@@ -304,7 +304,7 @@ async function createNewProperty() {
         return;
     }
     
-    // Build address string
+    // Build address string for local display
     let address = street;
     if (city || state || zip) {
         const cityStateZip = [city, state, zip].filter(Boolean).join(city && (state || zip) ? ', ' : ' ');
@@ -313,6 +313,7 @@ async function createNewProperty() {
     
     try {
         const pmf = CONFIG.fields.propertiesMaster;
+        // Note: FID 13 (address) is a composite Address field - write to sub-fields only
         const propertyData = {
             [pmf.propertyName]: { value: name }
         };
@@ -320,14 +321,17 @@ async function createNewProperty() {
         if (city) propertyData[pmf.city] = { value: city };
         if (state) propertyData[pmf.state] = { value: state };
         if (zip) propertyData[pmf.postalCode] = { value: zip };
-        if (address) propertyData[pmf.address] = { value: address };
+        // Don't write to FID 13 (composite address) - QB auto-builds it from sub-fields
         
+        console.log('Creating property with data:', JSON.stringify(propertyData));
         const result = await createRecord(CONFIG.tables.propertiesMaster, propertyData);
         const newPropertyId = result.metadata?.createdRecordIds?.[0];
         
         if (!newPropertyId) {
             if (result.metadata?.lineErrors) {
                 console.error('Property creation error:', result.metadata.lineErrors);
+                const firstError = Object.values(result.metadata.lineErrors)[0];
+                throw new Error(Array.isArray(firstError) ? firstError[0] : 'Unknown error');
             }
             throw new Error('Failed to create property');
         }
