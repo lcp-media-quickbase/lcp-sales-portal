@@ -513,13 +513,13 @@ function selectProductForPropertyLine(propertyId, lineItemId) {
 
 // Auto-add a product by code if not already present on this property
 function autoAddHostingProduct(orderProp, productCode) {
-    // Check if already exists on this property
-    if (orderProp.lineItems.find(li => li.productCode === productCode)) {
+    // Check if already exists on this property (compare as strings)
+    if (orderProp.lineItems.find(li => String(li.productCode) === String(productCode))) {
         return; // Already added
     }
     
-    // Find the product
-    const product = AppState.products.find(p => p.code === productCode);
+    // Find the product (compare as strings since QB may return number or string)
+    const product = AppState.products.find(p => String(p.code) === String(productCode));
     if (!product) {
         console.warn('Auto-add product not found:', productCode);
         return;
@@ -1072,12 +1072,14 @@ async function saveOrder() {
         if (ycrmOpportunity) {
             orderData[f.ycrmOpportunityId] = { value: ycrmOpportunity };
         }
-        if (contractContact) {
-            orderData[f.contractContact] = { value: contractContact };
-        }
-        if (contractEmail) {
-            orderData[f.contractEmail] = { value: contractEmail };
-        }
+        // TODO: Contract fields disabled - FID 36 is a formula field in QB
+        // Need to verify correct FIDs for Contract Contact, Email, Phone
+        // if (contractContact) {
+        //     orderData[f.contractContact] = { value: contractContact };
+        // }
+        // if (contractEmail) {
+        //     orderData[f.contractEmail] = { value: contractEmail };
+        // }
         if (contractPhone) {
             orderData[f.contractPhone] = { value: contractPhone };
         }
