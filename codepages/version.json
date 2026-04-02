@@ -1,5 +1,5 @@
 {
-  "version": "1.8.8",
+  "version": "1.8.9",
   "updated": "2026-04-02",
-  "notes": "Save as Draft + Edit Draft for orders and quotes"
+  "notes": "Dashboard landing page with KPIs, recent activity, and admin concessions queue"
 }

@@ -26,8 +26,16 @@
             
             <nav class="sidebar-nav">
                 <div class="nav-section">
+                    <div class="nav-section-title">Overview</div>
+                    <a class="nav-item active" data-tab="tab-dashboard" onclick="switchTab('tab-dashboard')">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+                        Dashboard
+                    </a>
+                </div>
+
+                <div class="nav-section">
                     <div class="nav-section-title">Orders</div>
-                    <a class="nav-item active" data-tab="tab-new-order" onclick="switchTab('tab-new-order')">
+                    <a class="nav-item" data-tab="tab-new-order" onclick="switchTab('tab-new-order')">
                         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
                         New Order
                     </a>
@@ -64,9 +72,82 @@
         </aside>
         
         <main class="main-content">
-            
+
+            <!-- TAB: Dashboard -->
+            <div id="tab-dashboard" class="tab-content default-active">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Dashboard</h1>
+                        <p class="page-subtitle">Overview of recent sales activity</p>
+                    </div>
+                    <div style="display:flex;gap:12px;align-items:center;">
+                        <button class="btn btn-secondary" onclick="switchTab('tab-new-quote')">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                            New 3D Quote
+                        </button>
+                        <button class="btn btn-primary" onclick="switchTab('tab-new-order')">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                            New Order
+                        </button>
+                    </div>
+                </div>
+                <div class="page-content">
+
+                    <!-- KPI Row -->
+                    <div class="dash-kpi-row">
+                        <div>
+                            <div class="dash-section-label">Orders</div>
+                            <div class="dash-kpi-grid">
+                                <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value" id="dash-stat-orders-total">—</div></div>
+                                <div class="stat-card"><div class="stat-label">Active</div><div class="stat-value blue" id="dash-stat-orders-active">—</div></div>
+                                <div class="stat-card"><div class="stat-label">Completed</div><div class="stat-value" id="dash-stat-orders-completed">—</div></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="dash-section-label">3D Quotes</div>
+                            <div class="dash-kpi-grid">
+                                <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value" id="dash-stat-quotes-total">—</div></div>
+                                <div class="stat-card"><div class="stat-label">Pending Review</div><div class="stat-value blue" id="dash-stat-quotes-pending">—</div></div>
+                                <div class="stat-card"><div class="stat-label">Approved</div><div class="stat-value" id="dash-stat-quotes-approved">—</div></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Admin: Concessions Pending Approval -->
+                    <div id="dash-concessions-section" style="display:none;" class="dash-panel dash-concessions-alert">
+                        <div class="dash-panel-header">
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--warning);flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                <span class="dash-panel-title">Concessions Pending Approval</span>
+                                <span class="badge badge-pending" id="dash-concessions-count">0</span>
+                            </div>
+                        </div>
+                        <div id="dash-concessions-table"></div>
+                    </div>
+
+                    <!-- Recent Activity -->
+                    <div class="dash-cols">
+                        <div class="dash-panel">
+                            <div class="dash-panel-header">
+                                <span class="dash-panel-title">Recent Orders</span>
+                                <a class="dash-view-all" onclick="switchTab('tab-order-history')">View all</a>
+                            </div>
+                            <div id="dash-recent-orders"><div class="loading-spinner" style="height:120px"><div class="spinner"></div></div></div>
+                        </div>
+                        <div class="dash-panel">
+                            <div class="dash-panel-header">
+                                <span class="dash-panel-title">Recent 3D Quotes</span>
+                                <a class="dash-view-all" onclick="switchTab('tab-quote-history')">View all</a>
+                            </div>
+                            <div id="dash-recent-quotes"><div class="loading-spinner" style="height:120px"><div class="spinner"></div></div></div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
             <!-- TAB: New Order -->
-            <div id="tab-new-order" class="tab-content default-active">
+            <div id="tab-new-order" class="tab-content">
                 <div class="page-header">
                     <h1 class="page-title">Create New Order</h1>
                     <p class="page-subtitle">Build an order with products and property details</p>

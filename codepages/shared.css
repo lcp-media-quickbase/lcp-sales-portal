@@ -330,6 +330,26 @@ body {
 .badge-type.three-d { background: rgba(104,182,229,0.2); color: var(--lcp-blue); }
 .badge-type.tourbuilder { background: rgba(236,72,153,0.2); color: #ec4899; }
 
+/* Dashboard */
+.dash-kpi-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+.dash-kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.dash-section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); font-weight: 600; margin-bottom: 10px; }
+.dash-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+.dash-panel { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; margin-bottom: 24px; }
+.dash-panel-header { padding: 14px 16px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; }
+.dash-panel-title { font-weight: 600; font-size: 14px; }
+.dash-view-all { font-size: 13px; color: var(--lcp-blue); cursor: pointer; }
+.dash-view-all:hover { text-decoration: underline; }
+.dash-mini-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 16px; border-bottom: 1px solid var(--border-color); font-size: 13px; cursor: pointer; transition: background 0.15s; }
+.dash-mini-row:last-child { border-bottom: none; }
+.dash-mini-row:hover { background: var(--bg-hover); }
+.dash-mini-left { flex: 1; min-width: 0; }
+.dash-mini-company { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dash-mini-meta { color: var(--text-muted); font-size: 12px; margin-top: 2px; }
+.dash-concessions-alert { border-color: rgba(245,158,11,0.4); }
+.dash-concessions-alert .dash-panel-header { background: rgba(245,158,11,0.07); }
+.dash-cols .dash-panel { margin-bottom: 0; }
+
 /* Toast & Version Notice */
 .toast { position: fixed; bottom: 24px; right: 24px; display: flex; align-items: center; gap: 12px; padding: 16px 20px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); z-index: 2000; animation: slideIn 0.3s ease; }
 .toast-success { border-color: var(--success); }

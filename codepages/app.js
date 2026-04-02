@@ -8,7 +8,8 @@ const AppState = {
     products: [], products3D: [], properties: [], clients: [], orders: [], quotes: [], priceList: [],
     attachmentCounter: 0,
     editingOrderId: null,
-    editingQuoteId: null
+    editingQuoteId: null,
+    currentUser: null
 };
 
 // ============================================================================
@@ -24,8 +25,8 @@ function buildDashboard() {
     loadProducts();
     load3DProducts();
     loadClients();
-    prefillCurrentUserEmail();
     checkVersion();
+    loadDashboard();
     console.log('LCP Sales Portal initialized');
 }
 
@@ -1689,6 +1690,117 @@ async function loadQuoteDraft(id) {
     } catch (e) {
         console.error('Load quote draft failed:', e);
         alert('Failed to load draft: ' + e.message);
+    }
+}
+
+// ============================================================================
+// DASHBOARD
+// ============================================================================
+
+async function loadDashboard() {
+    try {
+        const f = CONFIG.fields.orders;
+        const qf = CONFIG.fields.quotes3D;
+
+        // Resolve current user once and cache
+        if (!AppState.currentUser) {
+            AppState.currentUser = await getCurrentUser();
+        }
+        var user = AppState.currentUser;
+        var admin = isAdmin(user?.email);
+        prefillCurrentUserEmail();
+
+        // Parallel fetches
+        var queries = [
+            queryRecords(CONFIG.tables.orders,
+                [f.recordId, f.orderStatus, f.quoteDate, f.salesRepEmail, f.companyName, f.orderName],
+                null, [{ fieldId: f.dateModified, order: 'DESC' }]),
+            queryRecords(CONFIG.tables.quotes3D,
+                [qf.recordId, qf.quoteName, qf.quoteStatus, qf.quoteDate, qf.salesRepEmail, qf.companyName],
+                null, [{ fieldId: qf.dateModified, order: 'DESC' }])
+        ];
+        if (admin) {
+            queries.push(queryRecords(CONFIG.tables.orders,
+                [f.recordId, f.orderStatus, f.quoteDate, f.salesRepEmail, f.companyName, f.orderName],
+                `{${f.orderStatus}.EX.'Concessions Approval Needed'}`,
+                [{ fieldId: f.dateModified, order: 'DESC' }]));
+        }
+
+        var results = await Promise.all(queries);
+        var orders = results[0].data || [];
+        var quotes = results[1].data || [];
+        var concessions = admin ? (results[2].data || []) : [];
+
+        // Order KPIs
+        var activeStatuses = ['Pending', 'Processing', 'Contract Needed', 'Concessions Approval Needed', 'Concessions Approved'];
+        document.getElementById('dash-stat-orders-total').textContent = orders.length;
+        document.getElementById('dash-stat-orders-active').textContent = orders.filter(function(o) { return activeStatuses.includes(o[f.orderStatus]?.value); }).length;
+        document.getElementById('dash-stat-orders-completed').textContent = orders.filter(function(o) { return o[f.orderStatus]?.value === 'Completed'; }).length;
+
+        // Quote KPIs
+        document.getElementById('dash-stat-quotes-total').textContent = quotes.length;
+        document.getElementById('dash-stat-quotes-pending').textContent = quotes.filter(function(q) { return ['Pending Review', 'Sent to Client'].includes(q[qf.quoteStatus]?.value); }).length;
+        document.getElementById('dash-stat-quotes-approved').textContent = quotes.filter(function(q) { return q[qf.quoteStatus]?.value === 'Approved'; }).length;
+
+        // Recent Orders (last 5)
+        var recentOrdersEl = document.getElementById('dash-recent-orders');
+        var recentOrders = orders.slice(0, 5);
+        if (!recentOrders.length) {
+            recentOrdersEl.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">No orders yet</div>';
+        } else {
+            recentOrdersEl.innerHTML = recentOrders.map(function(o) {
+                var status = o[f.orderStatus]?.value || 'Draft';
+                return `<div class="dash-mini-row" onclick="viewOrder(${o[f.recordId].value})">
+                    <div class="dash-mini-left">
+                        <div class="dash-mini-company">${o[f.companyName]?.value || '—'}</div>
+                        <div class="dash-mini-meta">${formatDate(o[f.quoteDate]?.value) || '—'} &middot; ${o[f.salesRepEmail]?.value || '—'}</div>
+                    </div>
+                    <span class="badge badge-${getStatusClass(status)}">${status}</span>
+                </div>`;
+            }).join('');
+        }
+
+        // Recent Quotes (last 5)
+        var recentQuotesEl = document.getElementById('dash-recent-quotes');
+        var recentQuotes = quotes.slice(0, 5);
+        if (!recentQuotes.length) {
+            recentQuotesEl.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">No quotes yet</div>';
+        } else {
+            recentQuotesEl.innerHTML = recentQuotes.map(function(q) {
+                var status = q[qf.quoteStatus]?.value || 'Draft';
+                return `<div class="dash-mini-row" onclick="viewQuote(${q[qf.recordId].value})">
+                    <div class="dash-mini-left">
+                        <div class="dash-mini-company">${q[qf.quoteName]?.value || q[qf.companyName]?.value || '—'}</div>
+                        <div class="dash-mini-meta">${q[qf.companyName]?.value || '—'} &middot; ${formatDate(q[qf.quoteDate]?.value) || '—'}</div>
+                    </div>
+                    <span class="badge badge-${getStatusClass(status)}">${status}</span>
+                </div>`;
+            }).join('');
+        }
+
+        // Admin: Concessions
+        if (admin) {
+            var section = document.getElementById('dash-concessions-section');
+            section.style.display = 'block';
+            document.getElementById('dash-concessions-count').textContent = concessions.length;
+            var concessionsEl = document.getElementById('dash-concessions-table');
+            if (!concessions.length) {
+                concessionsEl.innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:13px;">No orders pending approval.</div>';
+            } else {
+                concessionsEl.innerHTML = concessions.map(function(o) {
+                    return `<div class="dash-mini-row" onclick="viewOrder(${o[f.recordId].value})">
+                        <div class="dash-mini-left">
+                            <div class="dash-mini-company">${o[f.companyName]?.value || '—'}</div>
+                            <div class="dash-mini-meta">${o[f.salesRepEmail]?.value || '—'} &middot; ${formatDate(o[f.quoteDate]?.value)}</div>
+                        </div>
+                        <span class="badge badge-pending">Needs Approval</span>
+                    </div>`;
+                }).join('');
+            }
+        }
+
+    } catch (e) {
+        console.error('loadDashboard failed:', e);
     }
 }
 

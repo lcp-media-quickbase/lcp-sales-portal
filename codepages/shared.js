@@ -2,7 +2,7 @@
 // App ID: bvvpht7z6 | Realm: lcp360-5583.quickbase.com
 
 const CONFIG = {
-    version: '1.8.8',
+    version: '1.8.9',
     versionUrl: 'https://raw.githubusercontent.com/lcp-media-quickbase/lcp-sales-portal/main/codepages/version.json',
     
     getRealmHostname: function() { return window.location.hostname; },
@@ -76,10 +76,16 @@ const CONFIG = {
     },
     
     quoteStatuses: ['Draft', 'Pending Review', 'Sent to Client', 'Approved', 'Rejected', 'Expired', 'Converted to Order'],
-    orderStatuses: ['Draft', 'Pending', 'Processing', 'Completed', 'Cancelled']
+    orderStatuses: ['Draft', 'Pending', 'Processing', 'Completed', 'Cancelled'],
+    adminEmails: []
 };
 
 Object.freeze(CONFIG);
+
+function isAdmin(email) {
+    if (!email || !CONFIG.adminEmails.length) return false;
+    return CONFIG.adminEmails.some(function(a) { return a.toLowerCase() === email.toLowerCase(); });
+}
 
 // ============================================================================
 // THEME MANAGEMENT
@@ -281,7 +287,8 @@ function switchTab(tabId) {
     document.querySelectorAll('.nav-item').forEach(i => { i.classList.remove('active'); });
     const nav = document.querySelector(`[data-tab="${tabId}"]`);
     if (nav) nav.classList.add('active');
-    if (tabId === 'tab-order-history') loadOrderHistory();
+    if (tabId === 'tab-dashboard') loadDashboard();
+    else if (tabId === 'tab-order-history') loadOrderHistory();
     else if (tabId === 'tab-quote-history') loadQuoteHistory();
     else if (tabId === 'tab-price-list') loadPriceList();
 }
