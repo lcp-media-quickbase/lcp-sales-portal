@@ -2,7 +2,7 @@
 // App ID: bvvpht7z6 | Realm: lcp360-5583.quickbase.com
 
 const CONFIG = {
-    version: '1.8.9',
+    version: '1.9.0',
     versionUrl: 'https://raw.githubusercontent.com/lcp-media-quickbase/lcp-sales-portal/main/codepages/version.json',
     
     getRealmHostname: function() { return window.location.hostname; },
@@ -82,9 +82,10 @@ const CONFIG = {
 
 Object.freeze(CONFIG);
 
-function isAdmin(email) {
-    if (!email || !CONFIG.adminEmails.length) return false;
-    return CONFIG.adminEmails.some(function(a) { return a.toLowerCase() === email.toLowerCase(); });
+function isAdmin(user) {
+    if (!user) return false;
+    if (typeof user === 'object') return user.role === 'Administrator';
+    return user === 'Administrator';
 }
 
 // ============================================================================
@@ -216,27 +217,39 @@ async function updateRecord(tableId, data) {
 async function getCurrentUser() {
     try {
         var realm = CONFIG.getRealmHostname();
-        console.log('[User] Fetching current user from realm:', realm);
-        // Use legacy XML API - API_GetUserInfo returns current user when no email provided
         var resp = await fetch('https://' + realm + '/db/main?a=API_GetUserInfo&fmt=structured', {
             method: 'GET',
             credentials: 'include'
         });
-        console.log('[User] Response status:', resp.status);
-        if (!resp.ok) {
-            console.error('[User] Failed to get current user:', resp.status, resp.statusText);
-            return null;
-        }
+        if (!resp.ok) { console.error('[User] Failed to get user info:', resp.status); return null; }
         var text = await resp.text();
-        console.log('[User] Response:', text);
-        // Parse XML response to get email
         var parser = new DOMParser();
         var xml = parser.parseFromString(text, 'text/xml');
+        var userEl = xml.querySelector('user');
         var email = xml.querySelector('email')?.textContent;
         var firstName = xml.querySelector('firstName')?.textContent;
         var lastName = xml.querySelector('lastName')?.textContent;
-        console.log('[User] Parsed:', { email, firstName, lastName });
-        return { email, firstName, lastName };
+        var userId = userEl?.getAttribute('id');
+
+        // Fetch role in this app via API_GetUser
+        var role = null;
+        if (userId) {
+            try {
+                var roleResp = await fetch(
+                    'https://' + realm + '/db/' + CONFIG.appId + '?a=API_GetUser&userid=' + encodeURIComponent(userId) + '&fmt=structured',
+                    { credentials: 'include' }
+                );
+                var roleText = await roleResp.text();
+                var roleXml = parser.parseFromString(roleText, 'text/xml');
+                role = roleXml.querySelector('role')?.getAttribute('name') || null;
+                console.log('[User] Role:', role);
+            } catch (re) {
+                console.warn('[User] Could not fetch role:', re);
+            }
+        }
+
+        console.log('[User] Resolved:', { email, firstName, lastName, role });
+        return { email, firstName, lastName, id: userId, role };
     } catch (e) {
         console.error('[User] getCurrentUser failed:', e);
         return null;

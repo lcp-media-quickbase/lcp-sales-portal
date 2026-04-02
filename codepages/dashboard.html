@@ -80,69 +80,10 @@
                         <h1 class="page-title">Dashboard</h1>
                         <p class="page-subtitle">Overview of recent sales activity</p>
                     </div>
-                    <div style="display:flex;gap:12px;align-items:center;">
-                        <button class="btn btn-secondary" onclick="switchTab('tab-new-quote')">
-                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-                            New 3D Quote
-                        </button>
-                        <button class="btn btn-primary" onclick="switchTab('tab-new-order')">
-                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-                            New Order
-                        </button>
-                    </div>
+                    <div id="dash-header-actions" style="display:flex;gap:12px;align-items:center;"></div>
                 </div>
-                <div class="page-content">
-
-                    <!-- KPI Row -->
-                    <div class="dash-kpi-row">
-                        <div>
-                            <div class="dash-section-label">Orders</div>
-                            <div class="dash-kpi-grid">
-                                <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value" id="dash-stat-orders-total">—</div></div>
-                                <div class="stat-card"><div class="stat-label">Active</div><div class="stat-value blue" id="dash-stat-orders-active">—</div></div>
-                                <div class="stat-card"><div class="stat-label">Completed</div><div class="stat-value" id="dash-stat-orders-completed">—</div></div>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="dash-section-label">3D Quotes</div>
-                            <div class="dash-kpi-grid">
-                                <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value" id="dash-stat-quotes-total">—</div></div>
-                                <div class="stat-card"><div class="stat-label">Pending Review</div><div class="stat-value blue" id="dash-stat-quotes-pending">—</div></div>
-                                <div class="stat-card"><div class="stat-label">Approved</div><div class="stat-value" id="dash-stat-quotes-approved">—</div></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Admin: Concessions Pending Approval -->
-                    <div id="dash-concessions-section" style="display:none;" class="dash-panel dash-concessions-alert">
-                        <div class="dash-panel-header">
-                            <div style="display:flex;align-items:center;gap:10px;">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--warning);flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                                <span class="dash-panel-title">Concessions Pending Approval</span>
-                                <span class="badge badge-pending" id="dash-concessions-count">0</span>
-                            </div>
-                        </div>
-                        <div id="dash-concessions-table"></div>
-                    </div>
-
-                    <!-- Recent Activity -->
-                    <div class="dash-cols">
-                        <div class="dash-panel">
-                            <div class="dash-panel-header">
-                                <span class="dash-panel-title">Recent Orders</span>
-                                <a class="dash-view-all" onclick="switchTab('tab-order-history')">View all</a>
-                            </div>
-                            <div id="dash-recent-orders"><div class="loading-spinner" style="height:120px"><div class="spinner"></div></div></div>
-                        </div>
-                        <div class="dash-panel">
-                            <div class="dash-panel-header">
-                                <span class="dash-panel-title">Recent 3D Quotes</span>
-                                <a class="dash-view-all" onclick="switchTab('tab-quote-history')">View all</a>
-                            </div>
-                            <div id="dash-recent-quotes"><div class="loading-spinner" style="height:120px"><div class="spinner"></div></div></div>
-                        </div>
-                    </div>
-
+                <div class="page-content" id="dash-content">
+                    <div class="loading-spinner"><div class="spinner"></div><p>Loading...</p></div>
                 </div>
             </div>
 
@@ -583,6 +524,48 @@
         </div>
     </div>
     
+    <!-- Line Items Modal (3D Director) -->
+    <div id="line-items-modal" class="modal">
+        <div class="modal-content" style="max-width: 960px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Line Items — <span id="li-modal-title"></span></h3>
+                <button class="modal-close" onclick="closeModal('line-items-modal')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <div class="modal-body">
+                <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">
+                    <div>
+                        <label class="form-label" style="margin-bottom:4px;">Quote Status</label>
+                        <select class="form-select" id="li-modal-status" style="width:200px;"></select>
+                    </div>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="min-width:200px;">Product</th>
+                                <th style="width:70px;">Qty</th>
+                                <th style="width:70px;">Stills</th>
+                                <th style="width:70px;">Panos</th>
+                                <th style="width:100px;">Quote Price</th>
+                                <th style="min-width:150px;">Notes</th>
+                                <th style="width:40px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="li-modal-rows"></tbody>
+                    </table>
+                </div>
+                <button type="button" class="btn btn-secondary" style="margin-top:12px;" onclick="addLineItemRow()">
+                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                    Add Row
+                </button>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('line-items-modal')">Cancel</button>
+                <button class="btn btn-primary" onclick="saveLineItems()">Save Line Items</button>
+            </div>
+        </div>
+    </div>
+
     <script src="shared.js"></script>
     <script src="app.js"></script>
     <script>buildDashboard();</script>

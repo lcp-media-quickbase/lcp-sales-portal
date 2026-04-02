@@ -1698,109 +1698,423 @@ async function loadQuoteDraft(id) {
 // ============================================================================
 
 async function loadDashboard() {
+    if (!AppState.currentUser) {
+        AppState.currentUser = await getCurrentUser();
+    }
+    var user = AppState.currentUser;
+    prefillCurrentUserEmail();
+
+    var dashContent = document.getElementById('dash-content');
+    dashContent.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p>Loading...</p></div>';
+
+    var role = user?.role;
+    if (role === '3D Director') {
+        await renderDirectorDashboard(user);
+    } else if (role === 'Administrator') {
+        await renderAdminDashboard(user);
+    } else {
+        await renderSalesDashboard(user);
+    }
+}
+
+// Shared helpers for building dashboard panels
+function _dashEmptyRow(msg) {
+    return `<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">${msg}</div>`;
+}
+function _dashOrderRow(o, f) {
+    var status = o[f.orderStatus]?.value || 'Draft';
+    return `<div class="dash-mini-row" onclick="viewOrder(${o[f.recordId].value})">
+        <div class="dash-mini-left">
+            <div class="dash-mini-company">${o[f.companyName]?.value || '—'}</div>
+            <div class="dash-mini-meta">${formatDate(o[f.quoteDate]?.value) || '—'} &middot; ${o[f.salesRepEmail]?.value || '—'}</div>
+        </div>
+        <span class="badge badge-${getStatusClass(status)}">${status}</span>
+    </div>`;
+}
+function _dashQuoteRow(q, qf) {
+    var status = q[qf.quoteStatus]?.value || 'Draft';
+    return `<div class="dash-mini-row" onclick="viewQuote(${q[qf.recordId].value})">
+        <div class="dash-mini-left">
+            <div class="dash-mini-company">${q[qf.quoteName]?.value || q[qf.companyName]?.value || '—'}</div>
+            <div class="dash-mini-meta">${q[qf.companyName]?.value || '—'} &middot; ${formatDate(q[qf.quoteDate]?.value) || '—'}</div>
+        </div>
+        <span class="badge badge-${getStatusClass(status)}">${status}</span>
+    </div>`;
+}
+function _kpiGrid(ids) {
+    // ids: [{id, label, accent}]
+    return `<div class="dash-kpi-grid" style="grid-template-columns:repeat(${ids.length},1fr);">${ids.map(function(k) {
+        return `<div class="stat-card"><div class="stat-label">${k.label}</div><div class="stat-value${k.accent ? ' blue' : ''}" id="${k.id}">—</div></div>`;
+    }).join('')}</div>`;
+}
+
+async function renderSalesDashboard(user) {
+    var f = CONFIG.fields.orders;
+    var qf = CONFIG.fields.quotes3D;
+    var dashContent = document.getElementById('dash-content');
+    var headerActions = document.getElementById('dash-header-actions');
+
+    headerActions.innerHTML = `
+        <button class="btn btn-secondary" onclick="switchTab('tab-new-quote')">
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            New 3D Quote
+        </button>
+        <button class="btn btn-primary" onclick="switchTab('tab-new-order')">
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            New Order
+        </button>`;
+
+    dashContent.innerHTML = `
+        <div class="dash-kpi-row">
+            <div><div class="dash-section-label">My Orders</div>${_kpiGrid([
+                {id:'ds-o-total',label:'Total'},{id:'ds-o-active',label:'Active',accent:true},{id:'ds-o-completed',label:'Completed'}
+            ])}</div>
+            <div><div class="dash-section-label">My 3D Quotes</div>${_kpiGrid([
+                {id:'ds-q-total',label:'Total'},{id:'ds-q-pending',label:'Pending Review',accent:true},{id:'ds-q-approved',label:'Approved'}
+            ])}</div>
+        </div>
+        <div class="dash-cols">
+            <div class="dash-panel">
+                <div class="dash-panel-header"><span class="dash-panel-title">My Recent Orders</span><a class="dash-view-all" onclick="switchTab('tab-order-history')">View all</a></div>
+                <div id="ds-recent-orders"><div class="loading-spinner" style="height:100px"><div class="spinner"></div></div></div>
+            </div>
+            <div class="dash-panel">
+                <div class="dash-panel-header"><span class="dash-panel-title">My Recent Quotes</span><a class="dash-view-all" onclick="switchTab('tab-quote-history')">View all</a></div>
+                <div id="ds-recent-quotes"><div class="loading-spinner" style="height:100px"><div class="spinner"></div></div></div>
+            </div>
+        </div>`;
+
     try {
-        const f = CONFIG.fields.orders;
-        const qf = CONFIG.fields.quotes3D;
+        var emailFilter = user?.email ? `{${f.salesRepEmail}.EX.'${user.email}'}` : null;
+        var quoteEmailFilter = user?.email ? `{${qf.salesRepEmail}.EX.'${user.email}'}` : null;
+        var [ordersResult, quotesResult] = await Promise.all([
+            queryRecords(CONFIG.tables.orders, [f.recordId, f.orderStatus, f.quoteDate, f.salesRepEmail, f.companyName],
+                emailFilter, [{fieldId: f.dateModified, order: 'DESC'}]),
+            queryRecords(CONFIG.tables.quotes3D, [qf.recordId, qf.quoteName, qf.quoteStatus, qf.quoteDate, qf.salesRepEmail, qf.companyName],
+                quoteEmailFilter, [{fieldId: qf.dateModified, order: 'DESC'}])
+        ]);
+        var orders = ordersResult.data || [];
+        var quotes = quotesResult.data || [];
+        var activeStatuses = ['Pending','Processing','Contract Needed','Concessions Approval Needed','Concessions Approved'];
 
-        // Resolve current user once and cache
-        if (!AppState.currentUser) {
-            AppState.currentUser = await getCurrentUser();
-        }
-        var user = AppState.currentUser;
-        var admin = isAdmin(user?.email);
-        prefillCurrentUserEmail();
+        document.getElementById('ds-o-total').textContent = orders.length;
+        document.getElementById('ds-o-active').textContent = orders.filter(function(o){ return activeStatuses.includes(o[f.orderStatus]?.value); }).length;
+        document.getElementById('ds-o-completed').textContent = orders.filter(function(o){ return o[f.orderStatus]?.value === 'Completed'; }).length;
+        document.getElementById('ds-q-total').textContent = quotes.length;
+        document.getElementById('ds-q-pending').textContent = quotes.filter(function(q){ return ['Pending Review','Sent to Client'].includes(q[qf.quoteStatus]?.value); }).length;
+        document.getElementById('ds-q-approved').textContent = quotes.filter(function(q){ return q[qf.quoteStatus]?.value === 'Approved'; }).length;
 
-        // Parallel fetches
-        var queries = [
-            queryRecords(CONFIG.tables.orders,
-                [f.recordId, f.orderStatus, f.quoteDate, f.salesRepEmail, f.companyName, f.orderName],
-                null, [{ fieldId: f.dateModified, order: 'DESC' }]),
-            queryRecords(CONFIG.tables.quotes3D,
-                [qf.recordId, qf.quoteName, qf.quoteStatus, qf.quoteDate, qf.salesRepEmail, qf.companyName],
-                null, [{ fieldId: qf.dateModified, order: 'DESC' }])
-        ];
-        if (admin) {
-            queries.push(queryRecords(CONFIG.tables.orders,
-                [f.recordId, f.orderStatus, f.quoteDate, f.salesRepEmail, f.companyName, f.orderName],
-                `{${f.orderStatus}.EX.'Concessions Approval Needed'}`,
-                [{ fieldId: f.dateModified, order: 'DESC' }]));
-        }
+        document.getElementById('ds-recent-orders').innerHTML = orders.slice(0,5).map(function(o){ return _dashOrderRow(o,f); }).join('') || _dashEmptyRow('No orders yet');
+        document.getElementById('ds-recent-quotes').innerHTML = quotes.slice(0,5).map(function(q){ return _dashQuoteRow(q,qf); }).join('') || _dashEmptyRow('No quotes yet');
+    } catch(e) { console.error('renderSalesDashboard failed:', e); }
+}
 
-        var results = await Promise.all(queries);
-        var orders = results[0].data || [];
-        var quotes = results[1].data || [];
-        var concessions = admin ? (results[2].data || []) : [];
+async function renderAdminDashboard(user) {
+    var f = CONFIG.fields.orders;
+    var qf = CONFIG.fields.quotes3D;
+    var dashContent = document.getElementById('dash-content');
+    var headerActions = document.getElementById('dash-header-actions');
 
-        // Order KPIs
-        var activeStatuses = ['Pending', 'Processing', 'Contract Needed', 'Concessions Approval Needed', 'Concessions Approved'];
-        document.getElementById('dash-stat-orders-total').textContent = orders.length;
-        document.getElementById('dash-stat-orders-active').textContent = orders.filter(function(o) { return activeStatuses.includes(o[f.orderStatus]?.value); }).length;
-        document.getElementById('dash-stat-orders-completed').textContent = orders.filter(function(o) { return o[f.orderStatus]?.value === 'Completed'; }).length;
+    headerActions.innerHTML = `
+        <button class="btn btn-secondary" onclick="switchTab('tab-new-quote')">
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            New 3D Quote
+        </button>
+        <button class="btn btn-primary" onclick="switchTab('tab-new-order')">
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            New Order
+        </button>`;
 
-        // Quote KPIs
-        document.getElementById('dash-stat-quotes-total').textContent = quotes.length;
-        document.getElementById('dash-stat-quotes-pending').textContent = quotes.filter(function(q) { return ['Pending Review', 'Sent to Client'].includes(q[qf.quoteStatus]?.value); }).length;
-        document.getElementById('dash-stat-quotes-approved').textContent = quotes.filter(function(q) { return q[qf.quoteStatus]?.value === 'Approved'; }).length;
+    dashContent.innerHTML = `
+        <div class="dash-panel dash-concessions-alert" id="da-concessions-section" style="display:none;">
+            <div class="dash-panel-header">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--warning);flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    <span class="dash-panel-title">Concessions Pending Approval</span>
+                    <span class="badge badge-pending" id="da-concessions-count">0</span>
+                </div>
+            </div>
+            <div id="da-concessions-table"></div>
+        </div>
+        <div class="dash-kpi-row">
+            <div><div class="dash-section-label">Orders</div>${_kpiGrid([
+                {id:'da-o-total',label:'Total'},{id:'da-o-active',label:'Active',accent:true},{id:'da-o-completed',label:'Completed'}
+            ])}</div>
+            <div><div class="dash-section-label">3D Quotes</div>${_kpiGrid([
+                {id:'da-q-total',label:'Total'},{id:'da-q-pending',label:'Pending Review',accent:true},{id:'da-q-approved',label:'Approved'}
+            ])}</div>
+        </div>
+        <div class="dash-cols">
+            <div class="dash-panel">
+                <div class="dash-panel-header"><span class="dash-panel-title">Recent Orders</span><a class="dash-view-all" onclick="switchTab('tab-order-history')">View all</a></div>
+                <div id="da-recent-orders"><div class="loading-spinner" style="height:100px"><div class="spinner"></div></div></div>
+            </div>
+            <div class="dash-panel">
+                <div class="dash-panel-header"><span class="dash-panel-title">Recent 3D Quotes</span><a class="dash-view-all" onclick="switchTab('tab-quote-history')">View all</a></div>
+                <div id="da-recent-quotes"><div class="loading-spinner" style="height:100px"><div class="spinner"></div></div></div>
+            </div>
+        </div>`;
 
-        // Recent Orders (last 5)
-        var recentOrdersEl = document.getElementById('dash-recent-orders');
-        var recentOrders = orders.slice(0, 5);
-        if (!recentOrders.length) {
-            recentOrdersEl.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">No orders yet</div>';
-        } else {
-            recentOrdersEl.innerHTML = recentOrders.map(function(o) {
-                var status = o[f.orderStatus]?.value || 'Draft';
+    try {
+        var [ordersResult, quotesResult, concessionsResult] = await Promise.all([
+            queryRecords(CONFIG.tables.orders, [f.recordId, f.orderStatus, f.quoteDate, f.salesRepEmail, f.companyName],
+                null, [{fieldId: f.dateModified, order: 'DESC'}]),
+            queryRecords(CONFIG.tables.quotes3D, [qf.recordId, qf.quoteName, qf.quoteStatus, qf.quoteDate, qf.salesRepEmail, qf.companyName],
+                null, [{fieldId: qf.dateModified, order: 'DESC'}]),
+            queryRecords(CONFIG.tables.orders, [f.recordId, f.orderStatus, f.quoteDate, f.salesRepEmail, f.companyName],
+                `{${f.orderStatus}.EX.'Concessions Approval Needed'}`, [{fieldId: f.dateModified, order: 'DESC'}])
+        ]);
+        var orders = ordersResult.data || [];
+        var quotes = quotesResult.data || [];
+        var concessions = concessionsResult.data || [];
+        var activeStatuses = ['Pending','Processing','Contract Needed','Concessions Approval Needed','Concessions Approved'];
+
+        document.getElementById('da-o-total').textContent = orders.length;
+        document.getElementById('da-o-active').textContent = orders.filter(function(o){ return activeStatuses.includes(o[f.orderStatus]?.value); }).length;
+        document.getElementById('da-o-completed').textContent = orders.filter(function(o){ return o[f.orderStatus]?.value === 'Completed'; }).length;
+        document.getElementById('da-q-total').textContent = quotes.length;
+        document.getElementById('da-q-pending').textContent = quotes.filter(function(q){ return ['Pending Review','Sent to Client'].includes(q[qf.quoteStatus]?.value); }).length;
+        document.getElementById('da-q-approved').textContent = quotes.filter(function(q){ return q[qf.quoteStatus]?.value === 'Approved'; }).length;
+
+        document.getElementById('da-recent-orders').innerHTML = orders.slice(0,5).map(function(o){ return _dashOrderRow(o,f); }).join('') || _dashEmptyRow('No orders yet');
+        document.getElementById('da-recent-quotes').innerHTML = quotes.slice(0,5).map(function(q){ return _dashQuoteRow(q,qf); }).join('') || _dashEmptyRow('No quotes yet');
+
+        if (concessions.length) {
+            document.getElementById('da-concessions-section').style.display = 'block';
+            document.getElementById('da-concessions-count').textContent = concessions.length;
+            document.getElementById('da-concessions-table').innerHTML = concessions.map(function(o) {
                 return `<div class="dash-mini-row" onclick="viewOrder(${o[f.recordId].value})">
                     <div class="dash-mini-left">
                         <div class="dash-mini-company">${o[f.companyName]?.value || '—'}</div>
-                        <div class="dash-mini-meta">${formatDate(o[f.quoteDate]?.value) || '—'} &middot; ${o[f.salesRepEmail]?.value || '—'}</div>
+                        <div class="dash-mini-meta">${o[f.salesRepEmail]?.value || '—'} &middot; ${formatDate(o[f.quoteDate]?.value)}</div>
                     </div>
-                    <span class="badge badge-${getStatusClass(status)}">${status}</span>
+                    <span class="badge badge-pending">Needs Approval</span>
                 </div>`;
             }).join('');
         }
+    } catch(e) { console.error('renderAdminDashboard failed:', e); }
+}
 
-        // Recent Quotes (last 5)
-        var recentQuotesEl = document.getElementById('dash-recent-quotes');
-        var recentQuotes = quotes.slice(0, 5);
-        if (!recentQuotes.length) {
-            recentQuotesEl.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">No quotes yet</div>';
-        } else {
-            recentQuotesEl.innerHTML = recentQuotes.map(function(q) {
-                var status = q[qf.quoteStatus]?.value || 'Draft';
-                return `<div class="dash-mini-row" onclick="viewQuote(${q[qf.recordId].value})">
+async function renderDirectorDashboard(user) {
+    var qf = CONFIG.fields.quotes3D;
+    var dashContent = document.getElementById('dash-content');
+    var headerActions = document.getElementById('dash-header-actions');
+
+    headerActions.innerHTML = `
+        <button class="btn btn-primary" onclick="switchTab('tab-new-quote')">
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            New 3D Quote
+        </button>`;
+
+    dashContent.innerHTML = `
+        <div style="margin-bottom:24px;">
+            <div class="dash-section-label">3D Quotes</div>
+            ${_kpiGrid([
+                {id:'dd-q-total',label:'Total'},
+                {id:'dd-q-pending',label:'Pending Review',accent:true},
+                {id:'dd-q-approved',label:'Approved'},
+                {id:'dd-q-converted',label:'Converted'}
+            ])}
+        </div>
+        <div class="dash-panel" style="margin-bottom:24px;">
+            <div class="dash-panel-header">
+                <span class="dash-panel-title">Pending Review</span>
+                <span class="badge badge-pending" id="dd-pending-count">0</span>
+            </div>
+            <div id="dd-pending-list"><div class="loading-spinner" style="height:100px"><div class="spinner"></div></div></div>
+        </div>
+        <div class="dash-panel">
+            <div class="dash-panel-header">
+                <span class="dash-panel-title">All Recent Quotes</span>
+                <a class="dash-view-all" onclick="switchTab('tab-quote-history')">View all</a>
+            </div>
+            <div id="dd-all-quotes"><div class="loading-spinner" style="height:100px"><div class="spinner"></div></div></div>
+        </div>`;
+
+    try {
+        var result = await queryRecords(
+            CONFIG.tables.quotes3D,
+            [qf.recordId, qf.quoteName, qf.quoteStatus, qf.quoteDate, qf.salesRepEmail, qf.companyName],
+            null, [{fieldId: qf.dateModified, order: 'DESC'}]
+        );
+        var quotes = result.data || [];
+
+        document.getElementById('dd-q-total').textContent = quotes.length;
+        document.getElementById('dd-q-pending').textContent = quotes.filter(function(q){ return q[qf.quoteStatus]?.value === 'Pending Review'; }).length;
+        document.getElementById('dd-q-approved').textContent = quotes.filter(function(q){ return q[qf.quoteStatus]?.value === 'Approved'; }).length;
+        document.getElementById('dd-q-converted').textContent = quotes.filter(function(q){ return q[qf.quoteStatus]?.value === 'Converted to Order'; }).length;
+
+        var pending = quotes.filter(function(q){ return q[qf.quoteStatus]?.value === 'Pending Review'; });
+        document.getElementById('dd-pending-count').textContent = pending.length;
+        document.getElementById('dd-pending-list').innerHTML = pending.length
+            ? pending.map(function(q) {
+                var safeName = (q[qf.quoteName]?.value || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+                var status = q[qf.quoteStatus]?.value || 'Pending Review';
+                return `<div class="dash-mini-row">
                     <div class="dash-mini-left">
                         <div class="dash-mini-company">${q[qf.quoteName]?.value || q[qf.companyName]?.value || '—'}</div>
-                        <div class="dash-mini-meta">${q[qf.companyName]?.value || '—'} &middot; ${formatDate(q[qf.quoteDate]?.value) || '—'}</div>
+                        <div class="dash-mini-meta">${q[qf.companyName]?.value || '—'} &middot; ${formatDate(q[qf.quoteDate]?.value)} &middot; ${q[qf.salesRepEmail]?.value || '—'}</div>
                     </div>
-                    <span class="badge badge-${getStatusClass(status)}">${status}</span>
+                    <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
+                        <button class="btn btn-secondary btn-sm" onclick="openLineItemsModal(${q[qf.recordId].value},'${safeName}','${status}')">Add Line Items</button>
+                        <button class="btn btn-ghost btn-sm" onclick="viewQuote(${q[qf.recordId].value})" title="View"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                    </div>
                 </div>`;
-            }).join('');
+            }).join('')
+            : _dashEmptyRow('No quotes pending review');
+
+        document.getElementById('dd-all-quotes').innerHTML = quotes.slice(0,8).map(function(q){ return _dashQuoteRow(q,qf); }).join('') || _dashEmptyRow('No quotes yet');
+    } catch(e) { console.error('renderDirectorDashboard failed:', e); }
+}
+
+// ============================================================================
+// LINE ITEMS MODAL (3D Director)
+// ============================================================================
+
+var _liQuoteId = null;
+var _liRowCounter = 0;
+
+async function openLineItemsModal(quoteId, quoteName, currentStatus) {
+    _liQuoteId = quoteId;
+    _liRowCounter = 0;
+    document.getElementById('li-modal-title').textContent = quoteName || 'Quote';
+
+    var statusSel = document.getElementById('li-modal-status');
+    statusSel.innerHTML = CONFIG.quoteStatuses.filter(function(s){ return s !== 'Draft'; }).map(function(s) {
+        return `<option value="${s}"${s === currentStatus ? ' selected' : ''}>${s}</option>`;
+    }).join('');
+
+    openModal('line-items-modal');
+
+    var rows = document.getElementById('li-modal-rows');
+    rows.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted);">Loading...</td></tr>`;
+
+    try {
+        var lf = CONFIG.fields.lineItems3D;
+        var result = await queryRecords(
+            CONFIG.tables.lineItems3D,
+            [lf.recordId, lf.relatedProduct, lf.productName, lf.productRetailPrice, lf.quantity, lf.stills, lf.panos, lf.quotePrice, lf.notes],
+            `{${lf.relatedQuote}.EX.${quoteId}}`
+        );
+        var existing = result.data || [];
+        rows.innerHTML = '';
+        if (existing.length) {
+            existing.forEach(function(li) {
+                addLineItemRow({
+                    productId: li[lf.relatedProduct]?.value,
+                    retailPrice: li[lf.productRetailPrice]?.value || 0,
+                    quantity: li[lf.quantity]?.value || 1,
+                    stills: li[lf.stills]?.value || '',
+                    panos: li[lf.panos]?.value || '',
+                    quotePrice: li[lf.quotePrice]?.value || '',
+                    notes: li[lf.notes]?.value || ''
+                });
+            });
+        } else {
+            addLineItemRow();
+        }
+    } catch(e) {
+        rows.innerHTML = `<tr><td colspan="7" style="color:var(--error);padding:16px;">Failed to load line items.</td></tr>`;
+    }
+}
+
+function addLineItemRow(data) {
+    var id = ++_liRowCounter;
+    var opts = AppState.products3D.map(function(p) {
+        return `<option value="${p.id}" data-price="${p.price}"${data?.productId == p.id ? ' selected' : ''}>${p.name}</option>`;
+    }).join('');
+    var retail = data?.retailPrice ? Number(data.retailPrice).toFixed(2) : '0.00';
+    var tr = document.createElement('tr');
+    tr.id = 'li-row-' + id;
+    tr.innerHTML = `
+        <td><select class="form-input li-product" style="font-size:13px;padding:6px 8px;" onchange="updateLiPrice(${id})">
+            <option value="">Select...</option>${opts}
+        </select></td>
+        <td><input type="number" class="form-input li-qty" value="${data?.quantity || 1}" min="1" style="width:56px;font-size:13px;padding:6px 8px;"></td>
+        <td><input type="number" class="form-input li-stills" value="${data?.stills || ''}" min="0" style="width:56px;font-size:13px;padding:6px 8px;"></td>
+        <td><input type="number" class="form-input li-panos" value="${data?.panos || ''}" min="0" style="width:56px;font-size:13px;padding:6px 8px;"></td>
+        <td><input type="number" class="form-input li-price" value="${data?.quotePrice || ''}" min="0" step="0.01" placeholder="${retail}" style="width:80px;font-size:13px;padding:6px 8px;"></td>
+        <td><input type="text" class="form-input li-notes" value="${data?.notes || ''}" style="width:140px;font-size:13px;padding:6px 8px;"></td>
+        <td><button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('li-row-${id}').remove()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button></td>`;
+    document.getElementById('li-modal-rows').appendChild(tr);
+}
+
+function updateLiPrice(rowId) {
+    var sel = document.querySelector('#li-row-' + rowId + ' .li-product');
+    var opt = sel?.options[sel.selectedIndex];
+    var price = opt?.dataset?.price || '';
+    var inp = document.querySelector('#li-row-' + rowId + ' .li-price');
+    if (inp) inp.placeholder = price ? Number(price).toFixed(2) : '0.00';
+}
+
+async function saveLineItems() {
+    if (!_liQuoteId) return;
+    var saveBtn = document.querySelector('#line-items-modal .btn-primary');
+    saveBtn.textContent = 'Saving...';
+    saveBtn.disabled = true;
+
+    try {
+        var lf = CONFIG.fields.lineItems3D;
+        var f = CONFIG.fields.quotes3D;
+
+        var lineItems = [];
+        document.querySelectorAll('#li-modal-rows tr').forEach(function(row) {
+            var productId = row.querySelector('.li-product')?.value;
+            if (!productId) return;
+            var product = AppState.products3D.find(function(p){ return p.id == productId; });
+            var qpVal = parseFloat(row.querySelector('.li-price')?.value);
+            lineItems.push({
+                productId: parseInt(productId),
+                productName: product?.name || '',
+                retailPrice: product?.price || 0,
+                quantity: parseInt(row.querySelector('.li-qty')?.value || 1) || 1,
+                stills: parseInt(row.querySelector('.li-stills')?.value || 0) || 0,
+                panos: parseInt(row.querySelector('.li-panos')?.value || 0) || 0,
+                quotePrice: isNaN(qpVal) ? null : qpVal,
+                notes: row.querySelector('.li-notes')?.value || ''
+            });
+        });
+
+        // Delete existing then recreate
+        await qbApiRequest(CONFIG.tables.lineItems3D, 'records', 'DELETE', {
+            from: CONFIG.tables.lineItems3D,
+            where: `{${lf.relatedQuote}.EX.${_liQuoteId}}`
+        });
+
+        for (var i = 0; i < lineItems.length; i++) {
+            var li = lineItems[i];
+            var data = {
+                [lf.relatedQuote]: { value: _liQuoteId },
+                [lf.relatedProduct]: { value: li.productId },
+                [lf.productName]: { value: li.productName },
+                [lf.productRetailPrice]: { value: li.retailPrice },
+                [lf.quantity]: { value: li.quantity },
+                [lf.stills]: { value: li.stills },
+                [lf.panos]: { value: li.panos },
+                [lf.notes]: { value: li.notes }
+            };
+            if (li.quotePrice !== null) data[lf.quotePrice] = { value: li.quotePrice };
+            await createRecord(CONFIG.tables.lineItems3D, data);
         }
 
-        // Admin: Concessions
-        if (admin) {
-            var section = document.getElementById('dash-concessions-section');
-            section.style.display = 'block';
-            document.getElementById('dash-concessions-count').textContent = concessions.length;
-            var concessionsEl = document.getElementById('dash-concessions-table');
-            if (!concessions.length) {
-                concessionsEl.innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:13px;">No orders pending approval.</div>';
-            } else {
-                concessionsEl.innerHTML = concessions.map(function(o) {
-                    return `<div class="dash-mini-row" onclick="viewOrder(${o[f.recordId].value})">
-                        <div class="dash-mini-left">
-                            <div class="dash-mini-company">${o[f.companyName]?.value || '—'}</div>
-                            <div class="dash-mini-meta">${o[f.salesRepEmail]?.value || '—'} &middot; ${formatDate(o[f.quoteDate]?.value)}</div>
-                        </div>
-                        <span class="badge badge-pending">Needs Approval</span>
-                    </div>`;
-                }).join('');
-            }
-        }
+        // Update quote status
+        var newStatus = document.getElementById('li-modal-status').value;
+        await updateRecord(CONFIG.tables.quotes3D, {
+            [f.recordId]: { value: _liQuoteId },
+            [f.quoteStatus]: { value: newStatus }
+        });
 
-    } catch (e) {
-        console.error('loadDashboard failed:', e);
+        showSuccess('Line items saved (' + lineItems.length + ' item' + (lineItems.length !== 1 ? 's' : '') + ')');
+        closeModal('line-items-modal');
+        loadDashboard();
+    } catch(e) {
+        console.error('saveLineItems failed:', e);
+        alert('Failed to save: ' + e.message);
+    } finally {
+        saveBtn.textContent = 'Save Line Items';
+        saveBtn.disabled = false;
     }
 }
 

@@ -330,7 +330,7 @@ body {
 .badge-type.three-d { background: rgba(104,182,229,0.2); color: var(--lcp-blue); }
 .badge-type.tourbuilder { background: rgba(236,72,153,0.2); color: #ec4899; }
 
-/* Dashboard */
+/* Dashboard — role-based views */
 .dash-kpi-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
 .dash-kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .dash-section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); font-weight: 600; margin-bottom: 10px; }
