@@ -884,7 +884,6 @@ function addFilesToProperty(propertyId, files) {
             id: AppState.attachmentCounter,
             file: files[i],
             fileName: files[i].name,
-            fileType: guessFileType(files[i].name),
             description: '',
             linkUrl: ''
         });
@@ -893,14 +892,7 @@ function addFilesToProperty(propertyId, files) {
     renderQuoteProperties();
 }
 
-function guessFileType(fileName) {
-    const ext = fileName.toLowerCase().split('.').pop();
-    if (['pdf'].includes(ext)) return 'Floor Plan';
-    if (['dwg', 'dxf'].includes(ext)) return 'Floor Plan';
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic'].includes(ext)) return 'Photo';
-    if (['ai', 'psd', 'eps'].includes(ext)) return 'Style Guide';
-    return 'Other';
-}
+
 
 function removeAttachmentFromProperty(propertyId, attachmentId) {
     var quoteProp = AppState.quoteProperties.find(qp => qp.propertyId === propertyId);
@@ -927,7 +919,6 @@ function addLinkToProperty(propertyId) {
         id: AppState.attachmentCounter,
         file: null,
         fileName: '',
-        fileType: 'Other',
         description: '',
         linkUrl: ''
     });
@@ -970,14 +961,6 @@ function renderQuoteProperties() {
                                        : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`}
                         </div>
                         <div class="attachment-name">${att.fileName || 'Link'}</div>
-                        <select class="form-input attachment-type-select" onchange="updateAttachment(${qp.propertyId},${att.id},'fileType',this.value)">
-                            <option value="Floor Plan" ${att.fileType === 'Floor Plan' ? 'selected' : ''}>Floor Plan</option>
-                            <option value="Site Plan" ${att.fileType === 'Site Plan' ? 'selected' : ''}>Site Plan</option>
-                            <option value="Photo" ${att.fileType === 'Photo' ? 'selected' : ''}>Photo</option>
-                            <option value="Rendering Reference" ${att.fileType === 'Rendering Reference' ? 'selected' : ''}>Rendering Reference</option>
-                            <option value="Style Guide" ${att.fileType === 'Style Guide' ? 'selected' : ''}>Style Guide</option>
-                            <option value="Other" ${att.fileType === 'Other' ? 'selected' : ''}>Other</option>
-                        </select>
                         <input type="text" class="form-input attachment-desc-input" placeholder="Description (optional)" value="${att.description || ''}" onchange="updateAttachment(${qp.propertyId},${att.id},'description',this.value)">
                         ${!att.file ? `<input type="url" class="form-input attachment-link-input" placeholder="Paste URL" value="${att.linkUrl || ''}" onchange="updateAttachment(${qp.propertyId},${att.id},'linkUrl',this.value)">` : ''}
                         <button type="button" class="remove-btn" onclick="removeAttachmentFromProperty(${qp.propertyId},${att.id})">
@@ -1312,7 +1295,6 @@ async function saveQuote() {
                     
                     const attData = {
                         [af.relatedQuote]: { value: quoteId },
-                        [af.fileType]: { value: att.fileType || 'Other' },
                         [af.description]: { value: descWithProperty },
                         [af.linkToFile]: { value: att.linkUrl || '' }
                     };
@@ -1819,19 +1801,18 @@ async function viewQuote(id) {
                 if (propAttachments.length) {
                     html += `<div class="property-attachments"><strong>Attachments:</strong><ul style="margin: 8px 0 0 20px;">`;
                     for (const att of propAttachments) {
-                        const fileType = att[af.fileType]?.value || '';
                         const description = (att[af.description]?.value || '').replace(`[${propName}]`, '').trim();
                         const linkUrl = att[af.linkToFile]?.value || '';
                         const fileInfo = att[af.fileAttachment]?.value;
-                        
+
                         let linkHtml = '';
                         if (linkUrl) {
                             linkHtml = `<a href="${linkUrl}" target="_blank" style="color: var(--lcp-blue);">View Link</a>`;
                         } else if (fileInfo && fileInfo.url) {
                             linkHtml = `<a href="${fileInfo.url}" target="_blank" style="color: var(--lcp-blue);">${fileInfo.filename || 'Download'}</a>`;
                         }
-                        
-                        html += `<li>${fileType}${description ? ': ' + description : ''} ${linkHtml}</li>`;
+
+                        html += `<li>${description ? description + ' ' : ''}${linkHtml}</li>`;
                     }
                     html += `</ul></div>`;
                 }

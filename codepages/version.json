@@ -1,5 +1,5 @@
 {
-  "version": "1.8.3",
+  "version": "1.8.4",
   "updated": "2026-04-02",
-  "notes": "Fix version banner loop - sync CONFIG.version"
+  "notes": "Remove file type dropdown from 3D quote attachments"
 }
