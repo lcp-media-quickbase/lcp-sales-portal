@@ -4,7 +4,7 @@ const AppState = {
     selectedProduct: null, selectedClient: null, selectedQuoteClient: null,
     currentProductCallback: null, currentPropertyCallback: null,
     orderProperties: [], // [{propertyId, property, lineItems: [{id, productId, productName, quantity, unitPrice, total}], billingContact, billingEmail, billingPhone}]
-    quoteAttachments: [], // [{id, fileType, description, file, linkUrl}]
+    quoteProperties: [], // [{propertyId, property, attachments: [{id, file, fileType, description}]}]
     products: [], products3D: [], properties: [], clients: [], orders: [], quotes: [], priceList: [],
     attachmentCounter: 0
 };
@@ -212,8 +212,10 @@ function renderPropertyList() {
         c.innerHTML = '<tr><td style="text-align:center;padding:40px;color:var(--text-muted)">No properties found</td></tr>'; 
         return; 
     }
-    // Filter out already selected properties (only used for orders now)
-    var selectedIds = AppState.orderProperties.map(op => op.propertyId);
+    // Filter out already selected properties based on context
+    var selectedIds = AppState.currentPropertyCallback === 'quote'
+        ? AppState.quoteProperties.map(qp => qp.propertyId)
+        : AppState.orderProperties.map(op => op.propertyId);
     var available = AppState.properties.filter(p => !selectedIds.includes(p.id));
     if (!available.length) {
         c.innerHTML = '<tr><td style="text-align:center;padding:40px;color:var(--text-muted)">All properties already added</td></tr>';
@@ -234,8 +236,10 @@ function filterProperties() {
     var c = document.getElementById('property-table-body');
     if (!c) return;
     
-    // Get available properties (only used for orders now)
-    var selectedIds = AppState.orderProperties.map(op => op.propertyId);
+    // Get available properties based on context
+    var selectedIds = AppState.currentPropertyCallback === 'quote'
+        ? AppState.quoteProperties.map(qp => qp.propertyId)
+        : AppState.orderProperties.map(op => op.propertyId);
     var available = AppState.properties.filter(p => !selectedIds.includes(p.id));
     
     // Filter by search term
@@ -801,77 +805,172 @@ function removeOrderLineItem(id) { AppState.orderLineItems = AppState.orderLineI
 // ============================================================================
 
 function openQuotePropertySelector() {
-    // No longer used - quotes now use attachments instead of properties
-}
-
-function renderQuotePropertyList() {
-    // No longer used - quotes now use attachments instead of properties
+    renderPropertyList();
+    document.getElementById('property-search-input').value = '';
+    AppState.currentPropertyCallback = 'quote';
+    hideCreatePropertyForm();
+    openModal('property-modal');
 }
 
 function addPropertyFromSelector(propertyId) {
-    // Only used for orders now
-    addPropertyToOrder(propertyId);
+    if (AppState.currentPropertyCallback === 'quote') {
+        addPropertyToQuote(propertyId);
+    } else {
+        addPropertyToOrder(propertyId);
+    }
     AppState.currentPropertyCallback = null;
 }
 
 // ============================================================================
-// 3D QUOTE ATTACHMENTS
+// 3D QUOTE PROPERTIES & ATTACHMENTS
 // ============================================================================
 
-function addQuoteAttachment() {
-    AppState.attachmentCounter++;
-    AppState.quoteAttachments.push({
-        id: AppState.attachmentCounter,
-        fileType: '',
-        description: '',
-        file: null,
-        linkUrl: ''
+function addPropertyToQuote(propertyId) {
+    var property = AppState.properties.find(p => p.id === propertyId);
+    if (!property) return;
+    
+    if (AppState.quoteProperties.find(qp => qp.propertyId === propertyId)) {
+        closeModal('property-modal');
+        return;
+    }
+    
+    AppState.quoteProperties.push({
+        propertyId: propertyId,
+        property: property,
+        attachments: []
     });
-    renderQuoteAttachments();
+    
+    renderQuoteProperties();
+    closeModal('property-modal');
 }
 
-function removeQuoteAttachment(attachmentId) {
-    AppState.quoteAttachments = AppState.quoteAttachments.filter(a => a.id !== attachmentId);
-    renderQuoteAttachments();
+function removePropertyFromQuote(propertyId) {
+    AppState.quoteProperties = AppState.quoteProperties.filter(qp => qp.propertyId !== propertyId);
+    renderQuoteProperties();
 }
 
-function updateQuoteAttachment(attachmentId, field, value) {
-    var att = AppState.quoteAttachments.find(a => a.id === attachmentId);
+function handleFileDrop(propertyId, event) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const dropZone = event.currentTarget;
+    dropZone.classList.remove('drag-over');
+    
+    const files = event.dataTransfer?.files || event.target?.files;
+    if (!files || !files.length) return;
+    
+    addFilesToProperty(propertyId, files);
+}
+
+function handleDragOver(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.classList.add('drag-over');
+}
+
+function handleDragLeave(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.classList.remove('drag-over');
+}
+
+function addFilesToProperty(propertyId, files) {
+    var quoteProp = AppState.quoteProperties.find(qp => qp.propertyId === propertyId);
+    if (!quoteProp) return;
+    
+    for (let i = 0; i < files.length; i++) {
+        AppState.attachmentCounter++;
+        quoteProp.attachments.push({
+            id: AppState.attachmentCounter,
+            file: files[i],
+            fileName: files[i].name,
+            fileType: guessFileType(files[i].name),
+            description: '',
+            linkUrl: ''
+        });
+    }
+    
+    renderQuoteProperties();
+}
+
+function guessFileType(fileName) {
+    const ext = fileName.toLowerCase().split('.').pop();
+    if (['pdf'].includes(ext)) return 'Floor Plan';
+    if (['dwg', 'dxf'].includes(ext)) return 'Floor Plan';
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic'].includes(ext)) return 'Photo';
+    if (['ai', 'psd', 'eps'].includes(ext)) return 'Style Guide';
+    return 'Other';
+}
+
+function removeAttachmentFromProperty(propertyId, attachmentId) {
+    var quoteProp = AppState.quoteProperties.find(qp => qp.propertyId === propertyId);
+    if (!quoteProp) return;
+    quoteProp.attachments = quoteProp.attachments.filter(a => a.id !== attachmentId);
+    renderQuoteProperties();
+}
+
+function updateAttachment(propertyId, attachmentId, field, value) {
+    var quoteProp = AppState.quoteProperties.find(qp => qp.propertyId === propertyId);
+    if (!quoteProp) return;
+    var att = quoteProp.attachments.find(a => a.id === attachmentId);
     if (att) {
         att[field] = value;
     }
 }
 
-function handleAttachmentFileChange(attachmentId, input) {
-    var att = AppState.quoteAttachments.find(a => a.id === attachmentId);
-    if (att && input.files && input.files[0]) {
-        att.file = input.files[0];
-        // Update the display to show filename
-        var fileNameSpan = document.getElementById('attachment-filename-' + attachmentId);
-        if (fileNameSpan) {
-            fileNameSpan.textContent = input.files[0].name;
-        }
-    }
+function addLinkToProperty(propertyId) {
+    var quoteProp = AppState.quoteProperties.find(qp => qp.propertyId === propertyId);
+    if (!quoteProp) return;
+    
+    AppState.attachmentCounter++;
+    quoteProp.attachments.push({
+        id: AppState.attachmentCounter,
+        file: null,
+        fileName: '',
+        fileType: 'Other',
+        description: '',
+        linkUrl: ''
+    });
+    
+    renderQuoteProperties();
 }
 
-function renderQuoteAttachments() {
-    var c = document.getElementById('quote-attachments-container');
-    if (!AppState.quoteAttachments.length) {
+function triggerFileInput(propertyId) {
+    document.getElementById('file-input-' + propertyId).click();
+}
+
+function handleFileInputChange(propertyId, input) {
+    if (input.files && input.files.length) {
+        addFilesToProperty(propertyId, input.files);
+    }
+    input.value = ''; // Reset so same file can be selected again
+}
+
+function renderQuoteProperties() {
+    var c = document.getElementById('quote-properties-container');
+    if (!AppState.quoteProperties.length) {
         c.innerHTML = `<div class="empty-state" style="padding: 40px 20px;">
-            <svg class="empty-state-icon" style="width:48px;height:48px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-            <p class="empty-state-text">No files attached yet</p>
-            <p class="empty-state-subtext">Click "Add File" to attach floor plans, photos, or other reference materials</p>
+            <svg class="empty-state-icon" style="width:48px;height:48px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <p class="empty-state-text">No properties added yet</p>
+            <p class="empty-state-subtext">Click "Add Property" to get started</p>
         </div>`;
         return;
     }
     
-    c.innerHTML = `
-        <div class="attachments-list">
-            ${AppState.quoteAttachments.map(att => `
-                <div class="attachment-row">
-                    <div class="attachment-type">
-                        <select class="form-input" onchange="updateQuoteAttachment(${att.id},'fileType',this.value)">
-                            <option value="">Select Type...</option>
+    c.innerHTML = AppState.quoteProperties.map(qp => {
+        var p = qp.property;
+        
+        var attachmentsHtml = '';
+        if (qp.attachments.length) {
+            attachmentsHtml = `<div class="attachments-list">
+                ${qp.attachments.map(att => `
+                    <div class="attachment-item">
+                        <div class="attachment-icon">
+                            ${att.file ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>` 
+                                       : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`}
+                        </div>
+                        <div class="attachment-name">${att.fileName || 'Link'}</div>
+                        <select class="form-input attachment-type-select" onchange="updateAttachment(${qp.propertyId},${att.id},'fileType',this.value)">
                             <option value="Floor Plan" ${att.fileType === 'Floor Plan' ? 'selected' : ''}>Floor Plan</option>
                             <option value="Site Plan" ${att.fileType === 'Site Plan' ? 'selected' : ''}>Site Plan</option>
                             <option value="Photo" ${att.fileType === 'Photo' ? 'selected' : ''}>Photo</option>
@@ -879,28 +978,50 @@ function renderQuoteAttachments() {
                             <option value="Style Guide" ${att.fileType === 'Style Guide' ? 'selected' : ''}>Style Guide</option>
                             <option value="Other" ${att.fileType === 'Other' ? 'selected' : ''}>Other</option>
                         </select>
+                        <input type="text" class="form-input attachment-desc-input" placeholder="Description (optional)" value="${att.description || ''}" onchange="updateAttachment(${qp.propertyId},${att.id},'description',this.value)">
+                        ${!att.file ? `<input type="url" class="form-input attachment-link-input" placeholder="Paste URL" value="${att.linkUrl || ''}" onchange="updateAttachment(${qp.propertyId},${att.id},'linkUrl',this.value)">` : ''}
+                        <button type="button" class="remove-btn" onclick="removeAttachmentFromProperty(${qp.propertyId},${att.id})">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
                     </div>
-                    <div class="attachment-description">
-                        <input type="text" class="form-input" placeholder="Description (optional)" value="${att.description || ''}" onchange="updateQuoteAttachment(${att.id},'description',this.value)">
-                    </div>
-                    <div class="attachment-file">
-                        <label class="file-upload-btn">
-                            <input type="file" style="display:none;" onchange="handleAttachmentFileChange(${att.id},this)">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-                            <span id="attachment-filename-${att.id}">${att.file ? att.file.name : 'Choose File'}</span>
-                        </label>
-                    </div>
-                    <div class="attachment-or">or</div>
-                    <div class="attachment-link">
-                        <input type="url" class="form-input" placeholder="Paste link URL" value="${att.linkUrl || ''}" onchange="updateQuoteAttachment(${att.id},'linkUrl',this.value)">
-                    </div>
-                    <button type="button" class="remove-btn" onclick="removeQuoteAttachment(${att.id})">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                `).join('')}
+            </div>`;
+        }
+        
+        return `<div class="property-group">
+            <div class="property-group-header">
+                <div class="property-group-info">
+                    <div class="property-group-name">${p.name}</div>
+                    <div class="property-group-address">${p.address || 'No address'}</div>
+                </div>
+                <div class="property-group-actions">
+                    <button type="button" class="btn btn-ghost btn-sm" onclick="removePropertyFromQuote(${qp.propertyId})" title="Remove Property">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     </button>
                 </div>
-            `).join('')}
-        </div>
-    `;
+            </div>
+            <div class="property-group-body">
+                <input type="file" id="file-input-${qp.propertyId}" multiple style="display:none;" onchange="handleFileInputChange(${qp.propertyId},this)">
+                <div class="drop-zone" 
+                     ondrop="handleFileDrop(${qp.propertyId},event)" 
+                     ondragover="handleDragOver(event)" 
+                     ondragleave="handleDragLeave(event)"
+                     onclick="triggerFileInput(${qp.propertyId})">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    <span>Drop files here or click to browse</span>
+                </div>
+                <button type="button" class="btn btn-ghost btn-sm add-link-btn" onclick="addLinkToProperty(${qp.propertyId})">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    Add Link
+                </button>
+                ${attachmentsHtml}
+            </div>
+        </div>`;
+    }).join('');
 }
 
 // Keep 3D product selector for future use if needed
@@ -1138,6 +1259,7 @@ async function saveQuote() {
     const notes = getRichTextContent('quote-notes-editor');
     if (!companyId) { alert('Please select a client'); return; }
     if (!name || !email) { alert('Quote name and sales rep email required'); return; }
+    if (!AppState.quoteProperties.length) { alert('Please add at least one property'); return; }
     
     var saveBtn = document.querySelector('#quote-form .btn-primary');
     var originalText = saveBtn.textContent;
@@ -1146,6 +1268,7 @@ async function saveQuote() {
     
     try {
         const f = CONFIG.fields.quotes3D;
+        const pf = CONFIG.fields.properties;
         const af = CONFIG.fields.quoteAttachments;
         
         // 1. Create the Quote record
@@ -1167,25 +1290,43 @@ async function saveQuote() {
         }
         console.log('Created quote:', quoteId);
         
-        // 2. Create attachment records (links only - file uploads handled separately)
-        for (const att of AppState.quoteAttachments) {
-            if (att.linkUrl || att.fileType) {
-                const attData = {
-                    [af.relatedQuote]: { value: quoteId },
-                    [af.fileType]: { value: att.fileType || '' },
-                    [af.description]: { value: att.description || '' },
-                    [af.linkToFile]: { value: att.linkUrl || '' }
-                };
-                
-                const attResult = await createRecord(CONFIG.tables.quoteAttachments, attData);
-                const attId = attResult.metadata?.createdRecordIds?.[0];
-                
-                // If there's a file to upload, we need to upload it separately
-                if (attId && att.file) {
-                    await uploadAttachmentFile(attId, att.file);
+        // 2. For each property, create a property link record and attachments
+        for (const qp of AppState.quoteProperties) {
+            // Create property link record
+            const propertyData = {
+                [pf.relatedQuote3D]: { value: quoteId },
+                [pf.relatedProperty]: { value: qp.propertyId }
+            };
+            
+            const propResult = await createRecord(CONFIG.tables.properties, propertyData);
+            const propertyLinkId = propResult.metadata?.createdRecordIds?.[0];
+            console.log('Created property link:', propertyLinkId, 'for property:', qp.propertyId);
+            
+            // 3. Create attachments for this property
+            for (const att of qp.attachments) {
+                if (att.file || att.linkUrl) {
+                    // Include property name in description for reference
+                    const descWithProperty = att.description 
+                        ? `[${qp.property.name}] ${att.description}`
+                        : `[${qp.property.name}]`;
+                    
+                    const attData = {
+                        [af.relatedQuote]: { value: quoteId },
+                        [af.fileType]: { value: att.fileType || 'Other' },
+                        [af.description]: { value: descWithProperty },
+                        [af.linkToFile]: { value: att.linkUrl || '' }
+                    };
+                    
+                    const attResult = await createRecord(CONFIG.tables.quoteAttachments, attData);
+                    const attId = attResult.metadata?.createdRecordIds?.[0];
+                    
+                    // If there's a file to upload, upload it
+                    if (attId && att.file) {
+                        await uploadAttachmentFile(attId, att.file);
+                    }
+                    
+                    console.log('Created attachment:', attId, att.fileName || att.linkUrl);
                 }
-                
-                console.log('Created attachment:', attId);
             }
         }
         
@@ -1305,12 +1446,12 @@ function resetOrderForm() {
 function resetQuoteForm() {
     document.getElementById('quote-form').reset();
     setRichTextContent('quote-notes-editor', '');
-    AppState.quoteAttachments = [];
+    AppState.quoteProperties = [];
     AppState.attachmentCounter = 0;
     AppState.selectedQuoteClient = null;
     document.getElementById('quote-selected-client-name').textContent = 'Select a client...';
     document.getElementById('quote-company-id').value = '';
-    renderQuoteAttachments();
+    renderQuoteProperties();
     renderQuoteClientList();
     prefillCurrentUserEmail();
 }
@@ -1566,6 +1707,7 @@ async function viewQuote(id) {
     
     try {
         const f = CONFIG.fields.quotes3D;
+        const pf = CONFIG.fields.properties;
         const af = CONFIG.fields.quoteAttachments;
         
         // Fetch quote details
@@ -1581,6 +1723,12 @@ async function viewQuote(id) {
         }
         
         const quote = quoteResult.data[0];
+        
+        // Fetch properties linked to this quote
+        const propsResult = await queryRecords(CONFIG.tables.properties,
+            [pf.recordId, pf.relatedProperty, pf.propertyName, pf.propertyAddress],
+            `{${pf.relatedQuote3D}.EX.${id}}`
+        );
         
         // Fetch attachments for this quote
         const attachmentsResult = await queryRecords(CONFIG.tables.quoteAttachments,
@@ -1641,58 +1789,56 @@ async function viewQuote(id) {
                 </div>
         `;
         
-        // Attachments section
+        // Properties section
+        const properties = propsResult.data || [];
         const attachments = attachmentsResult.data || [];
         
-        if (attachments.length) {
-            html += `
-                <div class="order-detail-section">
-                    <h4>Attachments</h4>
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Type</th>
-                                <th>Description</th>
-                                <th>File / Link</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-            `;
+        if (properties.length) {
+            html += '<div class="order-detail-section"><h4>Properties</h4>';
             
-            for (const att of attachments) {
-                const fileType = att[af.fileType]?.value || '-';
-                const description = att[af.description]?.value || '-';
-                const linkUrl = att[af.linkToFile]?.value || '';
-                const fileInfo = att[af.fileAttachment]?.value;
+            for (const prop of properties) {
+                const propName = prop[pf.propertyName]?.value || 'Unknown Property';
+                const propAddress = prop[pf.propertyAddress]?.value || '';
                 
-                let fileCell = '-';
-                if (linkUrl) {
-                    fileCell = `<a href="${linkUrl}" target="_blank" style="color: var(--lcp-blue);">View Link</a>`;
-                } else if (fileInfo && fileInfo.url) {
-                    fileCell = `<a href="${fileInfo.url}" target="_blank" style="color: var(--lcp-blue);">${fileInfo.filename || 'Download'}</a>`;
-                }
+                // Find attachments for this property (stored in description as [PropertyName])
+                const propAttachments = attachments.filter(att => {
+                    const desc = att[af.description]?.value || '';
+                    return desc.startsWith(`[${propName}]`);
+                });
                 
                 html += `
-                    <tr>
-                        <td>${fileType}</td>
-                        <td>${description}</td>
-                        <td>${fileCell}</td>
-                    </tr>
+                    <div class="property-detail-card">
+                        <div class="property-detail-header">
+                            <div>
+                                <strong>${propName}</strong>
+                                ${propAddress ? `<br><span class="text-muted">${propAddress}</span>` : ''}
+                            </div>
+                        </div>
                 `;
+                
+                if (propAttachments.length) {
+                    html += `<div class="property-attachments"><strong>Attachments:</strong><ul style="margin: 8px 0 0 20px;">`;
+                    for (const att of propAttachments) {
+                        const fileType = att[af.fileType]?.value || '';
+                        const description = (att[af.description]?.value || '').replace(`[${propName}]`, '').trim();
+                        const linkUrl = att[af.linkToFile]?.value || '';
+                        const fileInfo = att[af.fileAttachment]?.value;
+                        
+                        let linkHtml = '';
+                        if (linkUrl) {
+                            linkHtml = `<a href="${linkUrl}" target="_blank" style="color: var(--lcp-blue);">View Link</a>`;
+                        } else if (fileInfo && fileInfo.url) {
+                            linkHtml = `<a href="${fileInfo.url}" target="_blank" style="color: var(--lcp-blue);">${fileInfo.filename || 'Download'}</a>`;
+                        }
+                        
+                        html += `<li>${fileType}${description ? ': ' + description : ''} ${linkHtml}</li>`;
+                    }
+                    html += `</ul></div>`;
+                }
+                
+                html += `</div>`;
             }
-            
-            html += `
-                        </tbody>
-                    </table>
-                </div>
-            `;
-        } else {
-            html += `
-                <div class="order-detail-section">
-                    <h4>Attachments</h4>
-                    <p style="color: var(--text-muted); padding: 20px 0;">No attachments</p>
-                </div>
-            `;
+            html += '</div>';
         }
         
         html += '</div>';
@@ -1712,6 +1858,7 @@ async function viewQuote(id) {
 async function convertQuoteToOrder(quoteId) {
     try {
         const qf = CONFIG.fields.quotes3D;
+        const pf = CONFIG.fields.properties;
         
         // 1. Fetch the quote
         const quoteResult = await queryRecords(CONFIG.tables.quotes3D, 
@@ -1742,30 +1889,61 @@ async function convertQuoteToOrder(quoteId) {
             throw new Error('Quote has no associated company');
         }
         
-        // 2. Close quote modal
+        // 2. Fetch properties linked to this quote
+        const propsResult = await queryRecords(CONFIG.tables.properties,
+            [pf.recordId, pf.relatedProperty, pf.propertyName, pf.propertyAddress],
+            `{${pf.relatedQuote3D}.EX.${quoteId}}`
+        );
+        
+        const quoteProperties = propsResult.data || [];
+        
+        // 3. Close quote modal
         closeModal('quote-detail-modal');
         
-        // 3. Reset order form and switch to New Order tab
+        // 4. Reset order form and switch to New Order tab
         resetOrderForm();
         switchTab('tab-new-order');
         
-        // 4. Set the client/company
+        // 5. Set the client/company
         const client = AppState.clients.find(c => c.id === relatedCompany);
         if (client) {
             selectClient(client.id);
         }
         
-        // 5. Set sales rep email
+        // 6. Set sales rep email
         document.getElementById('order-sales-email').value = salesRepEmail;
         
-        // 6. Set notes with conversion reference
+        // 7. Set notes with conversion reference
         const conversionNote = `Converted from 3D Quote: ${quoteName} (ID: ${quoteId})`;
         setRichTextContent('order-notes-editor', historyNotes + (historyNotes ? '\n\n' : '') + conversionNote);
         
-        // 7. Store quote ID for later (to update status after save)
+        // 8. Add properties from the quote
+        for (const prop of quoteProperties) {
+            const propertyId = prop[pf.relatedProperty]?.value;
+            const property = AppState.properties.find(p => p.id === propertyId);
+            
+            if (!property) continue;
+            
+            // Check if already added
+            if (AppState.orderProperties.find(op => op.propertyId === propertyId)) continue;
+            
+            AppState.orderProperties.push({
+                propertyId: propertyId,
+                property: property,
+                lineItems: [],
+                billingContact: property.billingContact || '',
+                billingEmail: property.billingEmail || '',
+                billingPhone: property.billingPhone || ''
+            });
+        }
+        
+        // 9. Render the form
+        renderOrderProperties();
+        
+        // 10. Store quote ID for later (to update status after save)
         AppState.convertingQuoteId = quoteId;
         
-        showSuccess(`Quote "${quoteName}" loaded. Add properties and products to complete the order.`);
+        showSuccess(`Quote "${quoteName}" loaded with ${quoteProperties.length} properties. Add products to complete the order.`);
         
     } catch (e) {
         console.error('Convert quote to order failed:', e);

@@ -1,5 +1,5 @@
 {
-  "version": "1.8.0",
+  "version": "1.8.1",
   "updated": "2026-04-02",
-  "notes": "3D Quote overhaul - replace products with file attachments"
+  "notes": "3D Quotes with properties and drag-drop file attachments"
 }
