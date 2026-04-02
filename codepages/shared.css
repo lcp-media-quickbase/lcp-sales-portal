@@ -400,7 +400,8 @@ body {
 .drop-zone:hover { border-color: var(--lcp-blue); color: var(--lcp-blue); background: var(--lcp-blue-light); }
 .drop-zone.drag-over { border-color: var(--lcp-blue); background: var(--lcp-blue-light); color: var(--lcp-blue); }
 .drop-zone span { font-size: 13px; }
-.add-link-btn { margin-bottom: 12px; }
+.add-link-btn { margin-bottom: 12px; background: transparent; border: 2px solid var(--lcp-blue); color: var(--lcp-blue); font-size: 14px; padding: 8px 16px; gap: 8px; }
+.add-link-btn:hover { background: var(--lcp-blue-light); }
 
 /* Responsive */
 @media (max-width: 1024px) {

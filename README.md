@@ -6,10 +6,13 @@ Custom QuickBase Code Page for the LCP Media sales team to create and manage ord
 
 - **New Order** - Create orders with line items and property selection
 - **Order History** - View, search, and duplicate previous orders
-- **New 3D Quote** - Build 3D product quotes with line items
+- **New 3D Quote** - Build 3D quotes with property-based file attachments (drag-and-drop or link)
 - **Quote History** - View, search, and duplicate previous quotes
-- **Property Management** - Select existing or add new properties
+- **Property Management** - Select existing or create new properties directly from order/quote forms
 - **Product Catalog** - Browse and select products for line items
+- **Contract Contact Fields** - Capture contract contact info on orders
+- **Auto-add Products** - Automatically adds product 9430 when 9461 or 9456 is added to an order
+- **Convert to Order** - Pre-fills order form with client, sales rep, and properties from a quote
 
 ## QuickBase App
 
@@ -24,6 +27,7 @@ Custom QuickBase Code Page for the LCP Media sales team to create and manage ord
 | Order Line Items | `bvvpht749` | Order products |
 | 3D Quotes | `bvvpht76j` | 3D quote requests |
 | 3D Line Items | `bvvpht773` | 3D quote products |
+| Quote Attachments | `bvxez3rjp` | Files/links attached to 3D quotes |
 | Properties | `bvvpht79i` | Property records |
 
 ## Installation
@@ -69,6 +73,7 @@ To release a new version:
 3. `buildDashboard` must be synchronous (async causes blank screen)
 4. Never use broad `sed` on shared.js — use targeted string replacements
 5. When layout breaks, diff HTML-generating functions first, not CSS
+6. 3D Quotes use a property-first model: properties link to the quote, attachments link to properties (not directly to the quote)
 
 ## Brand
 
