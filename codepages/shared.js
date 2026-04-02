@@ -2,7 +2,7 @@
 // App ID: bvvpht7z6 | Realm: lcp360-5583.quickbase.com
 
 const CONFIG = {
-    version: '1.7.20',
+    version: '1.8.0',
     versionUrl: 'https://raw.githubusercontent.com/lcp-media-quickbase/lcp-sales-portal/main/codepages/version.json',
     
     getRealmHostname: function() { return window.location.hostname; },
@@ -14,6 +14,7 @@ const CONFIG = {
         orderLineItems: 'bvvpht749',
         quotes3D: 'bvvpht76j',
         lineItems3D: 'bvvpht773',
+        quoteAttachments: 'bvxez3rjp',
         properties: 'bvvpht79i',
         products: 'bvdjrfrja',
         companies: 'bvdjrk2qq',
@@ -42,6 +43,10 @@ const CONFIG = {
             salesRepEmail: 8, historyNotes: 9, quoteStatus: 10, quoteName: 11, quotePDF: 12,
             relatedCompany: 17, companyName: 18, companyYcrmId: 19, companyYcrmName: 20,
             quoteTotal: 27
+        },
+        quoteAttachments: {
+            recordId: 3, dateCreated: 1, dateModified: 2, fileAttachment: 6, description: 7,
+            fileType: 8, relatedQuote: 9, linkToFile: 10
         },
         lineItems3D: {
             recordId: 3, quantity: 6, total: 7, description: 8, notes: 9, relatedQuote: 10,

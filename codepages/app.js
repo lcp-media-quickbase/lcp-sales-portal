@@ -4,8 +4,9 @@ const AppState = {
     selectedProduct: null, selectedClient: null, selectedQuoteClient: null,
     currentProductCallback: null, currentPropertyCallback: null,
     orderProperties: [], // [{propertyId, property, lineItems: [{id, productId, productName, quantity, unitPrice, total}], billingContact, billingEmail, billingPhone}]
-    quoteProperties: [], // Same structure for 3D quotes
-    products: [], products3D: [], properties: [], clients: [], orders: [], quotes: [], priceList: []
+    quoteAttachments: [], // [{id, fileType, description, file, linkUrl}]
+    products: [], products3D: [], properties: [], clients: [], orders: [], quotes: [], priceList: [],
+    attachmentCounter: 0
 };
 
 // ============================================================================
@@ -211,10 +212,8 @@ function renderPropertyList() {
         c.innerHTML = '<tr><td style="text-align:center;padding:40px;color:var(--text-muted)">No properties found</td></tr>'; 
         return; 
     }
-    // Filter out already selected properties based on context
-    var selectedIds = AppState.currentPropertyCallback === 'quote' 
-        ? AppState.quoteProperties.map(op => op.propertyId)
-        : AppState.orderProperties.map(op => op.propertyId);
+    // Filter out already selected properties (only used for orders now)
+    var selectedIds = AppState.orderProperties.map(op => op.propertyId);
     var available = AppState.properties.filter(p => !selectedIds.includes(p.id));
     if (!available.length) {
         c.innerHTML = '<tr><td style="text-align:center;padding:40px;color:var(--text-muted)">All properties already added</td></tr>';
@@ -235,10 +234,8 @@ function filterProperties() {
     var c = document.getElementById('property-table-body');
     if (!c) return;
     
-    // Get available properties
-    var selectedIds = AppState.currentPropertyCallback === 'quote' 
-        ? AppState.quoteProperties.map(op => op.propertyId)
-        : AppState.orderProperties.map(op => op.propertyId);
+    // Get available properties (only used for orders now)
+    var selectedIds = AppState.orderProperties.map(op => op.propertyId);
     var available = AppState.properties.filter(p => !selectedIds.includes(p.id));
     
     // Filter by search term
@@ -804,115 +801,109 @@ function removeOrderLineItem(id) { AppState.orderLineItems = AppState.orderLineI
 // ============================================================================
 
 function openQuotePropertySelector() {
-    renderQuotePropertyList();
-    document.getElementById('property-search-input').value = '';
-    AppState.currentPropertyCallback = 'quote';
-    hideCreatePropertyForm();
-    openModal('property-modal');
+    // No longer used - quotes now use attachments instead of properties
 }
 
 function renderQuotePropertyList() {
-    var c = document.getElementById('property-table-body');
-    if (!c) return;
-    if (!AppState.properties.length) { 
-        c.innerHTML = '<tr><td style="text-align:center;padding:40px;color:var(--text-muted)">No properties found</td></tr>'; 
-        return; 
-    }
-    var selectedIds = AppState.quoteProperties.map(op => op.propertyId);
-    var available = AppState.properties.filter(p => !selectedIds.includes(p.id));
-    if (!available.length) {
-        c.innerHTML = '<tr><td style="text-align:center;padding:40px;color:var(--text-muted)">All properties already added</td></tr>';
-        return;
-    }
-    c.innerHTML = available.map(p => `<tr class="property-row" onclick="addPropertyFromSelector(${p.id})" data-name="${(p.name||'').toLowerCase()}" data-address="${(p.address||'').toLowerCase()}" style="cursor:pointer;"><td><div class="property-name-large">${p.name}</div><div class="property-address-small">${p.address || 'No address'}</div></td></tr>`).join('');
+    // No longer used - quotes now use attachments instead of properties
 }
 
 function addPropertyFromSelector(propertyId) {
-    if (AppState.currentPropertyCallback === 'quote') {
-        addPropertyToQuote(propertyId);
-    } else {
-        addPropertyToOrder(propertyId);
-    }
+    // Only used for orders now
+    addPropertyToOrder(propertyId);
     AppState.currentPropertyCallback = null;
 }
 
-function addPropertyToQuote(propertyId) {
-    var property = AppState.properties.find(p => p.id === propertyId);
-    if (!property) return;
-    
-    if (AppState.quoteProperties.find(op => op.propertyId === propertyId)) {
-        closeModal('property-modal');
+// ============================================================================
+// 3D QUOTE ATTACHMENTS
+// ============================================================================
+
+function addQuoteAttachment() {
+    AppState.attachmentCounter++;
+    AppState.quoteAttachments.push({
+        id: AppState.attachmentCounter,
+        fileType: '',
+        description: '',
+        file: null,
+        linkUrl: ''
+    });
+    renderQuoteAttachments();
+}
+
+function removeQuoteAttachment(attachmentId) {
+    AppState.quoteAttachments = AppState.quoteAttachments.filter(a => a.id !== attachmentId);
+    renderQuoteAttachments();
+}
+
+function updateQuoteAttachment(attachmentId, field, value) {
+    var att = AppState.quoteAttachments.find(a => a.id === attachmentId);
+    if (att) {
+        att[field] = value;
+    }
+}
+
+function handleAttachmentFileChange(attachmentId, input) {
+    var att = AppState.quoteAttachments.find(a => a.id === attachmentId);
+    if (att && input.files && input.files[0]) {
+        att.file = input.files[0];
+        // Update the display to show filename
+        var fileNameSpan = document.getElementById('attachment-filename-' + attachmentId);
+        if (fileNameSpan) {
+            fileNameSpan.textContent = input.files[0].name;
+        }
+    }
+}
+
+function renderQuoteAttachments() {
+    var c = document.getElementById('quote-attachments-container');
+    if (!AppState.quoteAttachments.length) {
+        c.innerHTML = `<div class="empty-state" style="padding: 40px 20px;">
+            <svg class="empty-state-icon" style="width:48px;height:48px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            <p class="empty-state-text">No files attached yet</p>
+            <p class="empty-state-subtext">Click "Add File" to attach floor plans, photos, or other reference materials</p>
+        </div>`;
         return;
     }
     
-    AppState.quoteProperties.push({
-        propertyId: propertyId,
-        property: property,
-        lineItems: [],
-        billingContact: property.billingContact || '',
-        billingEmail: property.billingEmail || '',
-        billingPhone: property.billingPhone || ''
-    });
-    
-    renderQuoteProperties();
-    closeModal('property-modal');
+    c.innerHTML = `
+        <div class="attachments-list">
+            ${AppState.quoteAttachments.map(att => `
+                <div class="attachment-row">
+                    <div class="attachment-type">
+                        <select class="form-input" onchange="updateQuoteAttachment(${att.id},'fileType',this.value)">
+                            <option value="">Select Type...</option>
+                            <option value="Floor Plan" ${att.fileType === 'Floor Plan' ? 'selected' : ''}>Floor Plan</option>
+                            <option value="Site Plan" ${att.fileType === 'Site Plan' ? 'selected' : ''}>Site Plan</option>
+                            <option value="Photo" ${att.fileType === 'Photo' ? 'selected' : ''}>Photo</option>
+                            <option value="Rendering Reference" ${att.fileType === 'Rendering Reference' ? 'selected' : ''}>Rendering Reference</option>
+                            <option value="Style Guide" ${att.fileType === 'Style Guide' ? 'selected' : ''}>Style Guide</option>
+                            <option value="Other" ${att.fileType === 'Other' ? 'selected' : ''}>Other</option>
+                        </select>
+                    </div>
+                    <div class="attachment-description">
+                        <input type="text" class="form-input" placeholder="Description (optional)" value="${att.description || ''}" onchange="updateQuoteAttachment(${att.id},'description',this.value)">
+                    </div>
+                    <div class="attachment-file">
+                        <label class="file-upload-btn">
+                            <input type="file" style="display:none;" onchange="handleAttachmentFileChange(${att.id},this)">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                            <span id="attachment-filename-${att.id}">${att.file ? att.file.name : 'Choose File'}</span>
+                        </label>
+                    </div>
+                    <div class="attachment-or">or</div>
+                    <div class="attachment-link">
+                        <input type="url" class="form-input" placeholder="Paste link URL" value="${att.linkUrl || ''}" onchange="updateQuoteAttachment(${att.id},'linkUrl',this.value)">
+                    </div>
+                    <button type="button" class="remove-btn" onclick="removeQuoteAttachment(${att.id})">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+                </div>
+            `).join('')}
+        </div>
+    `;
 }
 
-function removePropertyFromQuote(propertyId) {
-    AppState.quoteProperties = AppState.quoteProperties.filter(op => op.propertyId !== propertyId);
-    renderQuoteProperties();
-}
-
-function addLineItemToQuoteProperty(propertyId) {
-    var quoteProp = AppState.quoteProperties.find(op => op.propertyId === propertyId);
-    if (!quoteProp) return;
-    
-    lineItemCounter++;
-    quoteProp.lineItems.push({
-        id: lineItemCounter,
-        productId: null,
-        productName: '',
-        quantity: 1,
-        description: '',
-        stills: '',
-        panos: ''
-    });
-    renderQuoteProperties();
-}
-
-function removeLineItemFromQuoteProperty(propertyId, lineItemId) {
-    var quoteProp = AppState.quoteProperties.find(op => op.propertyId === propertyId);
-    if (!quoteProp) return;
-    quoteProp.lineItems = quoteProp.lineItems.filter(li => li.id !== lineItemId);
-    renderQuoteProperties();
-}
-
-function updateQuoteLineItem(propertyId, lineItemId, field, value) {
-    var quoteProp = AppState.quoteProperties.find(op => op.propertyId === propertyId);
-    if (!quoteProp) return;
-    var li = quoteProp.lineItems.find(l => l.id === lineItemId);
-    if (li) {
-        if (field === 'quantity' || field === 'stills' || field === 'panos') {
-            li[field] = parseInt(value) || (field === 'quantity' ? 1 : '');
-        } else {
-            li[field] = value;
-        }
-    }
-}
-
-function selectProductForQuotePropertyLine(propertyId, lineItemId) {
-    open3DProductSelector(function(product) {
-        var quoteProp = AppState.quoteProperties.find(op => op.propertyId === propertyId);
-        if (!quoteProp) return;
-        var li = quoteProp.lineItems.find(l => l.id === lineItemId);
-        if (li) {
-            li.productId = product.id;
-            li.productName = product.name;
-            renderQuoteProperties();
-        }
-    });
-}
-
+// Keep 3D product selector for future use if needed
 function open3DProductSelector(cb) {
     AppState.currentProductCallback = cb;
     AppState.selectedProduct = null;
@@ -920,7 +911,7 @@ function open3DProductSelector(cb) {
     var searchInput = document.getElementById('product-search-input');
     if (searchInput) searchInput.value = '';
     var typeFilter = document.getElementById('product-type-filter');
-    if (typeFilter) typeFilter.style.display = 'none'; // Hide type filter for 3D products
+    if (typeFilter) typeFilter.style.display = 'none';
     openModal('product-modal');
 }
 
@@ -932,86 +923,6 @@ function render3DProductGrid() {
         return; 
     }
     c.innerHTML = AppState.products3D.map(p => `<tr class="product-row" onclick="selectProductRow(${p.id}, true)" data-name="${p.name.toLowerCase()}" style="cursor:pointer;"><td>—</td><td>${p.name}</td><td style="color:var(--lcp-blue);font-weight:500;">${formatCurrency(p.price)}</td><td>Each</td><td><span class="badge-type 3d">3D</span></td></tr>`).join('');
-}
-
-function updateQuotePropertyBilling(propertyId, field, value) {
-    var quoteProp = AppState.quoteProperties.find(op => op.propertyId === propertyId);
-    if (quoteProp) {
-        quoteProp[field] = value;
-    }
-}
-
-function renderQuoteProperties() {
-    var c = document.getElementById('quote-properties-container');
-    if (!AppState.quoteProperties.length) {
-        c.innerHTML = `<div class="empty-state" style="padding: 40px 20px;">
-            <svg class="empty-state-icon" style="width:48px;height:48px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-            <p class="empty-state-text">No properties added yet</p>
-            <p class="empty-state-subtext">Click "Add Property" to get started</p>
-        </div>`;
-        return;
-    }
-    
-    c.innerHTML = AppState.quoteProperties.map(op => {
-        var p = op.property;
-        
-        var lineItemsHtml = '';
-        if (op.lineItems.length) {
-            lineItemsHtml = op.lineItems.map(li => `<div class="line-item-quote">
-                <button type="button" class="btn btn-secondary" style="justify-content:flex-start" onclick="selectProductForQuotePropertyLine(${op.propertyId},${li.id})">${li.productName||'Select Product...'}</button>
-                <input type="text" class="form-input" value="${li.description||''}" placeholder="Description" onchange="updateQuoteLineItem(${op.propertyId},${li.id},'description',this.value)">
-                <input type="number" class="form-input" value="${li.quantity}" min="1" onchange="updateQuoteLineItem(${op.propertyId},${li.id},'quantity',this.value)">
-                <input type="number" class="form-input" value="${li.stills||''}" min="0" onchange="updateQuoteLineItem(${op.propertyId},${li.id},'stills',this.value)">
-                <input type="number" class="form-input" value="${li.panos||''}" min="0" onchange="updateQuoteLineItem(${op.propertyId},${li.id},'panos',this.value)">
-                <button type="button" class="remove-btn" onclick="removeLineItemFromQuoteProperty(${op.propertyId},${li.id})"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-            </div>`).join('');
-        } else {
-            lineItemsHtml = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">No products yet</div>';
-        }
-        
-        return `<div class="property-group">
-            <div class="property-group-header">
-                <div class="property-group-info">
-                    <div class="property-group-name">${p.name}</div>
-                    <div class="property-group-address">${p.address || 'No address'}</div>
-                </div>
-                <div class="property-group-actions">
-                    <button type="button" class="btn btn-ghost btn-sm" onclick="removePropertyFromQuote(${op.propertyId})" title="Remove Property">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    </button>
-                </div>
-            </div>
-            <div class="property-group-billing">
-                <div class="billing-field">
-                    <label class="billing-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Contact</label>
-                    <input type="text" class="form-input billing-input" value="${op.billingContact || ''}" placeholder="Contact name" onchange="updateQuotePropertyBilling(${op.propertyId},'billingContact',this.value)">
-                </div>
-                <div class="billing-field">
-                    <label class="billing-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Email</label>
-                    <input type="email" class="form-input billing-input" value="${op.billingEmail || ''}" placeholder="billing@company.com" onchange="updateQuotePropertyBilling(${op.propertyId},'billingEmail',this.value)">
-                </div>
-                <div class="billing-field">
-                    <label class="billing-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>Phone</label>
-                    <input type="tel" class="form-input billing-input" value="${op.billingPhone || ''}" placeholder="(555) 123-4567" oninput="formatPhoneNumber(this)" onchange="updateQuotePropertyBilling(${op.propertyId},'billingPhone',this.value)">
-                </div>
-            </div>
-            <div class="property-group-body">
-                <div class="line-item-header-quote">
-                    <span>Product</span>
-                    <span>Description</span>
-                    <span>Qty</span>
-                    <span>Stills</span>
-                    <span>Panos</span>
-                    <span></span>
-                </div>
-                <div class="line-items-container">${lineItemsHtml}</div>
-                <button type="button" class="btn btn-secondary add-line-item-btn" onclick="addLineItemToQuoteProperty(${op.propertyId})">
-                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-                    Add Product
-                </button>
-            </div>
-        </div>`;
-    }).join('');
 }
 
 // ============================================================================
@@ -1227,18 +1138,6 @@ async function saveQuote() {
     const notes = getRichTextContent('quote-notes-editor');
     if (!companyId) { alert('Please select a client'); return; }
     if (!name || !email) { alert('Quote name and sales rep email required'); return; }
-    if (!AppState.quoteProperties.length) { alert('Please add at least one property'); return; }
-    
-    var hasLineItems = AppState.quoteProperties.some(qp => qp.lineItems.length > 0);
-    if (!hasLineItems) { alert('Please add at least one product'); return; }
-    
-    // Check each property has billing contact info
-    for (const qp of AppState.quoteProperties) {
-        if (!qp.billingContact || !qp.billingEmail || !qp.billingPhone) {
-            alert('Billing contact information (name, email, phone) required for all properties');
-            return;
-        }
-    }
     
     var saveBtn = document.querySelector('#quote-form .btn-primary');
     var originalText = saveBtn.textContent;
@@ -1247,10 +1146,9 @@ async function saveQuote() {
     
     try {
         const f = CONFIG.fields.quotes3D;
-        const pf = CONFIG.fields.properties;
-        const lf = CONFIG.fields.lineItems3D;
+        const af = CONFIG.fields.quoteAttachments;
         
-        // 1. Create the Quote record (don't set status - let QB use default)
+        // 1. Create the Quote record
         const data = { 
             [f.quoteName]: { value: name }, 
             [f.salesRepEmail]: { value: email }, 
@@ -1262,7 +1160,6 @@ async function saveQuote() {
         const r = await createRecord(CONFIG.tables.quotes3D, data);
         const quoteId = r.metadata?.createdRecordIds?.[0];
         if (!quoteId) {
-            // Log lineErrors if present
             if (r.metadata?.lineErrors) {
                 console.error('QB lineErrors:', r.metadata.lineErrors);
             }
@@ -1270,42 +1167,25 @@ async function saveQuote() {
         }
         console.log('Created quote:', quoteId);
         
-        // 2. For each property, create a property link record and line items
-        for (const qp of AppState.quoteProperties) {
-            // Create property link record with billing contact info
-            const propertyData = {
-                [pf.relatedQuote3D]: { value: quoteId },
-                [pf.relatedProperty]: { value: qp.propertyId },
-                [pf.billingContact]: { value: qp.billingContact || '' },
-                [pf.billingEmail]: { value: qp.billingEmail || '' },
-                [pf.billingPhone]: { value: qp.billingPhone || '' }
-            };
-            
-            const propResult = await createRecord(CONFIG.tables.properties, propertyData);
-            const propertyLinkId = propResult.metadata?.createdRecordIds?.[0];
-            console.log('Created property link:', propertyLinkId, 'for property:', qp.propertyId);
-            
-            // 3. Create line items for this property
-            for (const li of qp.lineItems) {
-                if (li.productId) {
-                    console.log('Line item object:', JSON.stringify(li));
-                    console.log('lf.relatedProduct =', lf.relatedProduct, 'li.productId =', li.productId);
-                    var lineData = { 
-                        [lf.relatedQuote]: { value: quoteId }, 
-                        [lf.relatedProduct]: { value: li.productId },
-                        [lf.quantity]: { value: li.quantity || 1 },
-                        [lf.description]: { value: li.description || '' },
-                        [lf.stills]: { value: li.stills || 0 },
-                        [lf.panos]: { value: li.panos || 0 }
-                    };
-                    console.log('lineData before send:', JSON.stringify(lineData));
-                    const liResult = await createRecord(CONFIG.tables.lineItems3D, lineData);
-                    if (liResult.metadata?.lineErrors && Object.keys(liResult.metadata.lineErrors).length > 0) {
-                        console.error('Line item creation error:', liResult.metadata.lineErrors);
-                    } else {
-                        console.log('Created line item for product:', li.productId, li.productName);
-                    }
+        // 2. Create attachment records (links only - file uploads handled separately)
+        for (const att of AppState.quoteAttachments) {
+            if (att.linkUrl || att.fileType) {
+                const attData = {
+                    [af.relatedQuote]: { value: quoteId },
+                    [af.fileType]: { value: att.fileType || '' },
+                    [af.description]: { value: att.description || '' },
+                    [af.linkToFile]: { value: att.linkUrl || '' }
+                };
+                
+                const attResult = await createRecord(CONFIG.tables.quoteAttachments, attData);
+                const attId = attResult.metadata?.createdRecordIds?.[0];
+                
+                // If there's a file to upload, we need to upload it separately
+                if (attId && att.file) {
+                    await uploadAttachmentFile(attId, att.file);
                 }
+                
+                console.log('Created attachment:', attId);
             }
         }
         
@@ -1317,6 +1197,36 @@ async function saveQuote() {
     } finally {
         saveBtn.textContent = originalText;
         saveBtn.disabled = false;
+    }
+}
+
+async function uploadAttachmentFile(recordId, file) {
+    // QB file upload requires multipart form data to the record endpoint
+    try {
+        const af = CONFIG.fields.quoteAttachments;
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const realm = CONFIG.getRealmHostname();
+        const token = await getOrRefreshToken(CONFIG.tables.quoteAttachments);
+        
+        const response = await fetch(`https://api.quickbase.com/v1/files/${CONFIG.tables.quoteAttachments}/${recordId}/${af.fileAttachment}`, {
+            method: 'POST',
+            headers: {
+                'QB-Realm-Hostname': realm,
+                'Authorization': `QB-TEMP-TOKEN ${token}`
+            },
+            body: formData,
+            credentials: 'include'
+        });
+        
+        if (!response.ok) {
+            console.error('File upload failed:', await response.text());
+        } else {
+            console.log('File uploaded successfully');
+        }
+    } catch (e) {
+        console.error('File upload error:', e);
     }
 }
 
@@ -1344,21 +1254,18 @@ async function loadQuoteHistory() {
     showLoading(c);
     try {
         const f = CONFIG.fields.quotes3D;
-        const r = await queryRecords(CONFIG.tables.quotes3D, [f.recordId, f.quoteName, f.quoteStatus, f.quoteDate, f.salesRepEmail, f.companyName, f.quoteTotal], null, [{ fieldId: f.dateModified, order: 'DESC' }]);
+        const r = await queryRecords(CONFIG.tables.quotes3D, [f.recordId, f.quoteName, f.quoteStatus, f.quoteDate, f.salesRepEmail, f.companyName], null, [{ fieldId: f.dateModified, order: 'DESC' }]);
         AppState.quotes = r.data;
         if (!AppState.quotes.length) { c.innerHTML = '<div class="empty-state"><p class="empty-state-title">No quotes yet</p><button class="btn btn-primary" onclick="switchTab(\'tab-new-quote\')">Create Quote</button></div>'; return; }
         document.getElementById('stat-total-quotes').textContent = AppState.quotes.length;
         document.getElementById('stat-pending-quotes').textContent = AppState.quotes.filter(q => ['Pending Review','Sent to Client'].includes(q[f.quoteStatus]?.value)).length;
         document.getElementById('stat-approved-quotes').textContent = AppState.quotes.filter(q => q[f.quoteStatus]?.value === 'Approved').length;
-        c.innerHTML = `<table class="data-table"><thead><tr><th>Quote Name</th><th>Company</th><th>Status</th><th>Total</th><th>Date</th><th>Sales Rep</th><th>Actions</th></tr></thead><tbody>${AppState.quotes.map(q => {
+        c.innerHTML = `<table class="data-table"><thead><tr><th>Quote Name</th><th>Company</th><th>Status</th><th>Date</th><th>Sales Rep</th><th>Actions</th></tr></thead><tbody>${AppState.quotes.map(q => {
             const status = q[f.quoteStatus]?.value || 'Draft';
-            const isConverted = status === 'Converted to Order';
-            const canConvert = !isConverted && status !== 'Rejected' && status !== 'Expired';
             return `<tr>
                 <td>${q[f.quoteName]?.value||'-'}</td>
                 <td>${q[f.companyName]?.value||'-'}</td>
                 <td><span class="badge badge-${getStatusClass(status)}">${status}</span></td>
-                <td style="color:var(--lcp-blue);font-weight:500;">${formatCurrency(q[f.quoteTotal]?.value)}</td>
                 <td>${formatDate(q[f.quoteDate]?.value)}</td>
                 <td>${q[f.salesRepEmail]?.value||'-'}</td>
                 <td class="actions">
@@ -1398,11 +1305,12 @@ function resetOrderForm() {
 function resetQuoteForm() {
     document.getElementById('quote-form').reset();
     setRichTextContent('quote-notes-editor', '');
-    AppState.quoteProperties = [];
+    AppState.quoteAttachments = [];
+    AppState.attachmentCounter = 0;
     AppState.selectedQuoteClient = null;
     document.getElementById('quote-selected-client-name').textContent = 'Select a client...';
     document.getElementById('quote-company-id').value = '';
-    renderQuoteProperties();
+    renderQuoteAttachments();
     renderQuoteClientList();
     prefillCurrentUserEmail();
 }
@@ -1658,13 +1566,12 @@ async function viewQuote(id) {
     
     try {
         const f = CONFIG.fields.quotes3D;
-        const pf = CONFIG.fields.properties;
-        const lf = CONFIG.fields.lineItems3D;
+        const af = CONFIG.fields.quoteAttachments;
         
         // Fetch quote details
         const quoteResult = await queryRecords(CONFIG.tables.quotes3D, 
             [f.recordId, f.quoteName, f.quoteStatus, f.quoteDate, f.expirationDate, f.salesRepEmail, 
-             f.historyNotes, f.companyName, f.companyYcrmId, f.quoteTotal],
+             f.historyNotes, f.companyName, f.companyYcrmId],
             `{3.EX.${id}}`
         );
         
@@ -1675,18 +1582,10 @@ async function viewQuote(id) {
         
         const quote = quoteResult.data[0];
         
-        // Fetch properties linked to this quote
-        const propsResult = await queryRecords(CONFIG.tables.properties,
-            [pf.recordId, pf.relatedProperty, pf.propertyName, pf.propertyAddress, 
-             pf.billingContact, pf.billingEmail, pf.billingPhone],
-            `{${pf.relatedQuote3D}.EX.${id}}`
-        );
-        
-        // Fetch line items for this quote
-        const lineItemsResult = await queryRecords(CONFIG.tables.lineItems3D,
-            [lf.recordId, lf.relatedProduct, lf.productName, lf.description, lf.quantity, 
-             lf.total, lf.stills, lf.panos, lf.productRetailPrice, lf.quotePrice],
-            `{${lf.relatedQuote}.EX.${id}}`
+        // Fetch attachments for this quote
+        const attachmentsResult = await queryRecords(CONFIG.tables.quoteAttachments,
+            [af.recordId, af.fileType, af.description, af.linkToFile, af.fileAttachment],
+            `{${af.relatedQuote}.EX.${id}}`
         );
         
         // Build the detail view
@@ -1697,7 +1596,6 @@ async function viewQuote(id) {
         const salesRep = quote[f.salesRepEmail]?.value || '-';
         const quoteDate = formatDate(quote[f.quoteDate]?.value);
         const expDate = formatDate(quote[f.expirationDate]?.value);
-        const quoteTotal = quote[f.quoteTotal]?.value || 0;
         const notes = quote[f.historyNotes]?.value || '';
         
         const isConverted = status === 'Converted to Order';
@@ -1739,87 +1637,46 @@ async function viewQuote(id) {
                         <p><strong>Quote Date:</strong> ${quoteDate}</p>
                         <p><strong>Expires:</strong> ${expDate}</p>
                     </div>
-                    <div class="order-detail-card">
-                        <h4>Quote Total</h4>
-                        <p style="font-size: 28px; font-weight: 600; color: var(--lcp-blue); margin: 0;">${formatCurrency(quoteTotal)}</p>
-                    </div>
-                    ${notes ? `<div class="order-detail-card"><h4>Notes</h4><div class="order-notes-content">${notes}</div></div>` : ''}
+                    ${notes ? `<div class="order-detail-card" style="grid-column: span 2;"><h4>Notes</h4><div class="order-notes-content">${notes}</div></div>` : ''}
                 </div>
         `;
         
-        // Properties and line items
-        const properties = propsResult.data || [];
-        const lineItems = lineItemsResult.data || [];
+        // Attachments section
+        const attachments = attachmentsResult.data || [];
         
-        if (properties.length) {
-            html += '<div class="order-detail-section"><h4>Properties</h4>';
-            
-            for (const prop of properties) {
-                const propName = prop[pf.propertyName]?.value || 'Unknown Property';
-                const propAddress = prop[pf.propertyAddress]?.value || '';
-                const billingContact = prop[pf.billingContact]?.value || '-';
-                const billingEmail = prop[pf.billingEmail]?.value || '-';
-                const billingPhone = prop[pf.billingPhone]?.value || '-';
-                
-                html += `
-                    <div class="property-detail-card">
-                        <div class="property-detail-header">
-                            <div>
-                                <strong>${propName}</strong>
-                                ${propAddress ? `<br><span class="text-muted">${propAddress}</span>` : ''}
-                            </div>
-                            <div class="property-billing-info">
-                                <span><strong>Billing:</strong> ${billingContact}</span>
-                                <span>${billingEmail}</span>
-                                <span>${billingPhone}</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-            html += '</div>';
-        }
-        
-        // Line items section
-        if (lineItems.length) {
+        if (attachments.length) {
             html += `
                 <div class="order-detail-section">
-                    <h4>Line Items</h4>
+                    <h4>Attachments</h4>
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>Product</th>
+                                <th>Type</th>
                                 <th>Description</th>
-                                <th style="width: 60px;">Qty</th>
-                                <th style="width: 60px;">Stills</th>
-                                <th style="width: 60px;">Panos</th>
-                                <th style="width: 100px;">Unit Price</th>
-                                <th style="width: 100px;">Total</th>
+                                <th>File / Link</th>
                             </tr>
                         </thead>
                         <tbody>
             `;
             
-            for (const li of lineItems) {
-                const productName = li[lf.productName]?.value || '-';
-                const description = li[lf.description]?.value || '-';
-                const qty = li[lf.quantity]?.value || 0;
-                const stills = li[lf.stills]?.value || 0;
-                const panos = li[lf.panos]?.value || 0;
-                const quotePrice = li[lf.quotePrice]?.value;
-                const retailPrice = li[lf.productRetailPrice]?.value || 0;
-                const unitPrice = quotePrice != null && quotePrice !== '' ? quotePrice : retailPrice;
-                const total = li[lf.total]?.value || 0;
+            for (const att of attachments) {
+                const fileType = att[af.fileType]?.value || '-';
+                const description = att[af.description]?.value || '-';
+                const linkUrl = att[af.linkToFile]?.value || '';
+                const fileInfo = att[af.fileAttachment]?.value;
+                
+                let fileCell = '-';
+                if (linkUrl) {
+                    fileCell = `<a href="${linkUrl}" target="_blank" style="color: var(--lcp-blue);">View Link</a>`;
+                } else if (fileInfo && fileInfo.url) {
+                    fileCell = `<a href="${fileInfo.url}" target="_blank" style="color: var(--lcp-blue);">${fileInfo.filename || 'Download'}</a>`;
+                }
                 
                 html += `
                     <tr>
-                        <td>${productName}</td>
+                        <td>${fileType}</td>
                         <td>${description}</td>
-                        <td>${qty}</td>
-                        <td>${stills}</td>
-                        <td>${panos}</td>
-                        <td>${formatCurrency(unitPrice)}</td>
-                        <td style="font-weight: 500; color: var(--lcp-blue);">${formatCurrency(total)}</td>
+                        <td>${fileCell}</td>
                     </tr>
                 `;
             }
@@ -1829,15 +1686,16 @@ async function viewQuote(id) {
                     </table>
                 </div>
             `;
+        } else {
+            html += `
+                <div class="order-detail-section">
+                    <h4>Attachments</h4>
+                    <p style="color: var(--text-muted); padding: 20px 0;">No attachments</p>
+                </div>
+            `;
         }
         
-        html += `
-            <div class="order-detail-footer">
-                <div class="order-total">
-                    <strong>Quote Total:</strong> ${formatCurrency(quoteTotal)}
-                </div>
-            </div>
-        </div>`;
+        html += '</div>';
         
         content.innerHTML = html;
         
@@ -1851,17 +1709,14 @@ async function viewQuote(id) {
 // CONVERT 3D QUOTE TO ORDER
 // ============================================================================
 
-const RENDERING_CHARGE_CODE = '9480'; // LCP Media 3D Rendering Projects
-
 async function convertQuoteToOrder(quoteId) {
     try {
         const qf = CONFIG.fields.quotes3D;
-        const pf = CONFIG.fields.properties;
         
         // 1. Fetch the quote
         const quoteResult = await queryRecords(CONFIG.tables.quotes3D, 
             [qf.recordId, qf.quoteName, qf.quoteStatus, qf.salesRepEmail, qf.relatedCompany, 
-             qf.companyName, qf.historyNotes, qf.quoteTotal],
+             qf.companyName, qf.historyNotes],
             `{3.EX.${quoteId}}`
         );
         
@@ -1879,91 +1734,38 @@ async function convertQuoteToOrder(quoteId) {
         }
         
         const quoteName = quote[qf.quoteName]?.value || '';
-        const quoteTotal = quote[qf.quoteTotal]?.value || 0;
         const salesRepEmail = quote[qf.salesRepEmail]?.value || '';
         const relatedCompany = quote[qf.relatedCompany]?.value;
-        const companyName = quote[qf.companyName]?.value || '';
         const historyNotes = quote[qf.historyNotes]?.value || '';
         
         if (!relatedCompany) {
             throw new Error('Quote has no associated company');
         }
         
-        // 2. Fetch properties linked to this quote
-        const propsResult = await queryRecords(CONFIG.tables.properties,
-            [pf.recordId, pf.relatedProperty, pf.propertyName, pf.propertyAddress,
-             pf.billingContact, pf.billingEmail, pf.billingPhone],
-            `{${pf.relatedQuote3D}.EX.${quoteId}}`
-        );
-        
-        const quoteProperties = propsResult.data || [];
-        
-        // 3. Close quote modal
+        // 2. Close quote modal
         closeModal('quote-detail-modal');
         
-        // 4. Reset order form and switch to New Order tab
+        // 3. Reset order form and switch to New Order tab
         resetOrderForm();
         switchTab('tab-new-order');
         
-        // 5. Set the client/company
+        // 4. Set the client/company
         const client = AppState.clients.find(c => c.id === relatedCompany);
         if (client) {
             selectClient(client.id);
         }
         
-        // 6. Set sales rep email
+        // 5. Set sales rep email
         document.getElementById('order-sales-email').value = salesRepEmail;
         
-        // 7. Set notes with conversion reference
+        // 6. Set notes with conversion reference
         const conversionNote = `Converted from 3D Quote: ${quoteName} (ID: ${quoteId})`;
         setRichTextContent('order-notes-editor', historyNotes + (historyNotes ? '\n\n' : '') + conversionNote);
         
-        // 8. Find the 3D Rendering product (compare as strings since QB may return number)
-        const renderingProduct = AppState.products.find(p => String(p.code) === String(RENDERING_CHARGE_CODE));
-        console.log('Looking for rendering product:', RENDERING_CHARGE_CODE, 'Found:', renderingProduct);
-        
-        // 9. Add properties with line items
-        for (const prop of quoteProperties) {
-            const propertyId = prop[pf.relatedProperty]?.value;
-            const property = AppState.properties.find(p => p.id === propertyId);
-            
-            if (!property) continue;
-            
-            // Check if already added
-            if (AppState.orderProperties.find(op => op.propertyId === propertyId)) continue;
-            
-            lineItemCounter++;
-            
-            // Create the 3D rendering line item
-            const lineItem = {
-                id: lineItemCounter,
-                productId: renderingProduct?.id || null,
-                productCode: RENDERING_CHARGE_CODE,
-                productName: renderingProduct?.name || '3D Rendering Services',
-                quantity: 1,
-                unitPrice: quoteTotal,
-                total: quoteTotal,
-                concession: false,
-                concessionPercent: 0
-            };
-            
-            AppState.orderProperties.push({
-                propertyId: propertyId,
-                property: property,
-                lineItems: [lineItem],
-                billingContact: prop[pf.billingContact]?.value || property.billingContact || '',
-                billingEmail: prop[pf.billingEmail]?.value || property.billingEmail || '',
-                billingPhone: prop[pf.billingPhone]?.value || property.billingPhone || ''
-            });
-        }
-        
-        // 10. Render the form
-        renderOrderProperties();
-        
-        // 11. Store quote ID for later (to update status after save)
+        // 7. Store quote ID for later (to update status after save)
         AppState.convertingQuoteId = quoteId;
         
-        showSuccess(`Quote loaded into order form. Add additional items if needed, then save the order.`);
+        showSuccess(`Quote "${quoteName}" loaded. Add properties and products to complete the order.`);
         
     } catch (e) {
         console.error('Convert quote to order failed:', e);

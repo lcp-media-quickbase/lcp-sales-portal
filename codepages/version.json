@@ -1,5 +1,5 @@
 {
-  "version": "1.7.20",
-  "updated": "2026-03-31",
-  "notes": "Revert total write - update QB formula to use Quote Price instead"
+  "version": "1.8.0",
+  "updated": "2026-04-02",
+  "notes": "3D Quote overhaul - replace products with file attachments"
 }
