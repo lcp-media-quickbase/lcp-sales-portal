@@ -2064,7 +2064,7 @@ async function viewQuote(id) {
                 `{${af.relatedQuote}.EX.${id}}`
             ),
             queryRecords(CONFIG.tables.lineItems3D,
-                [lf.recordId, lf.description, lf.quantity, lf.stills, lf.panos, lf.quotePrice, lf.total, lf.notes],
+                [lf.recordId, lf.description, lf.quantity, lf.stills, lf.panos, lf.quotePrice, lf.productRetailPrice, lf.total, lf.notes],
                 `{${lf.relatedQuote}.EX.${id}}`
             )
         ]);
@@ -2194,7 +2194,7 @@ async function viewQuote(id) {
                     <td>${li[lf.quantity]?.value || '-'}</td>
                     <td>${li[lf.stills]?.value || '-'}</td>
                     <td>${li[lf.panos]?.value || '-'}</td>
-                    <td>${li[lf.quotePrice]?.value != null ? '$' + Number(li[lf.quotePrice].value).toFixed(2) : '-'}</td>
+                    <td>${(() => { const p = li[lf.quotePrice]?.value ?? li[lf.productRetailPrice]?.value; return p != null ? '$' + Number(p).toFixed(2) : '-'; })()}</td>
                     <td>${li[lf.total]?.value != null ? '$' + Number(li[lf.total].value).toFixed(2) : '-'}</td>
                     <td>${li[lf.notes]?.value || ''}</td>
                 </tr>`;
