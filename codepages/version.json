@@ -1,5 +1,5 @@
 {
-  "version": "1.8.5",
+  "version": "1.8.6",
   "updated": "2026-04-02",
-  "notes": "New quotes default to Pending Review; view quote shows line items when available"
+  "notes": "Save as Draft + Edit Draft for orders and quotes"
 }

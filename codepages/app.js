@@ -4,9 +4,11 @@ const AppState = {
     selectedProduct: null, selectedClient: null, selectedQuoteClient: null,
     currentProductCallback: null, currentPropertyCallback: null,
     orderProperties: [], // [{propertyId, property, lineItems: [{id, productId, productName, quantity, unitPrice, total}], billingContact, billingEmail, billingPhone}]
-    quoteProperties: [], // [{propertyId, property, attachments: [{id, file, fileType, description}]}]
+    quoteProperties: [], // [{propertyId, property, attachments: [{id, file, description, linkUrl, needsReupload}]}]
     products: [], products3D: [], properties: [], clients: [], orders: [], quotes: [], priceList: [],
-    attachmentCounter: 0
+    attachmentCounter: 0,
+    editingOrderId: null,
+    editingQuoteId: null
 };
 
 // ============================================================================
@@ -956,13 +958,13 @@ function renderQuoteProperties() {
             attachmentsHtml = `<div class="attachments-list">
                 ${qp.attachments.map(att => `
                     <div class="attachment-item">
-                        <div class="attachment-icon">
-                            ${att.file ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>` 
+                        <div class="attachment-icon" style="${att.needsReupload ? 'opacity:0.5' : ''}">
+                            ${att.file ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`
                                        : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`}
                         </div>
-                        <div class="attachment-name">${att.fileName || 'Link'}</div>
+                        <div class="attachment-name" style="${att.needsReupload ? 'color:var(--text-muted);font-style:italic' : ''}">${att.needsReupload ? `${att.fileName} (re-upload needed)` : (att.fileName || 'Link')}</div>
                         <input type="text" class="form-input attachment-desc-input" placeholder="Description (optional)" value="${att.description || ''}" onchange="updateAttachment(${qp.propertyId},${att.id},'description',this.value)">
-                        ${!att.file ? `<input type="url" class="form-input attachment-link-input" placeholder="Paste URL" value="${att.linkUrl || ''}" onchange="updateAttachment(${qp.propertyId},${att.id},'linkUrl',this.value)">` : ''}
+                        ${(!att.file && !att.needsReupload) ? `<input type="url" class="form-input attachment-link-input" placeholder="Paste URL" value="${att.linkUrl || ''}" onchange="updateAttachment(${qp.propertyId},${att.id},'linkUrl',this.value)">` : ''}
                         <button type="button" class="remove-btn" onclick="removeAttachmentFromProperty(${qp.propertyId},${att.id})">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                         </button>
@@ -1069,50 +1071,47 @@ async function saveOrder() {
         const f = CONFIG.fields.orders;
         const pf = CONFIG.fields.properties;
         const lf = CONFIG.fields.orderLineItems;
-        
+
         // Check if any line item has concession checked
-        const hasConcessions = AppState.orderProperties.some(op => 
+        const hasConcessions = AppState.orderProperties.some(op =>
             op.lineItems.some(li => li.productId && li.concession)
         );
         const orderStatus = hasConcessions ? 'Concessions Approval Needed' : 'Contract Needed';
-        
-        // 1. Create the Order record
-        const orderData = { 
-            [f.salesRepEmail]: { value: email }, 
-            [f.quoteDate]: { value: getTodayISO() }, 
-            [f.expirationDate]: { value: getExpirationDate(30) }, 
-            [f.orderStatus]: { value: orderStatus }, 
-            [f.historyNotes]: { value: notes }, 
+
+        const orderData = {
+            [f.salesRepEmail]: { value: email },
+            [f.quoteDate]: { value: getTodayISO() },
+            [f.expirationDate]: { value: getExpirationDate(30) },
+            [f.orderStatus]: { value: orderStatus },
+            [f.historyNotes]: { value: notes },
             [f.relatedCompany]: { value: AppState.selectedClient.id }
         };
-        if (ycrmOpportunity) {
-            orderData[f.ycrmOpportunityId] = { value: ycrmOpportunity };
+        if (ycrmOpportunity) orderData[f.ycrmOpportunityId] = { value: ycrmOpportunity };
+        if (contractFirst) orderData[f.contractContactFirst] = { value: contractFirst };
+        if (contractLast) orderData[f.contractContactLast] = { value: contractLast };
+        if (contractEmail) orderData[f.contractEmail] = { value: contractEmail };
+        if (contractPhone) orderData[f.contractPhone] = { value: contractPhone };
+        if (AppState.convertingQuoteId) orderData[f.relatedQuote3D] = { value: AppState.convertingQuoteId };
+
+        let orderId;
+        if (AppState.editingOrderId) {
+            // Updating an existing draft — delete old children then update main record
+            orderId = AppState.editingOrderId;
+            await qbApiRequest(CONFIG.tables.properties, 'records', 'DELETE', { from: CONFIG.tables.properties, where: `{${pf.relatedOrder}.EX.${orderId}}` });
+            await qbApiRequest(CONFIG.tables.orderLineItems, 'records', 'DELETE', { from: CONFIG.tables.orderLineItems, where: `{${lf.relatedOrder}.EX.${orderId}}` });
+            orderData[f.recordId] = { value: orderId };
+            await updateRecord(CONFIG.tables.orders, orderData);
+            console.log('Updated draft order:', orderId);
+        } else {
+            // Creating a new order
+            const orderResult = await createRecord(CONFIG.tables.orders, orderData);
+            orderId = orderResult.metadata?.createdRecordIds?.[0];
+            if (!orderId) {
+                console.error('Order create response:', orderResult);
+                throw new Error('Failed to create order record');
+            }
+            console.log('Created order:', orderId);
         }
-        if (contractFirst) {
-            orderData[f.contractContactFirst] = { value: contractFirst };
-        }
-        if (contractLast) {
-            orderData[f.contractContactLast] = { value: contractLast };
-        }
-        if (contractEmail) {
-            orderData[f.contractEmail] = { value: contractEmail };
-        }
-        if (contractPhone) {
-            orderData[f.contractPhone] = { value: contractPhone };
-        }
-        // If converting from a quote, link the order back to the quote
-        if (AppState.convertingQuoteId) {
-            orderData[f.relatedQuote3D] = { value: AppState.convertingQuoteId };
-        }
-        
-        const orderResult = await createRecord(CONFIG.tables.orders, orderData);
-        // QB returns created record IDs in metadata, not data
-        const orderId = orderResult.metadata?.createdRecordIds?.[0];
-        if (!orderId) {
-            console.error('Order create response:', orderResult);
-            throw new Error('Failed to create order record');
-        }
-        console.log('Created order:', orderId);
         
         // 2. For each property, create a property link record and line items
         for (const op of AppState.orderProperties) {
@@ -1254,7 +1253,7 @@ async function saveQuote() {
         const pf = CONFIG.fields.properties;
         const af = CONFIG.fields.quoteAttachments;
         
-        // 1. Create the Quote record
+        // 1. Create or update the Quote record
         const data = {
             [f.quoteName]: { value: name },
             [f.salesRepEmail]: { value: email },
@@ -1264,15 +1263,24 @@ async function saveQuote() {
             [f.relatedCompany]: { value: parseInt(companyId) },
             [f.quoteStatus]: { value: 'Pending Review' }
         };
-        const r = await createRecord(CONFIG.tables.quotes3D, data);
-        const quoteId = r.metadata?.createdRecordIds?.[0];
-        if (!quoteId) {
-            if (r.metadata?.lineErrors) {
-                console.error('QB lineErrors:', r.metadata.lineErrors);
+
+        let quoteId;
+        if (AppState.editingQuoteId) {
+            quoteId = AppState.editingQuoteId;
+            await qbApiRequest(CONFIG.tables.properties, 'records', 'DELETE', { from: CONFIG.tables.properties, where: `{${pf.relatedQuote3D}.EX.${quoteId}}` });
+            await qbApiRequest(CONFIG.tables.quoteAttachments, 'records', 'DELETE', { from: CONFIG.tables.quoteAttachments, where: `{${af.relatedQuote}.EX.${quoteId}}` });
+            data[f.recordId] = { value: quoteId };
+            await updateRecord(CONFIG.tables.quotes3D, data);
+            console.log('Updated draft quote:', quoteId);
+        } else {
+            const r = await createRecord(CONFIG.tables.quotes3D, data);
+            quoteId = r.metadata?.createdRecordIds?.[0];
+            if (!quoteId) {
+                if (r.metadata?.lineErrors) console.error('QB lineErrors:', r.metadata.lineErrors);
+                throw new Error('Failed to create quote record');
             }
-            throw new Error('Failed to create quote record');
+            console.log('Created quote:', quoteId);
         }
-        console.log('Created quote:', quoteId);
         
         // 2. For each property, create a property link record and attachments
         for (const qp of AppState.quoteProperties) {
@@ -1355,6 +1363,336 @@ async function uploadAttachmentFile(recordId, file) {
 }
 
 // ============================================================================
+// DRAFT SAVE
+// ============================================================================
+
+async function saveDraftOrder() {
+    const email = document.getElementById('order-sales-email').value.trim();
+    if (!email) { alert('Sales rep email required'); return; }
+
+    var btn = document.querySelector('#order-form .btn-secondary:last-of-type');
+    var orig = btn.textContent;
+    btn.textContent = 'Saving...';
+    btn.disabled = true;
+
+    try {
+        const f = CONFIG.fields.orders;
+        const pf = CONFIG.fields.properties;
+        const lf = CONFIG.fields.orderLineItems;
+
+        const orderData = {
+            [f.salesRepEmail]: { value: email },
+            [f.orderStatus]: { value: 'Draft' },
+            [f.historyNotes]: { value: getRichTextContent('order-notes-editor') }
+        };
+        const ycrmOpp = document.getElementById('order-ycrm-opportunity').value.trim();
+        const contractFirst = document.getElementById('order-contract-first').value.trim();
+        const contractLast = document.getElementById('order-contract-last').value.trim();
+        const contractEmail = document.getElementById('order-contract-email').value.trim();
+        const contractPhone = document.getElementById('order-contract-phone').value.trim();
+        if (AppState.selectedClient) orderData[f.relatedCompany] = { value: AppState.selectedClient.id };
+        if (ycrmOpp) orderData[f.ycrmOpportunityId] = { value: ycrmOpp };
+        if (contractFirst) orderData[f.contractContactFirst] = { value: contractFirst };
+        if (contractLast) orderData[f.contractContactLast] = { value: contractLast };
+        if (contractEmail) orderData[f.contractEmail] = { value: contractEmail };
+        if (contractPhone) orderData[f.contractPhone] = { value: contractPhone };
+
+        let orderId;
+        if (AppState.editingOrderId) {
+            orderId = AppState.editingOrderId;
+            await qbApiRequest(CONFIG.tables.properties, 'records', 'DELETE', { from: CONFIG.tables.properties, where: `{${pf.relatedOrder}.EX.${orderId}}` });
+            await qbApiRequest(CONFIG.tables.orderLineItems, 'records', 'DELETE', { from: CONFIG.tables.orderLineItems, where: `{${lf.relatedOrder}.EX.${orderId}}` });
+            orderData[f.recordId] = { value: orderId };
+            await updateRecord(CONFIG.tables.orders, orderData);
+        } else {
+            orderData[f.quoteDate] = { value: getTodayISO() };
+            orderData[f.expirationDate] = { value: getExpirationDate(30) };
+            const result = await createRecord(CONFIG.tables.orders, orderData);
+            orderId = result.metadata?.createdRecordIds?.[0];
+            if (!orderId) throw new Error('Failed to create draft order');
+            AppState.editingOrderId = orderId;
+        }
+
+        // Save properties and line items
+        for (const op of AppState.orderProperties) {
+            const propData = {
+                [pf.relatedOrder]: { value: orderId },
+                [pf.relatedProperty]: { value: op.propertyId },
+                [pf.billingContact]: { value: op.billingContact || '' },
+                [pf.billingEmail]: { value: op.billingEmail || '' },
+                [pf.billingPhone]: { value: op.billingPhone || '' }
+            };
+            const propResult = await createRecord(CONFIG.tables.properties, propData);
+            const propertyLinkId = propResult.metadata?.createdRecordIds?.[0];
+            for (const li of op.lineItems) {
+                if (li.productId || li.productCode) {
+                    const liData = {
+                        [lf.relatedOrder]: { value: orderId },
+                        [lf.relatedProperty]: { value: propertyLinkId },
+                        [lf.relatedCode]: { value: li.productCode },
+                        [lf.description]: { value: li.productName },
+                        [lf.quantity]: { value: li.quantity },
+                        [lf.concession]: { value: li.concession || false },
+                        [lf.concessionPercent]: { value: li.concessionPercent || 0 }
+                    };
+                    if (li.unitPrice && li.unitPrice > 0) liData[lf.quotePrice] = { value: li.unitPrice };
+                    await createRecord(CONFIG.tables.orderLineItems, liData);
+                }
+            }
+        }
+
+        showSuccess('Draft saved! Continue editing or submit when ready.');
+    } catch (e) {
+        console.error('Save draft order failed:', e);
+        alert('Failed to save draft: ' + e.message);
+    } finally {
+        btn.textContent = orig;
+        btn.disabled = false;
+    }
+}
+
+async function saveDraftQuote() {
+    const name = document.getElementById('quote-name').value.trim();
+    const email = document.getElementById('quote-sales-email').value.trim();
+    if (!name || !email) { alert('Quote name and sales rep email required'); return; }
+
+    var btn = document.querySelector('#quote-form .btn-secondary:last-of-type');
+    var orig = btn.textContent;
+    btn.textContent = 'Saving...';
+    btn.disabled = true;
+
+    try {
+        const f = CONFIG.fields.quotes3D;
+        const pf = CONFIG.fields.properties;
+        const af = CONFIG.fields.quoteAttachments;
+        const companyId = document.getElementById('quote-company-id').value;
+
+        const data = {
+            [f.quoteName]: { value: name },
+            [f.salesRepEmail]: { value: email },
+            [f.historyNotes]: { value: getRichTextContent('quote-notes-editor') },
+            [f.quoteStatus]: { value: 'Draft' }
+        };
+        if (companyId) data[f.relatedCompany] = { value: parseInt(companyId) };
+
+        let quoteId;
+        if (AppState.editingQuoteId) {
+            quoteId = AppState.editingQuoteId;
+            await qbApiRequest(CONFIG.tables.properties, 'records', 'DELETE', { from: CONFIG.tables.properties, where: `{${pf.relatedQuote3D}.EX.${quoteId}}` });
+            await qbApiRequest(CONFIG.tables.quoteAttachments, 'records', 'DELETE', { from: CONFIG.tables.quoteAttachments, where: `{${af.relatedQuote}.EX.${quoteId}}` });
+            data[f.recordId] = { value: quoteId };
+            await updateRecord(CONFIG.tables.quotes3D, data);
+        } else {
+            data[f.quoteDate] = { value: getTodayISO() };
+            data[f.expirationDate] = { value: getExpirationDate(30) };
+            const r = await createRecord(CONFIG.tables.quotes3D, data);
+            quoteId = r.metadata?.createdRecordIds?.[0];
+            if (!quoteId) throw new Error('Failed to create draft quote');
+            AppState.editingQuoteId = quoteId;
+        }
+
+        // Save properties and attachments
+        for (const qp of AppState.quoteProperties) {
+            const propData = {
+                [pf.relatedQuote3D]: { value: quoteId },
+                [pf.relatedProperty]: { value: qp.propertyId }
+            };
+            await createRecord(CONFIG.tables.properties, propData);
+            for (const att of qp.attachments) {
+                if (att.file || att.linkUrl) {
+                    const descWithProperty = att.description ? `[${qp.property.name}] ${att.description}` : `[${qp.property.name}]`;
+                    const attData = {
+                        [af.relatedQuote]: { value: quoteId },
+                        [af.description]: { value: descWithProperty },
+                        [af.linkToFile]: { value: att.linkUrl || '' }
+                    };
+                    const attResult = await createRecord(CONFIG.tables.quoteAttachments, attData);
+                    const attId = attResult.metadata?.createdRecordIds?.[0];
+                    if (attId && att.file) await uploadAttachmentFile(attId, att.file);
+                }
+            }
+        }
+
+        showSuccess('Draft saved! Continue editing or submit when ready.');
+    } catch (e) {
+        console.error('Save draft quote failed:', e);
+        alert('Failed to save draft: ' + e.message);
+    } finally {
+        btn.textContent = orig;
+        btn.disabled = false;
+    }
+}
+
+// ============================================================================
+// LOAD DRAFT FOR EDITING
+// ============================================================================
+
+async function loadOrderDraft(id) {
+    try {
+        const f = CONFIG.fields.orders;
+        const pf = CONFIG.fields.properties;
+        const lf = CONFIG.fields.orderLineItems;
+
+        const [orderResult, propsResult] = await Promise.all([
+            queryRecords(CONFIG.tables.orders,
+                [f.recordId, f.salesRepEmail, f.ycrmOpportunityId, f.historyNotes, f.relatedCompany,
+                 f.contractContactFirst, f.contractContactLast, f.contractEmail, f.contractPhone],
+                `{3.EX.${id}}`
+            ),
+            queryRecords(CONFIG.tables.properties,
+                [pf.recordId, pf.relatedProperty, pf.propertyName, pf.billingContact, pf.billingEmail, pf.billingPhone],
+                `{${pf.relatedOrder}.EX.${id}}`
+            )
+        ]);
+
+        if (!orderResult.data?.length) { alert('Draft not found'); return; }
+        const order = orderResult.data[0];
+
+        // Fetch line items for each property in parallel
+        const propLinks = propsResult.data || [];
+        const lineItemResults = await Promise.all(propLinks.map(p =>
+            queryRecords(CONFIG.tables.orderLineItems,
+                [lf.recordId, lf.quantity, lf.relatedCode, lf.codeProductNames, lf.codeRetailPrice, lf.quotePrice, lf.concession, lf.concessionPercent, lf.relatedProperty],
+                `{${lf.relatedProperty}.EX.${p[pf.recordId].value}}`
+            )
+        ));
+
+        resetOrderForm();
+        switchTab('tab-new-order');
+
+        // Populate header fields
+        document.getElementById('order-sales-email').value = order[f.salesRepEmail]?.value || '';
+        document.getElementById('order-ycrm-opportunity').value = order[f.ycrmOpportunityId]?.value || '';
+        document.getElementById('order-contract-first').value = order[f.contractContactFirst]?.value || '';
+        document.getElementById('order-contract-last').value = order[f.contractContactLast]?.value || '';
+        document.getElementById('order-contract-email').value = order[f.contractEmail]?.value || '';
+        document.getElementById('order-contract-phone').value = order[f.contractPhone]?.value || '';
+        setRichTextContent('order-notes-editor', order[f.historyNotes]?.value || '');
+
+        // Restore client
+        const relatedCompany = order[f.relatedCompany]?.value;
+        if (relatedCompany) {
+            const client = AppState.clients.find(c => c.id === relatedCompany);
+            if (client) selectClient(client.id);
+        }
+
+        // Restore properties and line items
+        propLinks.forEach((prop, i) => {
+            const propertyId = prop[pf.relatedProperty]?.value;
+            const property = AppState.properties.find(p => p.id === propertyId);
+            if (!property) return;
+
+            const lineItems = (lineItemResults[i]?.data || []).map(li => {
+                lineItemCounter++;
+                const unitPrice = li[lf.quotePrice]?.value || li[lf.codeRetailPrice]?.value || 0;
+                const qty = li[lf.quantity]?.value || 1;
+                return {
+                    id: lineItemCounter,
+                    productId: li[lf.relatedCode]?.value,
+                    productCode: li[lf.relatedCode]?.value,
+                    productName: li[lf.codeProductNames]?.value || '',
+                    quantity: qty,
+                    unitPrice: unitPrice,
+                    total: qty * unitPrice,
+                    concession: li[lf.concession]?.value || false,
+                    concessionPercent: li[lf.concessionPercent]?.value || 0
+                };
+            });
+
+            AppState.orderProperties.push({
+                propertyId,
+                property,
+                lineItems,
+                billingContact: prop[pf.billingContact]?.value || '',
+                billingEmail: prop[pf.billingEmail]?.value || '',
+                billingPhone: prop[pf.billingPhone]?.value || ''
+            });
+        });
+
+        AppState.editingOrderId = id;
+        renderOrderProperties();
+        showSuccess('Draft loaded. Continue editing and submit when ready.');
+    } catch (e) {
+        console.error('Load order draft failed:', e);
+        alert('Failed to load draft: ' + e.message);
+    }
+}
+
+async function loadQuoteDraft(id) {
+    try {
+        const f = CONFIG.fields.quotes3D;
+        const pf = CONFIG.fields.properties;
+        const af = CONFIG.fields.quoteAttachments;
+
+        const [quoteResult, propsResult, attachmentsResult] = await Promise.all([
+            queryRecords(CONFIG.tables.quotes3D,
+                [f.recordId, f.quoteName, f.salesRepEmail, f.historyNotes, f.relatedCompany],
+                `{3.EX.${id}}`
+            ),
+            queryRecords(CONFIG.tables.properties,
+                [pf.recordId, pf.relatedProperty, pf.propertyName],
+                `{${pf.relatedQuote3D}.EX.${id}}`
+            ),
+            queryRecords(CONFIG.tables.quoteAttachments,
+                [af.recordId, af.description, af.linkToFile, af.fileAttachment],
+                `{${af.relatedQuote}.EX.${id}}`
+            )
+        ]);
+
+        if (!quoteResult.data?.length) { alert('Draft not found'); return; }
+        const quote = quoteResult.data[0];
+
+        resetQuoteForm();
+        switchTab('tab-new-quote');
+
+        document.getElementById('quote-name').value = quote[f.quoteName]?.value || '';
+        document.getElementById('quote-sales-email').value = quote[f.salesRepEmail]?.value || '';
+        setRichTextContent('quote-notes-editor', quote[f.historyNotes]?.value || '');
+
+        const relatedCompany = quote[f.relatedCompany]?.value;
+        if (relatedCompany) {
+            const client = AppState.clients.find(c => c.id === relatedCompany);
+            if (client) selectQuoteClient(client.id);
+        }
+
+        const attachments = attachmentsResult.data || [];
+
+        (propsResult.data || []).forEach(prop => {
+            const propertyId = prop[pf.relatedProperty]?.value;
+            const property = AppState.properties.find(p => p.id === propertyId);
+            if (!property) return;
+
+            const propName = prop[pf.propertyName]?.value || property.name;
+            const propAtts = attachments
+                .filter(att => (att[af.description]?.value || '').startsWith(`[${propName}]`))
+                .map(att => {
+                    AppState.attachmentCounter++;
+                    const desc = (att[af.description]?.value || '').replace(`[${propName}]`, '').trim();
+                    const linkUrl = att[af.linkToFile]?.value || '';
+                    const fileInfo = att[af.fileAttachment]?.value;
+                    return {
+                        id: AppState.attachmentCounter,
+                        file: null,
+                        fileName: fileInfo?.filename || '',
+                        description: desc,
+                        linkUrl: linkUrl,
+                        needsReupload: !linkUrl && !!fileInfo
+                    };
+                });
+
+            AppState.quoteProperties.push({ propertyId, property, attachments: propAtts });
+        });
+
+        AppState.editingQuoteId = id;
+        renderQuoteProperties();
+        showSuccess('Draft loaded. Continue editing and submit when ready.');
+    } catch (e) {
+        console.error('Load quote draft failed:', e);
+        alert('Failed to load draft: ' + e.message);
+    }
+}
+
+// ============================================================================
 // HISTORY
 // ============================================================================
 
@@ -1369,7 +1707,20 @@ async function loadOrderHistory() {
         document.getElementById('stat-total-orders').textContent = AppState.orders.length;
         document.getElementById('stat-pending-orders').textContent = AppState.orders.filter(o => ['Pending','Processing'].includes(o[f.orderStatus]?.value)).length;
         document.getElementById('stat-completed-orders').textContent = AppState.orders.filter(o => o[f.orderStatus]?.value === 'Completed').length;
-        c.innerHTML = `<table class="data-table"><thead><tr><th>Company</th><th>Status</th><th>Date</th><th>Sales Rep</th><th>Actions</th></tr></thead><tbody>${AppState.orders.map(o => `<tr><td>${o[f.companyName]?.value||'-'}</td><td><span class="badge badge-${getStatusClass(o[f.orderStatus]?.value)}">${o[f.orderStatus]?.value||'Draft'}</span></td><td>${formatDate(o[f.quoteDate]?.value)}</td><td>${o[f.salesRepEmail]?.value||'-'}</td><td class="actions"><button class="btn btn-ghost btn-sm" onclick="viewOrder(${o[f.recordId].value})"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></td></tr>`).join('')}</tbody></table>`;
+        c.innerHTML = `<table class="data-table"><thead><tr><th>Company</th><th>Status</th><th>Date</th><th>Sales Rep</th><th>Actions</th></tr></thead><tbody>${AppState.orders.map(o => {
+            const status = o[f.orderStatus]?.value || 'Draft';
+            const isDraft = status === 'Draft';
+            return `<tr>
+                <td>${o[f.companyName]?.value||'-'}</td>
+                <td><span class="badge badge-${getStatusClass(status)}">${status}</span></td>
+                <td>${formatDate(o[f.quoteDate]?.value)}</td>
+                <td>${o[f.salesRepEmail]?.value||'-'}</td>
+                <td class="actions">
+                    ${isDraft ? `<button class="btn btn-ghost btn-sm" onclick="loadOrderDraft(${o[f.recordId].value})" title="Edit Draft"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}
+                    <button class="btn btn-ghost btn-sm" onclick="viewOrder(${o[f.recordId].value})" title="View Order"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                </td>
+            </tr>`;
+        }).join('')}</tbody></table>`;
     } catch (e) { showError(c, 'Failed to load orders'); }
 }
 
@@ -1393,6 +1744,7 @@ async function loadQuoteHistory() {
                 <td>${formatDate(q[f.quoteDate]?.value)}</td>
                 <td>${q[f.salesRepEmail]?.value||'-'}</td>
                 <td class="actions">
+                    ${status === 'Draft' ? `<button class="btn btn-ghost btn-sm" onclick="loadQuoteDraft(${q[f.recordId].value})" title="Edit Draft"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}
                     <button class="btn btn-ghost btn-sm" onclick="viewQuote(${q[f.recordId].value})" title="View Quote">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                     </button>
@@ -1418,6 +1770,7 @@ function resetOrderForm() {
     AppState.orderProperties = [];
     AppState.selectedClient = null;
     AppState.convertingQuoteId = null;
+    AppState.editingOrderId = null;
     lineItemCounter = 0;
     document.getElementById('selected-client-name').textContent = 'Select a client...';
     document.getElementById('order-company-id').value = '';
@@ -1432,6 +1785,7 @@ function resetQuoteForm() {
     AppState.quoteProperties = [];
     AppState.attachmentCounter = 0;
     AppState.selectedQuoteClient = null;
+    AppState.editingQuoteId = null;
     document.getElementById('quote-selected-client-name').textContent = 'Select a client...';
     document.getElementById('quote-company-id').value = '';
     renderQuoteProperties();
