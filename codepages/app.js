@@ -1528,7 +1528,7 @@ async function saveDraftQuote() {
 // LOAD DRAFT FOR EDITING
 // ============================================================================
 
-async function loadOrderDraft(id) {
+async function loadOrderForEdit(id) {
     try {
         const f = CONFIG.fields.orders;
         const pf = CONFIG.fields.properties;
@@ -1612,7 +1612,7 @@ async function loadOrderDraft(id) {
 
         AppState.editingOrderId = id;
         renderOrderProperties();
-        showSuccess('Draft loaded. Continue editing and submit when ready.');
+        showSuccess('Order loaded for editing.');
     } catch (e) {
         console.error('Load order draft failed:', e);
         alert('Failed to load draft: ' + e.message);
@@ -1723,12 +1723,15 @@ function _dashEmptyRow(msg) {
 }
 function _dashOrderRow(o, f) {
     var status = o[f.orderStatus]?.value || 'Draft';
-    return `<div class="dash-mini-row" onclick="viewOrder(${o[f.recordId].value})">
-        <div class="dash-mini-left">
+    return `<div class="dash-mini-row">
+        <div class="dash-mini-left" style="cursor:pointer;" onclick="viewOrder(${o[f.recordId].value})">
             <div class="dash-mini-company">${o[f.companyName]?.value || '—'}</div>
             <div class="dash-mini-meta">${formatDate(o[f.quoteDate]?.value) || '—'} &middot; ${o[f.salesRepEmail]?.value || '—'}</div>
         </div>
-        <span class="badge badge-${getStatusClass(status)}">${status}</span>
+        <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
+            <span class="badge badge-${getStatusClass(status)}">${status}</span>
+            <button class="btn btn-ghost btn-sm" onclick="loadOrderForEdit(${o[f.recordId].value})" title="Edit Order"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+        </div>
     </div>`;
 }
 function _dashQuoteRow(q, qf) {
@@ -1764,10 +1767,12 @@ async function renderSalesDashboard(user) {
             New Order
         </button>`;
 
+    var contractStatuses = ['Concessions Approved','Contract Needed','Completed'];
+
     dashContent.innerHTML = `
         <div class="dash-kpi-row">
             <div><div class="dash-section-label">My Orders</div>${_kpiGrid([
-                {id:'ds-o-total',label:'Total'},{id:'ds-o-active',label:'Active',accent:true},{id:'ds-o-completed',label:'Completed'}
+                {id:'ds-o-total',label:'Total'},{id:'ds-o-pending',label:'In Progress',accent:true},{id:'ds-o-completed',label:'Completed'}
             ])}</div>
             <div><div class="dash-section-label">My 3D Quotes</div>${_kpiGrid([
                 {id:'ds-q-total',label:'Total'},{id:'ds-q-pending',label:'Pending Review',accent:true},{id:'ds-q-approved',label:'Approved'}
@@ -1775,13 +1780,17 @@ async function renderSalesDashboard(user) {
         </div>
         <div class="dash-cols">
             <div class="dash-panel">
-                <div class="dash-panel-header"><span class="dash-panel-title">My Recent Orders</span><a class="dash-view-all" onclick="switchTab('tab-order-history')">View all</a></div>
-                <div id="ds-recent-orders"><div class="loading-spinner" style="height:100px"><div class="spinner"></div></div></div>
+                <div class="dash-panel-header"><span class="dash-panel-title">My Pending Orders</span><a class="dash-view-all" onclick="switchTab('tab-order-history')">View all</a></div>
+                <div id="ds-pending-orders"><div class="loading-spinner" style="height:100px"><div class="spinner"></div></div></div>
             </div>
             <div class="dash-panel">
-                <div class="dash-panel-header"><span class="dash-panel-title">My Recent Quotes</span><a class="dash-view-all" onclick="switchTab('tab-quote-history')">View all</a></div>
-                <div id="ds-recent-quotes"><div class="loading-spinner" style="height:100px"><div class="spinner"></div></div></div>
+                <div class="dash-panel-header"><span class="dash-panel-title">Contract Created</span><a class="dash-view-all" onclick="switchTab('tab-order-history')">View all</a></div>
+                <div id="ds-contract-orders"><div class="loading-spinner" style="height:100px"><div class="spinner"></div></div></div>
             </div>
+        </div>
+        <div class="dash-panel">
+            <div class="dash-panel-header"><span class="dash-panel-title">My Recent Quotes</span><a class="dash-view-all" onclick="switchTab('tab-quote-history')">View all</a></div>
+            <div id="ds-recent-quotes"><div class="loading-spinner" style="height:100px"><div class="spinner"></div></div></div>
         </div>`;
 
     try {
@@ -1795,16 +1804,18 @@ async function renderSalesDashboard(user) {
         ]);
         var orders = ordersResult.data || [];
         var quotes = quotesResult.data || [];
-        var activeStatuses = ['Pending','Processing','Contract Needed','Concessions Approval Needed','Concessions Approved'];
+        var pendingOrders = orders.filter(function(o){ return !contractStatuses.includes(o[f.orderStatus]?.value) && o[f.orderStatus]?.value !== 'Cancelled'; });
+        var contractOrders = orders.filter(function(o){ return contractStatuses.includes(o[f.orderStatus]?.value); });
 
-        document.getElementById('ds-o-total').textContent = orders.length;
-        document.getElementById('ds-o-active').textContent = orders.filter(function(o){ return activeStatuses.includes(o[f.orderStatus]?.value); }).length;
+        document.getElementById('ds-o-total').textContent = orders.filter(function(o){ return o[f.orderStatus]?.value !== 'Cancelled'; }).length;
+        document.getElementById('ds-o-pending').textContent = pendingOrders.length;
         document.getElementById('ds-o-completed').textContent = orders.filter(function(o){ return o[f.orderStatus]?.value === 'Completed'; }).length;
         document.getElementById('ds-q-total').textContent = quotes.length;
         document.getElementById('ds-q-pending').textContent = quotes.filter(function(q){ return ['Pending Review','Sent to Client'].includes(q[qf.quoteStatus]?.value); }).length;
         document.getElementById('ds-q-approved').textContent = quotes.filter(function(q){ return q[qf.quoteStatus]?.value === 'Approved'; }).length;
 
-        document.getElementById('ds-recent-orders').innerHTML = orders.slice(0,5).map(function(o){ return _dashOrderRow(o,f); }).join('') || _dashEmptyRow('No orders yet');
+        document.getElementById('ds-pending-orders').innerHTML = pendingOrders.slice(0,5).map(function(o){ return _dashOrderRow(o,f); }).join('') || _dashEmptyRow('No pending orders');
+        document.getElementById('ds-contract-orders').innerHTML = contractOrders.slice(0,5).map(function(o){ return _dashOrderRow(o,f); }).join('') || _dashEmptyRow('No contract orders yet');
         document.getElementById('ds-recent-quotes').innerHTML = quotes.slice(0,5).map(function(q){ return _dashQuoteRow(q,qf); }).join('') || _dashEmptyRow('No quotes yet');
     } catch(e) { console.error('renderSalesDashboard failed:', e); }
 }
@@ -1838,7 +1849,7 @@ async function renderAdminDashboard(user) {
         </div>
         <div class="dash-kpi-row">
             <div><div class="dash-section-label">Orders</div>${_kpiGrid([
-                {id:'da-o-total',label:'Total'},{id:'da-o-active',label:'Active',accent:true},{id:'da-o-completed',label:'Completed'}
+                {id:'da-o-total',label:'Total'},{id:'da-o-pending',label:'In Progress',accent:true},{id:'da-o-completed',label:'Completed'}
             ])}</div>
             <div><div class="dash-section-label">3D Quotes</div>${_kpiGrid([
                 {id:'da-q-total',label:'Total'},{id:'da-q-pending',label:'Pending Review',accent:true},{id:'da-q-approved',label:'Approved'}
@@ -1846,13 +1857,17 @@ async function renderAdminDashboard(user) {
         </div>
         <div class="dash-cols">
             <div class="dash-panel">
-                <div class="dash-panel-header"><span class="dash-panel-title">Recent Orders</span><a class="dash-view-all" onclick="switchTab('tab-order-history')">View all</a></div>
-                <div id="da-recent-orders"><div class="loading-spinner" style="height:100px"><div class="spinner"></div></div></div>
+                <div class="dash-panel-header"><span class="dash-panel-title">Pending Orders</span><a class="dash-view-all" onclick="switchTab('tab-order-history')">View all</a></div>
+                <div id="da-pending-orders"><div class="loading-spinner" style="height:100px"><div class="spinner"></div></div></div>
             </div>
             <div class="dash-panel">
-                <div class="dash-panel-header"><span class="dash-panel-title">Recent 3D Quotes</span><a class="dash-view-all" onclick="switchTab('tab-quote-history')">View all</a></div>
-                <div id="da-recent-quotes"><div class="loading-spinner" style="height:100px"><div class="spinner"></div></div></div>
+                <div class="dash-panel-header"><span class="dash-panel-title">Contract Created</span><a class="dash-view-all" onclick="switchTab('tab-order-history')">View all</a></div>
+                <div id="da-contract-orders"><div class="loading-spinner" style="height:100px"><div class="spinner"></div></div></div>
             </div>
+        </div>
+        <div class="dash-panel">
+            <div class="dash-panel-header"><span class="dash-panel-title">Recent 3D Quotes</span><a class="dash-view-all" onclick="switchTab('tab-quote-history')">View all</a></div>
+            <div id="da-recent-quotes"><div class="loading-spinner" style="height:100px"><div class="spinner"></div></div></div>
         </div>`;
 
     try {
@@ -1867,16 +1882,19 @@ async function renderAdminDashboard(user) {
         var orders = ordersResult.data || [];
         var quotes = quotesResult.data || [];
         var concessions = concessionsResult.data || [];
-        var activeStatuses = ['Pending','Processing','Contract Needed','Concessions Approval Needed','Concessions Approved'];
+        var contractStatuses = ['Concessions Approved','Contract Needed','Completed'];
+        var pendingOrders = orders.filter(function(o){ return !contractStatuses.includes(o[f.orderStatus]?.value) && o[f.orderStatus]?.value !== 'Cancelled'; });
+        var contractOrders = orders.filter(function(o){ return contractStatuses.includes(o[f.orderStatus]?.value); });
 
-        document.getElementById('da-o-total').textContent = orders.length;
-        document.getElementById('da-o-active').textContent = orders.filter(function(o){ return activeStatuses.includes(o[f.orderStatus]?.value); }).length;
+        document.getElementById('da-o-total').textContent = orders.filter(function(o){ return o[f.orderStatus]?.value !== 'Cancelled'; }).length;
+        document.getElementById('da-o-pending').textContent = pendingOrders.length;
         document.getElementById('da-o-completed').textContent = orders.filter(function(o){ return o[f.orderStatus]?.value === 'Completed'; }).length;
         document.getElementById('da-q-total').textContent = quotes.length;
         document.getElementById('da-q-pending').textContent = quotes.filter(function(q){ return ['Pending Review','Sent to Client'].includes(q[qf.quoteStatus]?.value); }).length;
         document.getElementById('da-q-approved').textContent = quotes.filter(function(q){ return q[qf.quoteStatus]?.value === 'Approved'; }).length;
 
-        document.getElementById('da-recent-orders').innerHTML = orders.slice(0,5).map(function(o){ return _dashOrderRow(o,f); }).join('') || _dashEmptyRow('No orders yet');
+        document.getElementById('da-pending-orders').innerHTML = pendingOrders.slice(0,5).map(function(o){ return _dashOrderRow(o,f); }).join('') || _dashEmptyRow('No pending orders');
+        document.getElementById('da-contract-orders').innerHTML = contractOrders.slice(0,5).map(function(o){ return _dashOrderRow(o,f); }).join('') || _dashEmptyRow('No contract orders yet');
         document.getElementById('da-recent-quotes').innerHTML = quotes.slice(0,5).map(function(q){ return _dashQuoteRow(q,qf); }).join('') || _dashEmptyRow('No quotes yet');
 
         if (concessions.length) {
@@ -2135,14 +2153,13 @@ async function loadOrderHistory() {
         document.getElementById('stat-completed-orders').textContent = AppState.orders.filter(o => o[f.orderStatus]?.value === 'Completed').length;
         c.innerHTML = `<table class="data-table"><thead><tr><th>Company</th><th>Status</th><th>Date</th><th>Sales Rep</th><th>Actions</th></tr></thead><tbody>${AppState.orders.map(o => {
             const status = o[f.orderStatus]?.value || 'Draft';
-            const isDraft = status === 'Draft';
             return `<tr>
                 <td>${o[f.companyName]?.value||'-'}</td>
                 <td><span class="badge badge-${getStatusClass(status)}">${status}</span></td>
                 <td>${formatDate(o[f.quoteDate]?.value)}</td>
                 <td>${o[f.salesRepEmail]?.value||'-'}</td>
                 <td class="actions">
-                    ${isDraft ? `<button class="btn btn-ghost btn-sm" onclick="loadOrderDraft(${o[f.recordId].value})" title="Edit Draft"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}
+                    <button class="btn btn-ghost btn-sm" onclick="loadOrderForEdit(${o[f.recordId].value})" title="Edit Order"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
                     <button class="btn btn-ghost btn-sm" onclick="viewOrder(${o[f.recordId].value})" title="View Order"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
                 </td>
             </tr>`;

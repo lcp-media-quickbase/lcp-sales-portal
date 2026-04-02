@@ -1,5 +1,5 @@
 {
-  "version": "1.9.0",
+  "version": "1.9.1",
   "updated": "2026-04-02",
-  "notes": "Role-based dashboard: Sales (filtered), Administrator (all + concessions), 3D Director (quote-focused + line items editor)"
+  "notes": "Dashboard: split orders into Pending / Contract Created panels; edit button on all orders"
 }
