@@ -1,5 +1,5 @@
 {
-  "version": "1.8.4",
+  "version": "1.8.5",
   "updated": "2026-04-02",
-  "notes": "Remove file type dropdown from 3D quote attachments"
+  "notes": "New quotes default to Pending Review; view quote shows line items when available"
 }

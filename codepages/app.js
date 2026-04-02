@@ -1255,13 +1255,14 @@ async function saveQuote() {
         const af = CONFIG.fields.quoteAttachments;
         
         // 1. Create the Quote record
-        const data = { 
-            [f.quoteName]: { value: name }, 
-            [f.salesRepEmail]: { value: email }, 
-            [f.quoteDate]: { value: getTodayISO() }, 
-            [f.expirationDate]: { value: getExpirationDate(30) }, 
+        const data = {
+            [f.quoteName]: { value: name },
+            [f.salesRepEmail]: { value: email },
+            [f.quoteDate]: { value: getTodayISO() },
+            [f.expirationDate]: { value: getExpirationDate(30) },
             [f.historyNotes]: { value: notes },
-            [f.relatedCompany]: { value: parseInt(companyId) }
+            [f.relatedCompany]: { value: parseInt(companyId) },
+            [f.quoteStatus]: { value: 'Pending Review' }
         };
         const r = await createRecord(CONFIG.tables.quotes3D, data);
         const quoteId = r.metadata?.createdRecordIds?.[0];
@@ -1691,32 +1692,35 @@ async function viewQuote(id) {
         const f = CONFIG.fields.quotes3D;
         const pf = CONFIG.fields.properties;
         const af = CONFIG.fields.quoteAttachments;
-        
-        // Fetch quote details
-        const quoteResult = await queryRecords(CONFIG.tables.quotes3D, 
-            [f.recordId, f.quoteName, f.quoteStatus, f.quoteDate, f.expirationDate, f.salesRepEmail, 
-             f.historyNotes, f.companyName, f.companyYcrmId],
-            `{3.EX.${id}}`
-        );
-        
+        const lf = CONFIG.fields.lineItems3D;
+
+        // Fetch quote details, properties, attachments, and line items in parallel
+        const [quoteResult, propsResult, attachmentsResult, lineItemsResult] = await Promise.all([
+            queryRecords(CONFIG.tables.quotes3D,
+                [f.recordId, f.quoteName, f.quoteStatus, f.quoteDate, f.expirationDate, f.salesRepEmail,
+                 f.historyNotes, f.companyName, f.companyYcrmId, f.quoteTotal],
+                `{3.EX.${id}}`
+            ),
+            queryRecords(CONFIG.tables.properties,
+                [pf.recordId, pf.relatedProperty, pf.propertyName, pf.propertyAddress],
+                `{${pf.relatedQuote3D}.EX.${id}}`
+            ),
+            queryRecords(CONFIG.tables.quoteAttachments,
+                [af.recordId, af.fileType, af.description, af.linkToFile, af.fileAttachment],
+                `{${af.relatedQuote}.EX.${id}}`
+            ),
+            queryRecords(CONFIG.tables.lineItems3D,
+                [lf.recordId, lf.description, lf.quantity, lf.stills, lf.panos, lf.quotePrice, lf.total, lf.notes],
+                `{${lf.relatedQuote}.EX.${id}}`
+            )
+        ]);
+
         if (!quoteResult.data?.length) {
             content.innerHTML = '<div class="empty-state"><p>Quote not found</p></div>';
             return;
         }
-        
+
         const quote = quoteResult.data[0];
-        
-        // Fetch properties linked to this quote
-        const propsResult = await queryRecords(CONFIG.tables.properties,
-            [pf.recordId, pf.relatedProperty, pf.propertyName, pf.propertyAddress],
-            `{${pf.relatedQuote3D}.EX.${id}}`
-        );
-        
-        // Fetch attachments for this quote
-        const attachmentsResult = await queryRecords(CONFIG.tables.quoteAttachments,
-            [af.recordId, af.fileType, af.description, af.linkToFile, af.fileAttachment],
-            `{${af.relatedQuote}.EX.${id}}`
-        );
         
         // Build the detail view
         const status = quote[f.quoteStatus]?.value || 'Draft';
@@ -1774,6 +1778,7 @@ async function viewQuote(id) {
         // Properties section
         const properties = propsResult.data || [];
         const attachments = attachmentsResult.data || [];
+        const lineItems = lineItemsResult.data || [];
         
         if (properties.length) {
             html += '<div class="order-detail-section"><h4>Properties</h4>';
@@ -1821,11 +1826,36 @@ async function viewQuote(id) {
             }
             html += '</div>';
         }
-        
+
+        // Line items section (added by 3D manager after review)
+        if (lineItems.length) {
+            const quoteTotal = quote[f.quoteTotal]?.value;
+            html += '<div class="order-detail-section"><h4>Line Items</h4>';
+            html += `<table class="data-table"><thead><tr>
+                <th>Description</th><th>Qty</th><th>Stills</th><th>Panos</th><th>Unit Price</th><th>Total</th><th>Notes</th>
+            </tr></thead><tbody>`;
+            for (const li of lineItems) {
+                html += `<tr>
+                    <td>${li[lf.description]?.value || '-'}</td>
+                    <td>${li[lf.quantity]?.value || '-'}</td>
+                    <td>${li[lf.stills]?.value || '-'}</td>
+                    <td>${li[lf.panos]?.value || '-'}</td>
+                    <td>${li[lf.quotePrice]?.value != null ? '$' + Number(li[lf.quotePrice].value).toFixed(2) : '-'}</td>
+                    <td>${li[lf.total]?.value != null ? '$' + Number(li[lf.total].value).toFixed(2) : '-'}</td>
+                    <td>${li[lf.notes]?.value || ''}</td>
+                </tr>`;
+            }
+            html += '</tbody></table>';
+            if (quoteTotal != null) {
+                html += `<div style="text-align:right; margin-top:8px; font-weight:600;">Total: $${Number(quoteTotal).toFixed(2)}</div>`;
+            }
+            html += '</div>';
+        }
+
         html += '</div>';
-        
+
         content.innerHTML = html;
-        
+
     } catch (e) {
         console.error('Failed to load quote details:', e);
         content.innerHTML = '<div class="empty-state"><p>Failed to load quote details</p></div>';
