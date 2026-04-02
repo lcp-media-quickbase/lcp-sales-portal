@@ -1721,7 +1721,7 @@ async function loadDashboard() {
 function _dashEmptyRow(msg) {
     return `<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">${msg}</div>`;
 }
-function _dashOrderRow(o, f) {
+function _dashOrderRow(o, f, editable) {
     var status = o[f.orderStatus]?.value || 'Draft';
     return `<div class="dash-mini-row">
         <div class="dash-mini-left" style="cursor:pointer;" onclick="viewOrder(${o[f.recordId].value})">
@@ -1730,7 +1730,7 @@ function _dashOrderRow(o, f) {
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
             <span class="badge badge-${getStatusClass(status)}">${status}</span>
-            <button class="btn btn-ghost btn-sm" onclick="loadOrderForEdit(${o[f.recordId].value})" title="Edit Order"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            ${editable ? `<button class="btn btn-ghost btn-sm" onclick="loadOrderForEdit(${o[f.recordId].value})" title="Edit Order"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}
         </div>
     </div>`;
 }
@@ -1814,8 +1814,8 @@ async function renderSalesDashboard(user) {
         document.getElementById('ds-q-pending').textContent = quotes.filter(function(q){ return ['Pending Review','Sent to Client'].includes(q[qf.quoteStatus]?.value); }).length;
         document.getElementById('ds-q-approved').textContent = quotes.filter(function(q){ return q[qf.quoteStatus]?.value === 'Approved'; }).length;
 
-        document.getElementById('ds-pending-orders').innerHTML = pendingOrders.slice(0,5).map(function(o){ return _dashOrderRow(o,f); }).join('') || _dashEmptyRow('No pending orders');
-        document.getElementById('ds-contract-orders').innerHTML = contractOrders.slice(0,5).map(function(o){ return _dashOrderRow(o,f); }).join('') || _dashEmptyRow('No contract orders yet');
+        document.getElementById('ds-pending-orders').innerHTML = pendingOrders.slice(0,5).map(function(o){ return _dashOrderRow(o,f,true); }).join('') || _dashEmptyRow('No pending orders');
+        document.getElementById('ds-contract-orders').innerHTML = contractOrders.slice(0,5).map(function(o){ return _dashOrderRow(o,f,false); }).join('') || _dashEmptyRow('No contract orders yet');
         document.getElementById('ds-recent-quotes').innerHTML = quotes.slice(0,5).map(function(q){ return _dashQuoteRow(q,qf); }).join('') || _dashEmptyRow('No quotes yet');
     } catch(e) { console.error('renderSalesDashboard failed:', e); }
 }
@@ -2159,7 +2159,7 @@ async function loadOrderHistory() {
                 <td>${formatDate(o[f.quoteDate]?.value)}</td>
                 <td>${o[f.salesRepEmail]?.value||'-'}</td>
                 <td class="actions">
-                    <button class="btn btn-ghost btn-sm" onclick="loadOrderForEdit(${o[f.recordId].value})" title="Edit Order"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                    ${!['Concessions Approved','Contract Needed','Completed','Cancelled'].includes(status) ? `<button class="btn btn-ghost btn-sm" onclick="loadOrderForEdit(${o[f.recordId].value})" title="Edit Order"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}
                     <button class="btn btn-ghost btn-sm" onclick="viewOrder(${o[f.recordId].value})" title="View Order"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
                 </td>
             </tr>`;
