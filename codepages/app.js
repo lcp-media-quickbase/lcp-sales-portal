@@ -2064,7 +2064,7 @@ async function viewQuote(id) {
                 `{${af.relatedQuote}.EX.${id}}`
             ),
             queryRecords(CONFIG.tables.lineItems3D,
-                [lf.recordId, lf.description, lf.quantity, lf.stills, lf.panos, lf.quotePrice, lf.productRetailPrice, lf.total, lf.notes],
+                [lf.recordId, lf.productName, lf.description, lf.quantity, lf.stills, lf.panos, lf.quotePrice, lf.productRetailPrice, lf.total, lf.notes],
                 `{${lf.relatedQuote}.EX.${id}}`
             )
         ]);
@@ -2190,7 +2190,7 @@ async function viewQuote(id) {
             </tr></thead><tbody>`;
             for (const li of lineItems) {
                 html += `<tr>
-                    <td>${li[lf.description]?.value || '-'}</td>
+                    <td>${[li[lf.productName]?.value, li[lf.description]?.value].filter(Boolean).join(' — ') || '-'}</td>
                     <td>${li[lf.quantity]?.value || '-'}</td>
                     <td>${li[lf.stills]?.value || '-'}</td>
                     <td>${li[lf.panos]?.value || '-'}</td>
