@@ -1,5 +1,5 @@
 {
-  "version": "1.9.7",
+  "version": "1.9.8",
   "updated": "2026-04-03",
-  "notes": "Restructure sidebar: Sales, Data (Cancellations, TourBuilder, Company Info), Resources"
+  "notes": "New Order/Quote buttons on history pages; reorder Data section; update TourBuilder icon"
 }
