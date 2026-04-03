@@ -1,5 +1,5 @@
 {
-  "version": "1.9.4",
+  "version": "1.9.5",
   "updated": "2026-04-03",
-  "notes": "Consistent loading spinner on dashboard panels"
+  "notes": "Add Property Level Billing checkbox (FID 52) to order form"
 }

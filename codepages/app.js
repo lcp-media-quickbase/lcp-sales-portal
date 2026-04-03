@@ -1092,6 +1092,7 @@ async function saveOrder() {
         if (contractLast) orderData[f.contractContactLast] = { value: contractLast };
         if (contractEmail) orderData[f.contractEmail] = { value: contractEmail };
         if (contractPhone) orderData[f.contractPhone] = { value: contractPhone };
+        orderData[f.propertyLevelBilling] = { value: document.getElementById('order-property-level-billing').checked };
         if (AppState.convertingQuoteId) orderData[f.relatedQuote3D] = { value: AppState.convertingQuoteId };
 
         let orderId;
@@ -1397,6 +1398,7 @@ async function saveDraftOrder() {
         if (contractLast) orderData[f.contractContactLast] = { value: contractLast };
         if (contractEmail) orderData[f.contractEmail] = { value: contractEmail };
         if (contractPhone) orderData[f.contractPhone] = { value: contractPhone };
+        orderData[f.propertyLevelBilling] = { value: document.getElementById('order-property-level-billing').checked };
 
         let orderId;
         if (AppState.editingOrderId) {
@@ -1537,7 +1539,7 @@ async function loadOrderForEdit(id) {
         const [orderResult, propsResult] = await Promise.all([
             queryRecords(CONFIG.tables.orders,
                 [f.recordId, f.salesRepEmail, f.ycrmOpportunityId, f.historyNotes, f.relatedCompany,
-                 f.contractContactFirst, f.contractContactLast, f.contractEmail, f.contractPhone],
+                 f.contractContactFirst, f.contractContactLast, f.contractEmail, f.contractPhone, f.propertyLevelBilling],
                 `{3.EX.${id}}`
             ),
             queryRecords(CONFIG.tables.properties,
@@ -1568,6 +1570,7 @@ async function loadOrderForEdit(id) {
         document.getElementById('order-contract-last').value = order[f.contractContactLast]?.value || '';
         document.getElementById('order-contract-email').value = order[f.contractEmail]?.value || '';
         document.getElementById('order-contract-phone').value = order[f.contractPhone]?.value || '';
+        document.getElementById('order-property-level-billing').checked = order[f.propertyLevelBilling]?.value === true;
         setRichTextContent('order-notes-editor', order[f.historyNotes]?.value || '');
 
         // Restore client
@@ -2251,7 +2254,7 @@ async function viewOrder(id) {
         const orderResult = await queryRecords(CONFIG.tables.orders, 
             [f.recordId, f.orderStatus, f.quoteDate, f.expirationDate, f.salesRepEmail, f.historyNotes, 
              f.companyName, f.companyYcrmId, f.ycrmOpportunityId, f.billingContactName, f.billingContactEmail, f.billingContactPhone,
-             f.contractContactFirst, f.contractContactLast, f.contractEmail, f.contractPhone,
+             f.contractContactFirst, f.contractContactLast, f.contractEmail, f.contractPhone, f.propertyLevelBilling,
              f.concessionsApproval, f.concessionsApprovedBy, f.concessionsApprovedDate],
             `{3.EX.${id}}`
         );
@@ -2292,6 +2295,7 @@ async function viewOrder(id) {
         const concessionsApproval = order[f.concessionsApproval]?.value || '';
         const concessionsApprovedBy = order[f.concessionsApprovedBy]?.value || '';
         const concessionsApprovedDate = order[f.concessionsApprovedDate]?.value || '';
+        const propertyLevelBilling = order[f.propertyLevelBilling]?.value === true;
         
         const needsConcessionApproval = status === 'Concessions Approval Needed';
         const hasConcessionDecision = concessionsApproval === 'Approved' || concessionsApproval === 'Denied';
@@ -2335,6 +2339,7 @@ async function viewOrder(id) {
                         <h4>Order Info</h4>
                         <p><strong>Sales Rep:</strong> ${salesRep}</p>
                         <p><strong>Order Date:</strong> ${orderDate}</p>
+                        <p><strong>Property Level Billing:</strong> ${propertyLevelBilling ? 'Yes' : 'No'}</p>
                     </div>
                     ${hasContractContact ? `
                         <div class="order-detail-card">
