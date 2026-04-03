@@ -1,5 +1,5 @@
 {
-  "version": "1.9.5",
+  "version": "1.9.6",
   "updated": "2026-04-03",
-  "notes": "Add Property Level Billing checkbox (FID 52) to order form"
+  "notes": "Move contract contact to middle column in order form"
 }

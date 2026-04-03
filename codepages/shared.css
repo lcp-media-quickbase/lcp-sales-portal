@@ -128,8 +128,9 @@ body {
 
 /* Forms */
 .form-row { display: flex; gap: 24px; margin-bottom: 20px; }
-.form-col-left { flex: 1; max-width: 33.333%; display: flex; flex-direction: column; gap: 16px; }
-.form-col-right { flex: 2; display: flex; flex-direction: column; }
+.form-col-left { flex: 1; display: flex; flex-direction: column; gap: 16px; }
+.form-col-mid { flex: 1; display: flex; flex-direction: column; gap: 16px; }
+.form-col-right { flex: 1; display: flex; flex-direction: column; }
 .form-col-property { flex: 2; display: flex; flex-direction: column; }
 .form-col-billing { flex: 1; display: flex; flex-direction: column; gap: 16px; padding-left: 24px; border-left: 1px solid var(--border-color); }
 .property-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
@@ -426,7 +427,7 @@ body {
 /* Responsive */
 @media (max-width: 1024px) {
     .form-row { flex-direction: column; }
-    .form-col-left, .form-col-right { max-width: 100%; }
+    .form-col-left, .form-col-mid, .form-col-right { max-width: 100%; }
     .line-item { grid-template-columns: 1fr; gap: 12px; }
     .line-item-header { display: none; }
     .attachment-item { flex-wrap: wrap; }
