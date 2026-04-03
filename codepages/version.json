@@ -1,5 +1,5 @@
 {
-  "version": "1.9.6",
+  "version": "1.9.7",
   "updated": "2026-04-03",
-  "notes": "Move contract contact to middle column in order form"
+  "notes": "Restructure sidebar: Sales, Data (Cancellations, TourBuilder, Company Info), Resources"
 }

@@ -34,29 +34,33 @@
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-section-title">Orders</div>
-                    <a class="nav-item" data-tab="tab-new-order" onclick="switchTab('tab-new-order')">
-                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-                        New Order
-                    </a>
+                    <div class="nav-section-title">Sales</div>
                     <a class="nav-item" data-tab="tab-order-history" onclick="switchTab('tab-order-history')">
                         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                        Order History
-                    </a>
-                </div>
-                
-                <div class="nav-section">
-                    <div class="nav-section-title">3D Quotes</div>
-                    <a class="nav-item" data-tab="tab-new-quote" onclick="switchTab('tab-new-quote')">
-                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-                        New 3D Quote
+                        Orders
                     </a>
                     <a class="nav-item" data-tab="tab-quote-history" onclick="switchTab('tab-quote-history')">
-                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                        Quote History
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                        3D Quotes
                     </a>
                 </div>
-                
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Data</div>
+                    <a class="nav-item" data-tab="tab-cancellations" onclick="switchTab('tab-cancellations')">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                        Cancellations
+                    </a>
+                    <a class="nav-item" data-tab="tab-tourbuilder" onclick="switchTab('tab-tourbuilder')">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                        TourBuilder Data
+                    </a>
+                    <a class="nav-item" data-tab="tab-company-info" onclick="switchTab('tab-company-info')">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                        Company Info
+                    </a>
+                </div>
+
                 <div class="nav-section">
                     <div class="nav-section-title">Resources</div>
                     <a class="nav-item" data-tab="tab-price-list" onclick="switchTab('tab-price-list')">
@@ -376,6 +380,51 @@
                 </div>
             </div>
             
+            <!-- TAB: Cancellations -->
+            <div id="tab-cancellations" class="tab-content">
+                <div class="page-header">
+                    <h1 class="page-title">Cancellations</h1>
+                    <p class="page-subtitle">Manage service cancellations and property sales</p>
+                </div>
+                <div class="page-content">
+                    <div class="empty-state" style="padding: 80px 20px;">
+                        <svg class="empty-state-icon" style="width:48px;height:48px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                        <p class="empty-state-title">Coming Soon</p>
+                        <p class="empty-state-text">Cancellation management is under development.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: TourBuilder Data -->
+            <div id="tab-tourbuilder" class="tab-content">
+                <div class="page-header">
+                    <h1 class="page-title">TourBuilder Data</h1>
+                    <p class="page-subtitle">TourBuilder property and tour information</p>
+                </div>
+                <div class="page-content">
+                    <div class="empty-state" style="padding: 80px 20px;">
+                        <svg class="empty-state-icon" style="width:48px;height:48px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                        <p class="empty-state-title">Coming Soon</p>
+                        <p class="empty-state-text">TourBuilder data views are under development.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: Company Info -->
+            <div id="tab-company-info" class="tab-content">
+                <div class="page-header">
+                    <h1 class="page-title">Company Info</h1>
+                    <p class="page-subtitle">Client company profiles and details</p>
+                </div>
+                <div class="page-content">
+                    <div class="empty-state" style="padding: 80px 20px;">
+                        <svg class="empty-state-icon" style="width:48px;height:48px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                        <p class="empty-state-title">Coming Soon</p>
+                        <p class="empty-state-text">Company information management is under development.</p>
+                    </div>
+                </div>
+            </div>
+
             <!-- TAB: Price List -->
             <div id="tab-price-list" class="tab-content">
                 <div class="page-header">
