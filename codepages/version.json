@@ -1,5 +1,5 @@
 {
-  "version": "1.9.3",
-  "updated": "2026-04-02",
-  "notes": "Rename Save Order button to Submit Order"
+  "version": "1.9.4",
+  "updated": "2026-04-03",
+  "notes": "Consistent loading spinner on dashboard panels"
 }

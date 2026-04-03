@@ -1705,7 +1705,7 @@ async function loadDashboard() {
     prefillCurrentUserEmail();
 
     var dashContent = document.getElementById('dash-content');
-    dashContent.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p>Loading...</p></div>';
+    showLoading(dashContent);
 
     var role = user?.role;
     if (role === '3D Director') {
@@ -1781,16 +1781,16 @@ async function renderSalesDashboard(user) {
         <div class="dash-cols">
             <div class="dash-panel">
                 <div class="dash-panel-header"><span class="dash-panel-title">My Pending Orders</span><a class="dash-view-all" onclick="switchTab('tab-order-history')">View all</a></div>
-                <div id="ds-pending-orders"><div class="loading-spinner" style="height:100px"><div class="spinner"></div></div></div>
+                <div id="ds-pending-orders"><div class="loading-spinner"><div class="spinner"></div><p>Loading...</p></div></div>
             </div>
             <div class="dash-panel">
                 <div class="dash-panel-header"><span class="dash-panel-title">Contract Created</span><a class="dash-view-all" onclick="switchTab('tab-order-history')">View all</a></div>
-                <div id="ds-contract-orders"><div class="loading-spinner" style="height:100px"><div class="spinner"></div></div></div>
+                <div id="ds-contract-orders"><div class="loading-spinner"><div class="spinner"></div><p>Loading...</p></div></div>
             </div>
         </div>
         <div class="dash-panel">
             <div class="dash-panel-header"><span class="dash-panel-title">My Recent Quotes</span><a class="dash-view-all" onclick="switchTab('tab-quote-history')">View all</a></div>
-            <div id="ds-recent-quotes"><div class="loading-spinner" style="height:100px"><div class="spinner"></div></div></div>
+            <div id="ds-recent-quotes"><div class="loading-spinner"><div class="spinner"></div><p>Loading...</p></div></div>
         </div>`;
 
     try {
@@ -1858,16 +1858,16 @@ async function renderAdminDashboard(user) {
         <div class="dash-cols">
             <div class="dash-panel">
                 <div class="dash-panel-header"><span class="dash-panel-title">Pending Orders</span><a class="dash-view-all" onclick="switchTab('tab-order-history')">View all</a></div>
-                <div id="da-pending-orders"><div class="loading-spinner" style="height:100px"><div class="spinner"></div></div></div>
+                <div id="da-pending-orders"><div class="loading-spinner"><div class="spinner"></div><p>Loading...</p></div></div>
             </div>
             <div class="dash-panel">
                 <div class="dash-panel-header"><span class="dash-panel-title">Contract Created</span><a class="dash-view-all" onclick="switchTab('tab-order-history')">View all</a></div>
-                <div id="da-contract-orders"><div class="loading-spinner" style="height:100px"><div class="spinner"></div></div></div>
+                <div id="da-contract-orders"><div class="loading-spinner"><div class="spinner"></div><p>Loading...</p></div></div>
             </div>
         </div>
         <div class="dash-panel">
             <div class="dash-panel-header"><span class="dash-panel-title">Recent 3D Quotes</span><a class="dash-view-all" onclick="switchTab('tab-quote-history')">View all</a></div>
-            <div id="da-recent-quotes"><div class="loading-spinner" style="height:100px"><div class="spinner"></div></div></div>
+            <div id="da-recent-quotes"><div class="loading-spinner"><div class="spinner"></div><p>Loading...</p></div></div>
         </div>`;
 
     try {
@@ -1939,14 +1939,14 @@ async function renderDirectorDashboard(user) {
                 <span class="dash-panel-title">Pending Review</span>
                 <span class="badge badge-pending" id="dd-pending-count">0</span>
             </div>
-            <div id="dd-pending-list"><div class="loading-spinner" style="height:100px"><div class="spinner"></div></div></div>
+            <div id="dd-pending-list"><div class="loading-spinner"><div class="spinner"></div><p>Loading...</p></div></div>
         </div>
         <div class="dash-panel">
             <div class="dash-panel-header">
                 <span class="dash-panel-title">All Recent Quotes</span>
                 <a class="dash-view-all" onclick="switchTab('tab-quote-history')">View all</a>
             </div>
-            <div id="dd-all-quotes"><div class="loading-spinner" style="height:100px"><div class="spinner"></div></div></div>
+            <div id="dd-all-quotes"><div class="loading-spinner"><div class="spinner"></div><p>Loading...</p></div></div>
         </div>`;
 
     try {
