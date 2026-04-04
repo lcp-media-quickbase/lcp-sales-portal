@@ -96,13 +96,6 @@ body {
 .nav-item.active { background: var(--lcp-blue-light); color: var(--lcp-blue); }
 .nav-item.active .nav-icon { color: var(--lcp-blue); }
 .nav-icon { width: 20px; height: 20px; flex-shrink: 0; }
-.tb-nav-icon { display: flex; align-items: center; justify-content: center; }
-.tb-icon-light, .tb-icon-dark { width: 20px; height: 20px; display: block; }
-.tb-icon-dark { display: none; }
-@media (prefers-color-scheme: dark) {
-    .tb-icon-light { display: none; }
-    .tb-icon-dark { display: block; }
-}
 
 .sidebar-footer { padding: 16px 20px; border-top: 1px solid var(--border-color); }
 .version-info { font-size: 11px; color: var(--text-muted); }
