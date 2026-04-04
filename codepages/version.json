@@ -1,5 +1,5 @@
 {
-  "version": "2.0.0",
+  "version": "2.0.1",
   "updated": "2026-04-03",
-  "notes": "Revert TourBuilder nav/empty-state to globe icon"
+  "notes": "Fix CONFIG.version sync with version.json; revert TourBuilder icon to globe"
 }
