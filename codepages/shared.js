@@ -2,7 +2,7 @@
 // App ID: bvvpht7z6 | Realm: lcp360-5583.quickbase.com
 
 const CONFIG = {
-    version: '2.0.1',
+    version: '2.0.2',
     versionUrl: 'https://raw.githubusercontent.com/lcp-media-quickbase/lcp-sales-portal/main/codepages/version.json',
     
     getRealmHostname: function() { return window.location.hostname; },
@@ -242,6 +242,12 @@ async function getCurrentUser() {
                 var roleText = await roleResp.text();
                 var roleXml = parser.parseFromString(roleText, 'text/xml');
                 role = roleXml.querySelector('role')?.getAttribute('name') || null;
+                // Fall back to Administrator if QB account/realm admin with no explicit app role
+                if (!role) {
+                    var isAdmin = roleXml.querySelector('isadmin')?.textContent === '1';
+                    var isAppManager = roleXml.querySelector('isappmanager')?.textContent === '1';
+                    if (isAdmin || isAppManager) role = 'Administrator';
+                }
                 console.log('[User] Role:', role);
             } catch (re) {
                 console.warn('[User] Could not fetch role:', re);

@@ -1175,6 +1175,7 @@ async function saveOrder() {
         
         showSuccess('Order created successfully!');
         resetOrderForm();
+        switchTab('tab-dashboard');
         
     } catch (e) { 
         console.error('Save order failed:', e); 
@@ -1325,6 +1326,7 @@ async function saveQuote() {
         
         showSuccess('Quote saved!');
         resetQuoteForm();
+        switchTab('tab-dashboard');
     } catch (e) { 
         console.error('Save quote failed:', e); 
         alert('Failed to save quote: ' + e.message); 

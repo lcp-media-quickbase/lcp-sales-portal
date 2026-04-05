@@ -1,5 +1,5 @@
 {
-  "version": "2.0.1",
-  "updated": "2026-04-03",
-  "notes": "Fix CONFIG.version sync with version.json; revert TourBuilder icon to globe"
+  "version": "2.0.2",
+  "updated": "2026-04-04",
+  "notes": "Redirect to dashboard after order/quote submit; fix admin role detection for QB account admins"
 }
