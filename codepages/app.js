@@ -2257,7 +2257,7 @@ async function viewOrder(id) {
             [f.recordId, f.orderStatus, f.quoteDate, f.expirationDate, f.salesRepEmail, f.historyNotes, 
              f.companyName, f.companyYcrmId, f.ycrmOpportunityId, f.billingContactName, f.billingContactEmail, f.billingContactPhone,
              f.contractContactFirst, f.contractContactLast, f.contractEmail, f.contractPhone, f.propertyLevelBilling,
-             f.concessionsApproval, f.concessionsApprovedBy, f.concessionsApprovedDate],
+             f.concessionsApproval, f.concessionsApprovedBy, f.concessionsApprovedDate, f.concessionNotes],
             `{3.EX.${id}}`
         );
         
@@ -2297,6 +2297,7 @@ async function viewOrder(id) {
         const concessionsApproval = order[f.concessionsApproval]?.value || '';
         const concessionsApprovedBy = order[f.concessionsApprovedBy]?.value || '';
         const concessionsApprovedDate = order[f.concessionsApprovedDate]?.value || '';
+        const concessionNotes = order[f.concessionNotes]?.value || '';
         const propertyLevelBilling = order[f.propertyLevelBilling]?.value === true;
         
         const needsConcessionApproval = status === 'Concessions Approval Needed';
@@ -2333,6 +2334,7 @@ async function viewOrder(id) {
                 ${hasConcessionDecision ? `
                     <div class="concession-decision-banner ${concessionsApproval === 'Approved' ? 'approved' : 'denied'}">
                         <strong>Concessions ${concessionsApproval}</strong> by ${typeof concessionsApprovedBy === 'object' ? (concessionsApprovedBy.email || concessionsApprovedBy.name || 'Unknown') : concessionsApprovedBy} on ${formatDateTime(concessionsApprovedDate)}
+                        ${concessionNotes ? `<div style="margin-top:6px;font-weight:400;">${concessionNotes}</div>` : ''}
                     </div>
                 ` : ''}
                 
@@ -2450,20 +2452,28 @@ async function approveConcession(orderId) {
     await updateConcessionStatus(orderId, 'Approved');
 }
 
-async function denyConcession(orderId) {
-    if (!confirm('Deny concessions for this order?')) return;
-    await updateConcessionStatus(orderId, 'Denied');
+function denyConcession(orderId) {
+    document.getElementById('concession-deny-notes').value = '';
+    document.getElementById('concession-deny-modal').dataset.orderId = orderId;
+    openModal('concession-deny-modal');
 }
 
-async function updateConcessionStatus(orderId, decision) {
+async function confirmDenyConcession() {
+    const orderId = parseInt(document.getElementById('concession-deny-modal').dataset.orderId);
+    const notes = document.getElementById('concession-deny-notes').value.trim();
+    closeModal('concession-deny-modal');
+    await updateConcessionStatus(orderId, 'Denied', notes);
+}
+
+async function updateConcessionStatus(orderId, decision, notes) {
     try {
         const f = CONFIG.fields.orders;
         const user = await getCurrentUser();
         const userEmail = user?.email || 'Unknown';
         const now = new Date().toISOString();
-        
+
         const newStatus = decision === 'Approved' ? 'Concessions Approved' : 'Concessions Denied';
-        
+
         const updateData = {
             [f.recordId]: { value: orderId },
             [f.orderStatus]: { value: newStatus },
@@ -2471,6 +2481,7 @@ async function updateConcessionStatus(orderId, decision) {
             [f.concessionsApprovedBy]: { value: userEmail },
             [f.concessionsApprovedDate]: { value: now }
         };
+        if (notes) updateData[f.concessionNotes] = { value: notes };
         
         await updateRecord(CONFIG.tables.orders, updateData);
         showSuccess(`Concessions ${decision.toLowerCase()}!`);
