@@ -1,5 +1,5 @@
 {
-  "version": "2.0.2",
+  "version": "2.0.3",
   "updated": "2026-04-04",
-  "notes": "Redirect to dashboard after order/quote submit; fix admin role detection for QB account admins"
+  "notes": "Fix admin role detection: treat API_GetUser 404 as realm/account admin"
 }

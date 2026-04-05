@@ -2,7 +2,7 @@
 // App ID: bvvpht7z6 | Realm: lcp360-5583.quickbase.com
 
 const CONFIG = {
-    version: '2.0.2',
+    version: '2.0.3',
     versionUrl: 'https://raw.githubusercontent.com/lcp-media-quickbase/lcp-sales-portal/main/codepages/version.json',
     
     getRealmHostname: function() { return window.location.hostname; },
@@ -239,14 +239,13 @@ async function getCurrentUser() {
                     'https://' + realm + '/db/' + CONFIG.appId + '?a=API_GetUser&userid=' + encodeURIComponent(userId) + '&fmt=structured',
                     { credentials: 'include' }
                 );
-                var roleText = await roleResp.text();
-                var roleXml = parser.parseFromString(roleText, 'text/xml');
-                role = roleXml.querySelector('role')?.getAttribute('name') || null;
-                // Fall back to Administrator if QB account/realm admin with no explicit app role
-                if (!role) {
-                    var isAdmin = roleXml.querySelector('isadmin')?.textContent === '1';
-                    var isAppManager = roleXml.querySelector('isappmanager')?.textContent === '1';
-                    if (isAdmin || isAppManager) role = 'Administrator';
+                if (roleResp.status === 404) {
+                    // 404 = user not in app member list; only realm/account admins get here
+                    role = 'Administrator';
+                } else {
+                    var roleText = await roleResp.text();
+                    var roleXml = parser.parseFromString(roleText, 'text/xml');
+                    role = roleXml.querySelector('role')?.getAttribute('name') || null;
                 }
                 console.log('[User] Role:', role);
             } catch (re) {
