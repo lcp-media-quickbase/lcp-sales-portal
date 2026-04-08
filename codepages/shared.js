@@ -2,7 +2,7 @@
 // App ID: bvvpht7z6 | Realm: lcp360-5583.quickbase.com
 
 const CONFIG = {
-    version: '2.1.0',
+    version: '2.1.1',
     versionUrl: 'https://raw.githubusercontent.com/lcp-media-quickbase/lcp-sales-portal/main/codepages/version.json',
     
     getRealmHostname: function() { return window.location.hostname; },
@@ -20,7 +20,8 @@ const CONFIG = {
         companies: 'bvdjrk2qq',
         yardiCodes: 'bvkv6qbt9',
         propertiesMaster: 'bvdjrndec',
-        cancellations: 'bvwdykdiw'
+        cancellations: 'bvwdykdiw',
+        tourbuilder: 'budf3gkff'
     },
     
     fields: {
@@ -77,6 +78,10 @@ const CONFIG = {
         cancellations: {
             recordId: 3, propertyName: 8, nextDate: 10, propertyAddress: 29, companyName: 25,
             cancellationDate: 34, cancellationReason: 35
+        },
+        tourbuilder: {
+            recordId: 3, tourId: 6, propertyName: 7, street: 9, city: 10, state: 11,
+            clientName: 17, unitTours: 22, tourUrl: 23
         }
     },
     
@@ -123,7 +128,7 @@ var _tempTokens = {}; // { tableId: { token, expiresAt } }
 
 // Tables in current app vs parent app
 var CURRENT_APP_TABLES = ['bvvpht73m', 'bvvpht749', 'bvvpht76j', 'bvvpht773', 'bvvpht79i'];
-var PARENT_APP_TABLES = ['bvdjrfrja', 'bvdjrk2qq', 'bvkv6qbt9', 'bvdjrndec', 'bvwdykdiw'];
+var PARENT_APP_TABLES = ['bvdjrfrja', 'bvdjrk2qq', 'bvkv6qbt9', 'bvdjrndec', 'bvwdykdiw', 'budf3gkff'];
 
 async function getTempToken(tableId) {
     // Check cache
@@ -315,6 +320,7 @@ function switchTab(tabId) {
     else if (tabId === 'tab-quote-history') loadQuoteHistory();
     else if (tabId === 'tab-price-list') loadPriceList();
     else if (tabId === 'tab-cancellations') loadCancellations();
+    else if (tabId === 'tab-tourbuilder') loadTourBuilderData();
 }
 
 // ============================================================================

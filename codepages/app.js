@@ -5,7 +5,7 @@ const AppState = {
     currentProductCallback: null, currentPropertyCallback: null,
     orderProperties: [], // [{propertyId, property, lineItems: [{id, productId, productName, quantity, unitPrice, total}], billingContact, billingEmail, billingPhone}]
     quoteProperties: [], // [{propertyId, property, attachments: [{id, file, description, linkUrl, needsReupload}]}]
-    products: [], products3D: [], properties: [], clients: [], orders: [], quotes: [], priceList: [], cancellations: [],
+    products: [], products3D: [], properties: [], clients: [], orders: [], quotes: [], priceList: [], cancellations: [], tourbuilder: [],
     attachmentCounter: 0,
     editingOrderId: null,
     editingQuoteId: null,
@@ -2535,6 +2535,131 @@ function filterCancellations() {
         const matchCompany = !company || row.dataset.company === company;
         const matchState = !state || row.dataset.state === state;
         row.style.display = (matchSearch && matchCompany && matchState) ? '' : 'none';
+    });
+}
+
+// ============================================================================
+// TOURBUILDER DATA
+// ============================================================================
+
+var _tourbuilderSort = { col: 'clientName', dir: 'asc' };
+
+var _tourbuilderCols = [
+    { key: 'tourId',       label: 'Tour ID' },
+    { key: 'clientName',   label: 'Client Name' },
+    { key: 'propertyName', label: 'Property Name' },
+    { key: 'street',       label: 'Street' },
+    { key: 'city',         label: 'City' },
+    { key: 'state',        label: 'State' },
+    { key: 'unitTours',    label: 'Unit Tours' },
+    { key: '_action',      label: '' }
+];
+
+async function loadTourBuilderData() {
+    const c = document.getElementById('tourbuilder-table');
+    if (!c) return;
+    showLoading(c);
+    try {
+        const f = CONFIG.fields.tourbuilder;
+        const r = await queryRecords(CONFIG.tables.tourbuilder,
+            [f.recordId, f.tourId, f.clientName, f.propertyName, f.street, f.city, f.state, f.unitTours, f.tourUrl],
+            null,
+            [{ fieldId: f.clientName, order: 'ASC' }]
+        );
+        const records = r.data || [];
+        AppState.tourbuilder = records;
+
+        if (!records.length) {
+            c.innerHTML = '<div class="empty-state"><p class="empty-state-title">No TourBuilder records found</p></div>';
+            return;
+        }
+
+        // Populate company (client name) filter
+        const clients = [...new Set(records.map(rec => rec[f.clientName]?.value).filter(Boolean))].sort();
+        const clientSelect = document.getElementById('tourbuilder-filter-company');
+        if (clientSelect) {
+            const curr = clientSelect.value;
+            clientSelect.innerHTML = '<option value="">All Clients</option>' + clients.map(cl => `<option value="${cl}"${cl === curr ? ' selected' : ''}>${cl}</option>`).join('');
+        }
+
+        // Populate state filter
+        const states = [...new Set(records.map(rec => rec[f.state]?.value).filter(Boolean))].sort();
+        const stateSelect = document.getElementById('tourbuilder-filter-state');
+        if (stateSelect) {
+            const curr = stateSelect.value;
+            stateSelect.innerHTML = '<option value="">All States</option>' + states.map(s => `<option value="${s}"${s === curr ? ' selected' : ''}>${s}</option>`).join('');
+        }
+
+        renderTourBuilderTable(records);
+    } catch (e) {
+        showError(c, 'Failed to load TourBuilder data');
+        console.error(e);
+    }
+}
+
+function renderTourBuilderTable(records) {
+    const c = document.getElementById('tourbuilder-table');
+    const f = CONFIG.fields.tourbuilder;
+    const { col, dir } = _tourbuilderSort;
+
+    const sortArrow = dir === 'asc' ? ' ▲' : ' ▼';
+    const headers = _tourbuilderCols.map(h => {
+        if (h.key === '_action') return '<th></th>';
+        return `<th style="cursor:pointer;user-select:none;" onclick="sortTourBuilderData('${h.key}')">${h.label}${col === h.key ? `<span style="color:var(--lcp-blue)">${sortArrow}</span>` : ''}</th>`;
+    }).join('');
+
+    const rows = records.map(rec => ({
+        tourId:       rec[f.tourId]?.value || '',
+        clientName:   rec[f.clientName]?.value || '',
+        propertyName: rec[f.propertyName]?.value || '',
+        street:       rec[f.street]?.value || '',
+        city:         rec[f.city]?.value || '',
+        state:        rec[f.state]?.value || '',
+        unitTours:    rec[f.unitTours]?.value ?? '',
+        tourUrl:      rec[f.tourUrl]?.value || '',
+        search:       [rec[f.tourId]?.value||'', rec[f.clientName]?.value||'', rec[f.propertyName]?.value||'', rec[f.street]?.value||'', rec[f.city]?.value||''].join(' ').toLowerCase()
+    }));
+
+    rows.sort((a, b) => {
+        const av = String(a[col] || '');
+        const bv = String(b[col] || '');
+        const cmp = av < bv ? -1 : av > bv ? 1 : 0;
+        return dir === 'asc' ? cmp : -cmp;
+    });
+
+    c.innerHTML = `<table class="data-table"><thead><tr>${headers}</tr></thead><tbody id="tourbuilder-tbody">${rows.map(row => `<tr data-client="${row.clientName.toLowerCase()}" data-state="${row.state}" data-search="${row.search}">
+        <td>${row.tourId||'-'}</td>
+        <td>${row.clientName||'-'}</td>
+        <td>${row.propertyName||'-'}</td>
+        <td>${row.street||'-'}</td>
+        <td>${row.city||'-'}</td>
+        <td>${row.state||'-'}</td>
+        <td>${row.unitTours !== '' ? row.unitTours : '-'}</td>
+        <td>${row.tourUrl ? `<a href="${row.tourUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">View Tour</a>` : '-'}</td>
+    </tr>`).join('')}</tbody></table>`;
+
+    filterTourBuilderData();
+}
+
+function sortTourBuilderData(col) {
+    if (_tourbuilderSort.col === col) {
+        _tourbuilderSort.dir = _tourbuilderSort.dir === 'asc' ? 'desc' : 'asc';
+    } else {
+        _tourbuilderSort.col = col;
+        _tourbuilderSort.dir = 'asc';
+    }
+    renderTourBuilderTable(AppState.tourbuilder);
+}
+
+function filterTourBuilderData() {
+    const search = (document.getElementById('tourbuilder-search')?.value || '').toLowerCase();
+    const client = (document.getElementById('tourbuilder-filter-company')?.value || '').toLowerCase();
+    const state = document.getElementById('tourbuilder-filter-state')?.value || '';
+    document.querySelectorAll('#tourbuilder-tbody tr').forEach(row => {
+        const matchSearch = !search || (row.dataset.search || '').includes(search);
+        const matchClient = !client || row.dataset.client === client;
+        const matchState = !state || row.dataset.state === state;
+        row.style.display = (matchSearch && matchClient && matchState) ? '' : 'none';
     });
 }
 

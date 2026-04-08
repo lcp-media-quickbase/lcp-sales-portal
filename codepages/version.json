@@ -1,5 +1,5 @@
 {
-  "version": "2.1.0",
+  "version": "2.1.1",
   "updated": "2026-04-08",
-  "notes": "Cancellations table: clickable column header sorting with direction indicator"
+  "notes": "TourBuilder Data tab: search, client/state filters, sortable columns, View Tour button (FID 23)"
 }

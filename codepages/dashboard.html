@@ -406,14 +406,30 @@
             <!-- TAB: TourBuilder Data -->
             <div id="tab-tourbuilder" class="tab-content">
                 <div class="page-header">
-                    <h1 class="page-title">TourBuilder Data</h1>
-                    <p class="page-subtitle">3D tour property and tour information</p>
+                    <div>
+                        <h1 class="page-title">TourBuilder Data</h1>
+                        <p class="page-subtitle">3D tour property and tour information</p>
+                    </div>
+                    <button class="btn btn-secondary" onclick="loadTourBuilderData()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                        Refresh
+                    </button>
                 </div>
                 <div class="page-content">
-                    <div class="empty-state" style="padding: 80px 20px;">
-                        <svg class="empty-state-icon" style="width:48px;height:48px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><ellipse cx="12" cy="12" rx="4" ry="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
-                        <p class="empty-state-title">Coming Soon</p>
-                        <p class="empty-state-text">TourBuilder data views are under development.</p>
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">All Tours</h2>
+                        </div>
+                        <div class="price-filter" style="padding-bottom: 16px;">
+                            <input type="text" class="form-input" id="tourbuilder-search" placeholder="Search..." oninput="filterTourBuilderData()" style="flex: 2;">
+                            <select class="form-select" id="tourbuilder-filter-company" onchange="filterTourBuilderData()">
+                                <option value="">All Clients</option>
+                            </select>
+                            <select class="form-select" id="tourbuilder-filter-state" onchange="filterTourBuilderData()">
+                                <option value="">All States</option>
+                            </select>
+                        </div>
+                        <div id="tourbuilder-table"></div>
                     </div>
                 </div>
             </div>
