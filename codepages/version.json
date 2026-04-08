@@ -1,5 +1,5 @@
 {
-  "version": "2.0.4",
-  "updated": "2026-04-04",
-  "notes": "Deny concessions dialog with notes (FID 53); show notes in decision banner"
+  "version": "2.0.5",
+  "updated": "2026-04-08",
+  "notes": "Sequential contract gen: PDF/DOCX upload to FID 12/38, set Contract Created; concession approval triggers same workflow (FID 42)"
 }

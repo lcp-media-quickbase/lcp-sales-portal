@@ -1157,10 +1157,17 @@ async function saveOrder() {
             }
         }
         
-        // Generate contract documents (PDF and DOCX)
-        console.log('Generating contract documents for order:', orderId);
+        // Workflow 1: confirm no concessions in DB (FID 41), then generate contracts sequentially
         const companyName = AppState.selectedClient?.name || '';
-        await generateOrderDocuments(orderId, ycrmOpportunity, companyName);
+        const concessionCheck = await queryRecords(
+            CONFIG.tables.orderLineItems, [lf.recordId],
+            `{${lf.relatedOrder}.EX.${orderId}}AND{${lf.concessionFlag}.EX._true_}`
+        );
+        if (!concessionCheck.data || !concessionCheck.data.length) {
+            await generateAndUploadContracts(orderId, ycrmOpportunity, companyName);
+        } else {
+            console.log('[Contracts] Skipped — concessions found in DB for order', orderId);
+        }
         
         // If this order was converted from a quote, update the quote status
         if (AppState.convertingQuoteId) {
@@ -1186,55 +1193,99 @@ async function saveOrder() {
     }
 }
 
-async function generateOrderDocuments(recordId, opportunityId, companyName) {
-    const templateId = 3; // Contract template ID
+// ============================================================================
+// CONTRACT GENERATION
+// ============================================================================
+
+async function uploadFileToField(tableId, recordId, fieldId, file) {
+    const realm = CONFIG.getRealmHostname();
+    const token = await getTempToken(tableId);
+    const formData = new FormData();
+    formData.append('file', file);
+    const resp = await fetch(
+        `https://api.quickbase.com/v1/files/${tableId}/${recordId}/${fieldId}/0`,
+        {
+            method: 'POST',
+            headers: {
+                'QB-Realm-Hostname': realm,
+                'Authorization': `QB-TEMP-TOKEN ${token}`
+            },
+            body: formData,
+            credentials: 'include'
+        }
+    );
+    if (!resp.ok) {
+        const errText = await resp.text().catch(() => String(resp.status));
+        throw new Error(`File upload to FID ${fieldId} failed: ${errText}`);
+    }
+    return resp.json().catch(() => ({}));
+}
+
+async function generateAndUploadContracts(orderId, opportunityId, companyName) {
+    const CONTRACT_TEMPLATE_ID = 3;
+    const f = CONFIG.fields.orders;
     const tableId = CONFIG.tables.orders;
-    const realm = CONFIG.getRealmHostname().replace('.quickbase.com', '');
-    
-    // Filename: OpportunityID - CompanyName (sanitize for URL)
-    let fileName = '';
+    const realm = CONFIG.getRealmHostname();
+    const realmShort = realm.replace('.quickbase.com', '');
+
+    // Build sanitized filename
+    let baseName;
     if (opportunityId && companyName) {
-        fileName = `${opportunityId} - ${companyName}`;
+        baseName = `${opportunityId} - ${companyName}`;
     } else if (opportunityId) {
-        fileName = opportunityId;
+        baseName = opportunityId;
     } else if (companyName) {
-        fileName = companyName;
+        baseName = companyName;
     } else {
-        fileName = 'Order_Contract_' + recordId;
+        baseName = 'Order_Contract_' + orderId;
     }
-    // Sanitize filename for URL (remove special chars)
-    fileName = encodeURIComponent(fileName.replace(/[\/\\:*?"<>|]/g, ''));
-    
-    try {
-        // Generate PDF
-        const pdfUrl = `https://api.quickbase.com/v1/docTemplates/${templateId}/generate?tableId=${tableId}&realm=${realm}&filename=${fileName}&format=pdf&recordId=${recordId}`;
-        const pdfResp = await fetch(pdfUrl, {
-            method: 'GET',
-            credentials: 'include',
-            headers: { 'QB-Realm-Hostname': CONFIG.getRealmHostname() }
-        });
-        if (pdfResp.ok) {
-            console.log('PDF contract generated successfully');
-        } else {
-            console.error('PDF generation failed:', pdfResp.status, await pdfResp.text());
-        }
-        
-        // Generate DOCX
-        const docxUrl = `https://api.quickbase.com/v1/docTemplates/${templateId}/generate?tableId=${tableId}&realm=${realm}&filename=${fileName}&format=docx&recordId=${recordId}`;
-        const docxResp = await fetch(docxUrl, {
-            method: 'GET',
-            credentials: 'include',
-            headers: { 'QB-Realm-Hostname': CONFIG.getRealmHostname() }
-        });
-        if (docxResp.ok) {
-            console.log('DOCX contract generated successfully');
-        } else {
-            console.error('DOCX generation failed:', docxResp.status, await docxResp.text());
-        }
-    } catch (e) {
-        console.error('Document generation failed:', e);
-        // Don't throw - order was created successfully, just log the doc gen failure
+    const safeFileName = encodeURIComponent(baseName.replace(/[\/\\:*?"<>|]/g, ''));
+
+    // Step 1: Set status → "Contract Needed"
+    await updateRecord(tableId, {
+        [f.recordId]: { value: orderId },
+        [f.orderStatus]: { value: 'Contract Needed' }
+    });
+    console.log('[Contracts] Status → Contract Needed for order', orderId);
+
+    // Step 2: Generate PDF → upload to FID 12
+    const pdfGenUrl = `https://api.quickbase.com/v1/docTemplates/${CONTRACT_TEMPLATE_ID}/generate?tableId=${tableId}&realm=${realmShort}&filename=${safeFileName}&format=pdf&recordId=${orderId}`;
+    const pdfResp = await fetch(pdfGenUrl, {
+        method: 'GET',
+        credentials: 'include',
+        headers: { 'QB-Realm-Hostname': realm }
+    });
+    if (!pdfResp.ok) {
+        const pdfErr = await pdfResp.text().catch(() => String(pdfResp.status));
+        throw new Error(`PDF generation failed: ${pdfErr}`);
     }
+    const pdfBlob = await pdfResp.blob();
+    await uploadFileToField(tableId, orderId, f.orderPDF,
+        new File([pdfBlob], `${baseName}.pdf`, { type: 'application/pdf' }));
+    console.log('[Contracts] PDF uploaded to FID', f.orderPDF);
+
+    // Step 3: Generate DOCX → upload to FID 38
+    const docxGenUrl = `https://api.quickbase.com/v1/docTemplates/${CONTRACT_TEMPLATE_ID}/generate?tableId=${tableId}&realm=${realmShort}&filename=${safeFileName}&format=docx&recordId=${orderId}`;
+    const docxResp = await fetch(docxGenUrl, {
+        method: 'GET',
+        credentials: 'include',
+        headers: { 'QB-Realm-Hostname': realm }
+    });
+    if (!docxResp.ok) {
+        const docxErr = await docxResp.text().catch(() => String(docxResp.status));
+        throw new Error(`DOCX generation failed: ${docxErr}`);
+    }
+    const docxBlob = await docxResp.blob();
+    await uploadFileToField(tableId, orderId, f.orderDOCX,
+        new File([docxBlob], `${baseName}.docx`, { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }));
+    console.log('[Contracts] DOCX uploaded to FID', f.orderDOCX);
+
+    // Step 4: Set status → "Contract Created"
+    await updateRecord(tableId, {
+        [f.recordId]: { value: orderId },
+        [f.orderStatus]: { value: 'Contract Created' }
+    });
+    console.log('[Contracts] Status → Contract Created for order', orderId);
 }
 
 async function saveQuote() {
@@ -1344,7 +1395,7 @@ async function uploadAttachmentFile(recordId, file) {
         formData.append('file', file);
         
         const realm = CONFIG.getRealmHostname();
-        const token = await getOrRefreshToken(CONFIG.tables.quoteAttachments);
+        const token = await getTempToken(CONFIG.tables.quoteAttachments);
         
         const response = await fetch(`https://api.quickbase.com/v1/files/${CONFIG.tables.quoteAttachments}/${recordId}/${af.fileAttachment}`, {
             method: 'POST',
@@ -2484,11 +2535,24 @@ async function updateConcessionStatus(orderId, decision, notes) {
         if (notes) updateData[f.concessionNotes] = { value: notes };
         
         await updateRecord(CONFIG.tables.orders, updateData);
+
+        // Workflow 2: generate contracts when concessions are approved
+        if (decision === 'Approved') {
+            const orderRes = await queryRecords(CONFIG.tables.orders,
+                [f.recordId, f.ycrmOpportunityId, f.companyName],
+                `{3.EX.${orderId}}`
+            );
+            const orderRow = orderRes.data?.[0];
+            const opportunityId = orderRow?.[f.ycrmOpportunityId]?.value || '';
+            const companyName = orderRow?.[f.companyName]?.value || '';
+            await generateAndUploadContracts(orderId, opportunityId, companyName);
+        }
+
         showSuccess(`Concessions ${decision.toLowerCase()}!`);
-        
+
         // Refresh the order detail view
         await viewOrder(orderId);
-        
+
         // Also refresh the order history list
         loadOrderHistory();
         
