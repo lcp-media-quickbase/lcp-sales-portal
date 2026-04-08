@@ -191,14 +191,15 @@ function selectQuoteClient(id) {
 async function loadProperties() {
     try {
         const f = CONFIG.fields.propertiesMaster;
-        const r = await queryRecords(CONFIG.tables.propertiesMaster, [f.recordId, f.propertyName, f.address, f.billingContact, f.billingEmail, f.billingPhone], "{12.XEX.''}", [{ fieldId: f.propertyName, order: 'ASC' }]);
-        AppState.properties = r.data.map(rec => ({ 
-            id: rec[f.recordId].value, 
-            name: rec[f.propertyName]?.value || 'Unnamed', 
+        const r = await queryRecords(CONFIG.tables.propertiesMaster, [f.recordId, f.propertyName, f.address, f.billingContact, f.billingEmail, f.billingPhone, f.unitCount], "{12.XEX.''}", [{ fieldId: f.propertyName, order: 'ASC' }]);
+        AppState.properties = r.data.map(rec => ({
+            id: rec[f.recordId].value,
+            name: rec[f.propertyName]?.value || 'Unnamed',
             address: rec[f.address]?.value || '',
             billingContact: rec[f.billingContact]?.value || '',
             billingEmail: rec[f.billingEmail]?.value || '',
-            billingPhone: rec[f.billingPhone]?.value || ''
+            billingPhone: rec[f.billingPhone]?.value || '',
+            unitCount: rec[f.unitCount]?.value || 0
         }));
         renderPropertyList();
     } catch (e) { 
@@ -370,7 +371,8 @@ async function createNewProperty() {
             postalCode: zip,
             billingContact: '',
             billingEmail: '',
-            billingPhone: ''
+            billingPhone: '',
+            unitCount: 0
         };
         AppState.properties.push(newProperty);
         
@@ -402,7 +404,8 @@ function addPropertyToOrder(propertyId) {
         // Initialize billing from property, can be overridden
         billingContact: property.billingContact || '',
         billingEmail: property.billingEmail || '',
-        billingPhone: property.billingPhone || ''
+        billingPhone: property.billingPhone || '',
+        unitCount: property.unitCount || 0
     });
     
     renderOrderProperties();
@@ -414,6 +417,11 @@ function updatePropertyBilling(propertyId, field, value) {
     if (orderProp) {
         orderProp[field] = value;
     }
+}
+
+function updateQuotePropertyUnitCount(propertyId, value) {
+    var qp = AppState.quoteProperties.find(q => q.propertyId === propertyId);
+    if (qp) qp.unitCount = value;
 }
 
 function removePropertyFromOrder(propertyId) {
@@ -599,6 +607,10 @@ function renderOrderProperties() {
                 <div class="billing-field">
                     <label class="billing-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>Phone</label>
                     <input type="tel" class="form-input billing-input" id="billing-phone-${op.propertyId}" value="${op.billingPhone || ''}" placeholder="(555) 123-4567" oninput="formatPhoneNumber(this)" onchange="updatePropertyBilling(${op.propertyId},'billingPhone',this.value)">
+                </div>
+                <div class="billing-field">
+                    <label class="billing-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>Units</label>
+                    <input type="number" class="form-input billing-input" id="unit-count-${op.propertyId}" value="${op.unitCount || ''}" placeholder="Unit count" min="0" onchange="updatePropertyBilling(${op.propertyId},'unitCount',parseInt(this.value)||0)">
                 </div>
             </div>
             <div class="property-group-body">
@@ -840,7 +852,8 @@ function addPropertyToQuote(propertyId) {
     AppState.quoteProperties.push({
         propertyId: propertyId,
         property: property,
-        attachments: []
+        attachments: [],
+        unitCount: property.unitCount || 0
     });
     
     renderQuoteProperties();
@@ -979,6 +992,10 @@ function renderQuoteProperties() {
                 <div class="property-group-info">
                     <div class="property-group-name">${p.name}</div>
                     <div class="property-group-address">${p.address || 'No address'}</div>
+                    <div style="margin-top:6px;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>
+                        Units: <input type="number" class="form-input" value="${qp.unitCount || ''}" placeholder="—" min="0" style="width:80px;height:26px;padding:2px 8px;font-size:12px;display:inline-block;" onchange="updateQuotePropertyUnitCount(${qp.propertyId},parseInt(this.value)||0)">
+                    </div>
                 </div>
                 <div class="property-group-actions">
                     <button type="button" class="btn btn-ghost btn-sm" onclick="removePropertyFromQuote(${qp.propertyId})" title="Remove Property">
@@ -1129,7 +1146,16 @@ async function saveOrder() {
             const propResult = await createRecord(CONFIG.tables.properties, propertyData);
             const propertyLinkId = propResult.metadata?.createdRecordIds?.[0];
             console.log('Created property link:', propertyLinkId, 'for property:', op.propertyId);
-            
+
+            // Persist unit count to propertiesMaster so FID 26 lookup reflects it
+            if (op.unitCount) {
+                const pmf = CONFIG.fields.propertiesMaster;
+                await updateRecord(CONFIG.tables.propertiesMaster, {
+                    [pmf.recordId]: { value: op.propertyId },
+                    [pmf.unitCount]: { value: op.unitCount }
+                });
+            }
+
             // 3. Create line items for this property
             for (const li of op.lineItems) {
                 if (li.productId || li.productCode) {
@@ -1191,6 +1217,106 @@ async function saveOrder() {
         saveBtn.textContent = originalText;
         saveBtn.disabled = false;
     }
+}
+
+// ============================================================================
+// PROPERTY WORKSHEET GENERATION
+// ============================================================================
+
+async function loadSheetJS() {
+    if (window.XLSX) return;
+    await new Promise(function(resolve, reject) {
+        var s = document.createElement('script');
+        s.src = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
+        s.onload = resolve;
+        s.onerror = function() { reject(new Error('Failed to load SheetJS')); };
+        document.head.appendChild(s);
+    });
+}
+
+async function generatePropertyWorksheet(orderId, baseName) {
+    await loadSheetJS();
+
+    var pf = CONFIG.fields.properties;
+    var lf = CONFIG.fields.orderLineItems;
+
+    // Fetch properties and all order line items in parallel
+    var results = await Promise.all([
+        queryRecords(CONFIG.tables.properties,
+            [pf.recordId, pf.propertyName, pf.propertyAddress, pf.billingEmail, pf.unitCount],
+            '{' + pf.relatedOrder + '.EX.' + orderId + '}'),
+        queryRecords(CONFIG.tables.orderLineItems,
+            [lf.relatedProperty, lf.relatedCode, lf.quantity],
+            '{' + lf.relatedOrder + '.EX.' + orderId + '}')
+    ]);
+    var properties = results[0].data || [];
+    var lineItems = results[1].data || [];
+
+    // Build map: propertyRecordId → { productCode → quantity }
+    var propLineMap = {};
+    for (var i = 0; i < lineItems.length; i++) {
+        var li = lineItems[i];
+        var propId = li[lf.relatedProperty]?.value;
+        var code = String(li[lf.relatedCode]?.value || '');
+        var qty = li[lf.quantity]?.value ?? 0;
+        if (!propId || !code) continue;
+        if (!propLineMap[propId]) propLineMap[propId] = {};
+        propLineMap[propId][code] = qty;
+    }
+
+    // Column definitions: [header, productCode] — code null means no product mapping
+    var PRODUCT_COLS = [
+        ['TB Pro', '9430'],
+        ['# Pro Areas', '9456'],
+        ['TB Go', '9327'],
+        ['# Units to Capture', '9419'],
+        ['Zillow Promo TB Pro\n(6 Areas Free)', '9491'],
+        ['Zillow Promo TB Essentials', '9492'],
+        ['Zillow Promo TB Pro Additional Areas ($150/area)', '9493'],
+        ['Professional Photography', '9416'],
+        ['# of Images', '9416'],
+        ['Set of 15 Drone Stills', '9408'],
+        ['60 Second Drone Fly Over + 15 Stills', '9411'],
+        ['Set of 5 Aerial 360s', '9410'],
+        ['2D Floor Plans', '9413'],
+        ['3D Floor Plans', '9414'],
+        ['Virtually Staged 360s', '9431'],
+        ['Virtually Staged Stills', '9431'],
+        ['TB Go Camera Kit', '9324'],
+        ['Per Area Matterport Conversion', '9461']
+    ];
+
+    var titleRow = ['LCP Property Worksheet'];
+    var codeRow = ['', '', '', 'CODES'].concat(PRODUCT_COLS.map(function(c) { return parseInt(c[1]); }));
+    var headerRow = ['Property', 'Address', 'Billing Contact Email', 'Unit Count']
+        .concat(PRODUCT_COLS.map(function(c) { return c[0]; }));
+
+    var dataRows = properties.map(function(p) {
+        var pid = p[pf.recordId]?.value;
+        var codes = propLineMap[pid] || {};
+        var row = [
+            p[pf.propertyName]?.value || '',
+            p[pf.propertyAddress]?.value || '',
+            p[pf.billingEmail]?.value || '',
+            p[pf.unitCount]?.value || ''
+        ];
+        PRODUCT_COLS.forEach(function(c) {
+            row.push(codes[c[1]] !== undefined ? codes[c[1]] : 0);
+        });
+        return row;
+    });
+
+    var aoa = [titleRow, codeRow, headerRow].concat(dataRows);
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Property Worksheet');
+    var buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    var blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    var fileName = baseName + ' - Property Worksheet.xlsx';
+    var file = new File([blob], fileName, { type: blob.type });
+
+    await uploadFileToField(CONFIG.tables.orders, orderId, CONFIG.fields.orders.propertyWorksheet, file);
+    console.log('[Worksheet] Uploaded', fileName, 'to FID', CONFIG.fields.orders.propertyWorksheet);
 }
 
 // ============================================================================
@@ -1286,6 +1412,9 @@ async function generateAndUploadContracts(orderId, opportunityId, companyName) {
         [f.orderStatus]: { value: 'Contract Created' }
     });
     console.log('[Contracts] Status → Contract Created for order', orderId);
+
+    // Step 5: Generate property worksheet → upload to FID 13
+    await generatePropertyWorksheet(orderId, baseName);
 }
 
 async function saveQuote() {
@@ -1347,7 +1476,15 @@ async function saveQuote() {
             const propResult = await createRecord(CONFIG.tables.properties, propertyData);
             const propertyLinkId = propResult.metadata?.createdRecordIds?.[0];
             console.log('Created property link:', propertyLinkId, 'for property:', qp.propertyId);
-            
+
+            if (qp.unitCount) {
+                const pmf = CONFIG.fields.propertiesMaster;
+                await updateRecord(CONFIG.tables.propertiesMaster, {
+                    [pmf.recordId]: { value: qp.propertyId },
+                    [pmf.unitCount]: { value: qp.unitCount }
+                });
+            }
+
             // 3. Create attachments for this property
             for (const att of qp.attachments) {
                 if (att.file || att.linkUrl) {
@@ -1480,6 +1617,15 @@ async function saveDraftOrder() {
             };
             const propResult = await createRecord(CONFIG.tables.properties, propData);
             const propertyLinkId = propResult.metadata?.createdRecordIds?.[0];
+
+            if (op.unitCount) {
+                const pmf = CONFIG.fields.propertiesMaster;
+                await updateRecord(CONFIG.tables.propertiesMaster, {
+                    [pmf.recordId]: { value: op.propertyId },
+                    [pmf.unitCount]: { value: op.unitCount }
+                });
+            }
+
             for (const li of op.lineItems) {
                 if (li.productId || li.productCode) {
                     const liData = {
@@ -1554,6 +1700,13 @@ async function saveDraftQuote() {
                 [pf.relatedProperty]: { value: qp.propertyId }
             };
             await createRecord(CONFIG.tables.properties, propData);
+            if (qp.unitCount) {
+                const pmf = CONFIG.fields.propertiesMaster;
+                await updateRecord(CONFIG.tables.propertiesMaster, {
+                    [pmf.recordId]: { value: qp.propertyId },
+                    [pmf.unitCount]: { value: qp.unitCount }
+                });
+            }
             for (const att of qp.attachments) {
                 if (att.file || att.linkUrl) {
                     const descWithProperty = att.description ? `[${qp.property.name}] ${att.description}` : `[${qp.property.name}]`;
@@ -1596,7 +1749,7 @@ async function loadOrderForEdit(id) {
                 `{3.EX.${id}}`
             ),
             queryRecords(CONFIG.tables.properties,
-                [pf.recordId, pf.relatedProperty, pf.propertyName, pf.billingContact, pf.billingEmail, pf.billingPhone],
+                [pf.recordId, pf.relatedProperty, pf.propertyName, pf.billingContact, pf.billingEmail, pf.billingPhone, pf.unitCount],
                 `{${pf.relatedOrder}.EX.${id}}`
             )
         ]);
@@ -1662,7 +1815,8 @@ async function loadOrderForEdit(id) {
                 lineItems,
                 billingContact: prop[pf.billingContact]?.value || '',
                 billingEmail: prop[pf.billingEmail]?.value || '',
-                billingPhone: prop[pf.billingPhone]?.value || ''
+                billingPhone: prop[pf.billingPhone]?.value || '',
+                unitCount: prop[pf.unitCount]?.value || 0
             });
         });
 
@@ -1687,7 +1841,7 @@ async function loadQuoteDraft(id) {
                 `{3.EX.${id}}`
             ),
             queryRecords(CONFIG.tables.properties,
-                [pf.recordId, pf.relatedProperty, pf.propertyName],
+                [pf.recordId, pf.relatedProperty, pf.propertyName, pf.unitCount],
                 `{${pf.relatedQuote3D}.EX.${id}}`
             ),
             queryRecords(CONFIG.tables.quoteAttachments,
@@ -1737,7 +1891,7 @@ async function loadQuoteDraft(id) {
                     };
                 });
 
-            AppState.quoteProperties.push({ propertyId, property, attachments: propAtts });
+            AppState.quoteProperties.push({ propertyId, property, attachments: propAtts, unitCount: prop[pf.unitCount]?.value || 0 });
         });
 
         AppState.editingQuoteId = id;

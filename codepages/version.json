@@ -1,5 +1,5 @@
 {
-  "version": "2.0.5",
+  "version": "2.0.7",
   "updated": "2026-04-08",
-  "notes": "Sequential contract gen: PDF/DOCX upload to FID 12/38, set Contract Created; concession approval triggers same workflow (FID 42)"
+  "notes": "Unit count (FID 26/137): editable on order+quote property forms, saved to propertiesMaster, used in property worksheet"
 }
