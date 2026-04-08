@@ -2407,9 +2407,10 @@ async function loadQuoteHistory() {
     } catch (e) { showError(c, 'Failed to load quotes'); }
 }
 
-async function loadCancellations() {
+async function loadCancellations(force) {
     const c = document.getElementById('cancellations-table');
     if (!c) return;
+    if (!force && AppState.cancellations.length) { renderCancellationsTable(AppState.cancellations); return; }
     showLoading(c);
     try {
         const f = CONFIG.fields.cancellations;
@@ -2555,9 +2556,10 @@ var _tourbuilderCols = [
     { key: '_action',      label: '' }
 ];
 
-async function loadTourBuilderData() {
+async function loadTourBuilderData(force) {
     const c = document.getElementById('tourbuilder-table');
     if (!c) return;
+    if (!force && AppState.tourbuilder.length) { renderTourBuilderTable(AppState.tourbuilder); return; }
     showLoading(c);
     try {
         const f = CONFIG.fields.tourbuilder;
