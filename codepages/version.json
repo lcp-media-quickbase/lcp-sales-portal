@@ -1,5 +1,5 @@
 {
-  "version": "2.0.9",
+  "version": "2.1.0",
   "updated": "2026-04-08",
-  "notes": "Cancellations search bar wider (flex: 2)"
+  "notes": "Cancellations table: clickable column header sorting with direction indicator"
 }

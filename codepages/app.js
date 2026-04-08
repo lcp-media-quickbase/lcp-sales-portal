@@ -2458,22 +2458,72 @@ function extractStateFromAddress(addr) {
     return '';
 }
 
+var _cancellationsSort = { col: 'cancellationDate', dir: 'desc' };
+
+var _cancellationsCols = [
+    { key: 'company',          label: 'Company' },
+    { key: 'propertyName',     label: 'Property' },
+    { key: 'address',          label: 'Address' },
+    { key: 'nextDate',         label: 'Next Date' },
+    { key: 'cancellationDate', label: 'Date of Cancellation' },
+    { key: 'reason',           label: 'Reason' }
+];
+
+function sortCancellations(col) {
+    if (_cancellationsSort.col === col) {
+        _cancellationsSort.dir = _cancellationsSort.dir === 'asc' ? 'desc' : 'asc';
+    } else {
+        _cancellationsSort.col = col;
+        _cancellationsSort.dir = 'asc';
+    }
+    renderCancellationsTable(AppState.cancellations);
+}
+
 function renderCancellationsTable(records) {
     const c = document.getElementById('cancellations-table');
     const f = CONFIG.fields.cancellations;
-    c.innerHTML = `<table class="data-table"><thead><tr><th>Company</th><th>Property</th><th>Address</th><th>Next Date</th><th>Date of Cancellation</th><th>Reason</th></tr></thead><tbody id="cancellations-tbody">${records.map(rec => {
-        const addr = rec[f.propertyAddress]?.value || '-';
-        const state = extractStateFromAddress(rec[f.propertyAddress]?.value);
+    const { col, dir } = _cancellationsSort;
+
+    const sortArrow = dir === 'asc' ? ' ▲' : ' ▼';
+    const headers = _cancellationsCols.map(h =>
+        `<th style="cursor:pointer;user-select:none;" onclick="sortCancellations('${h.key}')">${h.label}${col === h.key ? `<span style="color:var(--lcp-blue)">${sortArrow}</span>` : ''}</th>`
+    ).join('');
+
+    // Build row data with sort keys
+    const rows = records.map(rec => {
+        const addr = rec[f.propertyAddress]?.value || '';
         const company = rec[f.companyName]?.value || '';
-        return `<tr data-company="${company.toLowerCase()}" data-state="${state}" data-search="${[company, rec[f.propertyName]?.value||'', addr, rec[f.cancellationReason]?.value||''].join(' ').toLowerCase()}">
-            <td>${company||'-'}</td>
-            <td>${rec[f.propertyName]?.value||'-'}</td>
-            <td>${addr}</td>
-            <td>${formatDate(rec[f.nextDate]?.value)}</td>
-            <td>${formatDate(rec[f.cancellationDate]?.value)}</td>
-            <td>${rec[f.cancellationReason]?.value||'-'}</td>
-        </tr>`;
-    }).join('')}</tbody></table>`;
+        const state = extractStateFromAddress(addr);
+        return {
+            company,
+            propertyName: rec[f.propertyName]?.value || '',
+            address: addr,
+            nextDate: rec[f.nextDate]?.value || '',
+            cancellationDate: rec[f.cancellationDate]?.value || '',
+            reason: rec[f.cancellationReason]?.value || '',
+            state,
+            search: [company, rec[f.propertyName]?.value||'', addr, rec[f.cancellationReason]?.value||''].join(' ').toLowerCase()
+        };
+    });
+
+    rows.sort((a, b) => {
+        const av = a[col] || '';
+        const bv = b[col] || '';
+        const cmp = av < bv ? -1 : av > bv ? 1 : 0;
+        return dir === 'asc' ? cmp : -cmp;
+    });
+
+    c.innerHTML = `<table class="data-table"><thead><tr>${headers}</tr></thead><tbody id="cancellations-tbody">${rows.map(row => `<tr data-company="${row.company.toLowerCase()}" data-state="${row.state}" data-search="${row.search}">
+            <td>${row.company||'-'}</td>
+            <td>${row.propertyName||'-'}</td>
+            <td>${row.address||'-'}</td>
+            <td>${formatDate(row.nextDate)}</td>
+            <td>${formatDate(row.cancellationDate)}</td>
+            <td>${row.reason||'-'}</td>
+        </tr>`).join('')}</tbody></table>`;
+
+    // Re-apply active filters without resetting them
+    filterCancellations();
 }
 
 function filterCancellations() {
