@@ -2,7 +2,7 @@
 // App ID: bvvpht7z6 | Realm: lcp360-5583.quickbase.com
 
 const CONFIG = {
-    version: '2.0.7',
+    version: '2.0.8',
     versionUrl: 'https://raw.githubusercontent.com/lcp-media-quickbase/lcp-sales-portal/main/codepages/version.json',
     
     getRealmHostname: function() { return window.location.hostname; },
@@ -19,7 +19,8 @@ const CONFIG = {
         products: 'bvdjrfrja',
         companies: 'bvdjrk2qq',
         yardiCodes: 'bvkv6qbt9',
-        propertiesMaster: 'bvdjrndec'
+        propertiesMaster: 'bvdjrndec',
+        cancellations: 'bvwdykdiw'
     },
     
     fields: {
@@ -72,6 +73,10 @@ const CONFIG = {
         },
         products3D: {
             recordId: 3, productType: 12, productName: 13, retailPrice: 16
+        },
+        cancellations: {
+            recordId: 3, propertyName: 8, nextDate: 10, propertyAddress: 29, companyName: 25,
+            cancellationDate: 34, cancellationReason: 35
         }
     },
     
@@ -118,7 +123,7 @@ var _tempTokens = {}; // { tableId: { token, expiresAt } }
 
 // Tables in current app vs parent app
 var CURRENT_APP_TABLES = ['bvvpht73m', 'bvvpht749', 'bvvpht76j', 'bvvpht773', 'bvvpht79i'];
-var PARENT_APP_TABLES = ['bvdjrfrja', 'bvdjrk2qq', 'bvkv6qbt9', 'bvdjrndec'];
+var PARENT_APP_TABLES = ['bvdjrfrja', 'bvdjrk2qq', 'bvkv6qbt9', 'bvdjrndec', 'bvwdykdiw'];
 
 async function getTempToken(tableId) {
     // Check cache
@@ -309,6 +314,7 @@ function switchTab(tabId) {
     else if (tabId === 'tab-order-history') loadOrderHistory();
     else if (tabId === 'tab-quote-history') loadQuoteHistory();
     else if (tabId === 'tab-price-list') loadPriceList();
+    else if (tabId === 'tab-cancellations') loadCancellations();
 }
 
 // ============================================================================

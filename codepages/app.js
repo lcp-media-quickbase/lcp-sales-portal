@@ -5,7 +5,7 @@ const AppState = {
     currentProductCallback: null, currentPropertyCallback: null,
     orderProperties: [], // [{propertyId, property, lineItems: [{id, productId, productName, quantity, unitPrice, total}], billingContact, billingEmail, billingPhone}]
     quoteProperties: [], // [{propertyId, property, attachments: [{id, file, description, linkUrl, needsReupload}]}]
-    products: [], products3D: [], properties: [], clients: [], orders: [], quotes: [], priceList: [],
+    products: [], products3D: [], properties: [], clients: [], orders: [], quotes: [], priceList: [], cancellations: [],
     attachmentCounter: 0,
     editingOrderId: null,
     editingQuoteId: null,
@@ -2405,6 +2405,87 @@ async function loadQuoteHistory() {
             </tr>`;
         }).join('')}</tbody></table>`;
     } catch (e) { showError(c, 'Failed to load quotes'); }
+}
+
+async function loadCancellations() {
+    const c = document.getElementById('cancellations-table');
+    if (!c) return;
+    showLoading(c);
+    try {
+        const f = CONFIG.fields.cancellations;
+        const r = await queryRecords(CONFIG.tables.cancellations,
+            [f.recordId, f.companyName, f.propertyName, f.propertyAddress, f.nextDate, f.cancellationDate, f.cancellationReason],
+            null,
+            [{ fieldId: f.cancellationDate, order: 'DESC' }]
+        );
+        const records = r.data || [];
+        AppState.cancellations = records;
+
+        if (!records.length) {
+            c.innerHTML = '<div class="empty-state"><p class="empty-state-title">No cancellations found</p></div>';
+            return;
+        }
+
+        // Populate company filter
+        const companies = [...new Set(records.map(rec => rec[f.companyName]?.value).filter(Boolean))].sort();
+        const companySelect = document.getElementById('cancellations-filter-company');
+        if (companySelect) {
+            const curr = companySelect.value;
+            companySelect.innerHTML = '<option value="">All Companies</option>' + companies.map(co => `<option value="${co}"${co === curr ? ' selected' : ''}>${co}</option>`).join('');
+        }
+
+        // Populate state filter (extracted from address)
+        const states = [...new Set(records.map(rec => extractStateFromAddress(rec[f.propertyAddress]?.value)).filter(Boolean))].sort();
+        const stateSelect = document.getElementById('cancellations-filter-state');
+        if (stateSelect) {
+            const curr = stateSelect.value;
+            stateSelect.innerHTML = '<option value="">All States</option>' + states.map(s => `<option value="${s}"${s === curr ? ' selected' : ''}>${s}</option>`).join('');
+        }
+
+        renderCancellationsTable(records);
+    } catch (e) {
+        showError(c, 'Failed to load cancellations');
+        console.error(e);
+    }
+}
+
+function extractStateFromAddress(addr) {
+    if (!addr) return '';
+    var m = addr.match(/,\s*([A-Z]{2})\s*\d{5}/);
+    if (m) return m[1];
+    var m2 = addr.match(/,\s*([A-Z]{2})\s*$/);
+    if (m2) return m2[1];
+    return '';
+}
+
+function renderCancellationsTable(records) {
+    const c = document.getElementById('cancellations-table');
+    const f = CONFIG.fields.cancellations;
+    c.innerHTML = `<table class="data-table"><thead><tr><th>Company</th><th>Property</th><th>Address</th><th>Next Date</th><th>Date of Cancellation</th><th>Reason</th></tr></thead><tbody id="cancellations-tbody">${records.map(rec => {
+        const addr = rec[f.propertyAddress]?.value || '-';
+        const state = extractStateFromAddress(rec[f.propertyAddress]?.value);
+        const company = rec[f.companyName]?.value || '';
+        return `<tr data-company="${company.toLowerCase()}" data-state="${state}" data-search="${[company, rec[f.propertyName]?.value||'', addr, rec[f.cancellationReason]?.value||''].join(' ').toLowerCase()}">
+            <td>${company||'-'}</td>
+            <td>${rec[f.propertyName]?.value||'-'}</td>
+            <td>${addr}</td>
+            <td>${formatDate(rec[f.nextDate]?.value)}</td>
+            <td>${formatDate(rec[f.cancellationDate]?.value)}</td>
+            <td>${rec[f.cancellationReason]?.value||'-'}</td>
+        </tr>`;
+    }).join('')}</tbody></table>`;
+}
+
+function filterCancellations() {
+    const search = (document.getElementById('cancellations-search')?.value || '').toLowerCase();
+    const company = (document.getElementById('cancellations-filter-company')?.value || '').toLowerCase();
+    const state = document.getElementById('cancellations-filter-state')?.value || '';
+    document.querySelectorAll('#cancellations-tbody tr').forEach(row => {
+        const matchSearch = !search || (row.dataset.search || '').includes(search);
+        const matchCompany = !company || row.dataset.company === company;
+        const matchState = !state || row.dataset.state === state;
+        row.style.display = (matchSearch && matchCompany && matchState) ? '' : 'none';
+    });
 }
 
 function getStatusClass(s) { if (!s) return 'draft'; const l = s.toLowerCase(); if (l.includes('pending')||l.includes('processing')||l.includes('review')||l.includes('sent')) return 'pending'; if (l.includes('completed')||l.includes('approved')||l.includes('converted')) return 'approved'; if (l.includes('rejected')||l.includes('cancelled')||l.includes('expired')||l.includes('denied')) return 'rejected'; return 'draft'; }

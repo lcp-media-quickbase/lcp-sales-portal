@@ -421,14 +421,30 @@
             <!-- TAB: Cancellations -->
             <div id="tab-cancellations" class="tab-content">
                 <div class="page-header">
-                    <h1 class="page-title">Cancellations</h1>
-                    <p class="page-subtitle">Manage service cancellations and property sales</p>
+                    <div>
+                        <h1 class="page-title">Cancellations</h1>
+                        <p class="page-subtitle">Service cancellations and property sales</p>
+                    </div>
+                    <button class="btn btn-secondary" onclick="loadCancellations()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                        Refresh
+                    </button>
                 </div>
                 <div class="page-content">
-                    <div class="empty-state" style="padding: 80px 20px;">
-                        <svg class="empty-state-icon" style="width:48px;height:48px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
-                        <p class="empty-state-title">Coming Soon</p>
-                        <p class="empty-state-text">Cancellation management is under development.</p>
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">All Cancellations</h2>
+                        </div>
+                        <div class="price-filter" style="padding-bottom: 16px;">
+                            <input type="text" class="form-input" id="cancellations-search" placeholder="Search..." oninput="filterCancellations()">
+                            <select class="form-select" id="cancellations-filter-company" onchange="filterCancellations()">
+                                <option value="">All Companies</option>
+                            </select>
+                            <select class="form-select" id="cancellations-filter-state" onchange="filterCancellations()">
+                                <option value="">All States</option>
+                            </select>
+                        </div>
+                        <div id="cancellations-table"></div>
                     </div>
                 </div>
             </div>

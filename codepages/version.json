@@ -1,5 +1,5 @@
 {
-  "version": "2.0.7",
+  "version": "2.0.8",
   "updated": "2026-04-08",
-  "notes": "Unit count (FID 26/137): editable on order+quote property forms, saved to propertiesMaster, used in property worksheet"
+  "notes": "Cancellations tab: report view with search, company filter, and state filter from table bvwdykdiw"
 }
