@@ -2566,7 +2566,7 @@ async function loadTourBuilderData() {
             null,
             [{ fieldId: f.clientName, order: 'ASC' }]
         );
-        const records = r.data || [];
+        const records = (r.data || []).filter(rec => rec[f.clientName]?.value);
         AppState.tourbuilder = records;
 
         if (!records.length) {
@@ -2635,7 +2635,7 @@ function renderTourBuilderTable(records) {
         <td>${row.city||'-'}</td>
         <td>${row.state||'-'}</td>
         <td>${row.unitTours !== '' ? row.unitTours : '-'}</td>
-        <td>${row.tourUrl ? `<a href="${row.tourUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">View Tour</a>` : '-'}</td>
+        <td>${row.tourUrl ? `<a href="${row.tourUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">View Tour</a>` : '-'}</td>
     </tr>`).join('')}</tbody></table>`;
 
     filterTourBuilderData();

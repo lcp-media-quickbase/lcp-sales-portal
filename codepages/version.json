@@ -1,5 +1,5 @@
 {
-  "version": "2.1.1",
+  "version": "2.1.2",
   "updated": "2026-04-08",
-  "notes": "TourBuilder Data tab: search, client/state filters, sortable columns, View Tour button (FID 23)"
+  "notes": "TourBuilder: hide rows with empty client name; View Tour as primary button"
 }
