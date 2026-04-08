@@ -1,5 +1,5 @@
 {
-  "version": "2.0.8",
+  "version": "2.0.9",
   "updated": "2026-04-08",
-  "notes": "Cancellations tab: report view with search, company filter, and state filter from table bvwdykdiw"
+  "notes": "Cancellations search bar wider (flex: 2)"
 }
