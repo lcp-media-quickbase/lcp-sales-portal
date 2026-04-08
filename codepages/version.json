@@ -1,5 +1,5 @@
 {
-  "version": "2.1.3",
+  "version": "2.1.4",
   "updated": "2026-04-08",
-  "notes": "Cache cancellations and TourBuilder data; Refresh button forces reload"
+  "notes": "Cache all tab data (orders, quotes, dashboard, price list, cancellations, tourbuilder) — no refetch on tab switch"
 }

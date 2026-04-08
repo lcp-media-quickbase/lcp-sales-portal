@@ -753,12 +753,12 @@ function openProductSelector(cb) {
 // PRICE LIST TAB
 // ============================================================================
 
-async function loadPriceList() {
+async function loadPriceList(force) {
     const c = document.getElementById('price-list-table');
+    if (!force && AppState.priceList.length) { renderPriceListTable(); return; }
     showLoading(c);
-    
     try {
-        if (!AppState.priceList.length) await loadProducts();
+        await loadProducts();
         renderPriceListTable();
     } catch (e) {
         showError(c, 'Failed to load price list');
@@ -1907,12 +1907,14 @@ async function loadQuoteDraft(id) {
 // DASHBOARD
 // ============================================================================
 
-async function loadDashboard() {
+async function loadDashboard(force) {
     if (!AppState.currentUser) {
         AppState.currentUser = await getCurrentUser();
     }
     var user = AppState.currentUser;
     prefillCurrentUserEmail();
+
+    if (!force && AppState._dashboardRendered) return;
 
     var dashContent = document.getElementById('dash-content');
     showLoading(dashContent);
@@ -1925,6 +1927,7 @@ async function loadDashboard() {
     } else {
         await renderSalesDashboard(user);
     }
+    AppState._dashboardRendered = true;
 }
 
 // Shared helpers for building dashboard panels
@@ -2350,60 +2353,74 @@ async function saveLineItems() {
 // HISTORY
 // ============================================================================
 
-async function loadOrderHistory() {
+function renderOrderHistoryTable() {
     const c = document.getElementById('order-history-table');
+    const f = CONFIG.fields.orders;
+    if (!AppState.orders.length) { c.innerHTML = '<div class="empty-state"><p class="empty-state-title">No orders yet</p><button class="btn btn-primary" onclick="switchTab(\'tab-new-order\')">Create Order</button></div>'; return; }
+    document.getElementById('stat-total-orders').textContent = AppState.orders.length;
+    document.getElementById('stat-pending-orders').textContent = AppState.orders.filter(o => ['Pending','Processing'].includes(o[f.orderStatus]?.value)).length;
+    document.getElementById('stat-completed-orders').textContent = AppState.orders.filter(o => o[f.orderStatus]?.value === 'Completed').length;
+    c.innerHTML = `<table class="data-table"><thead><tr><th>Company</th><th>Status</th><th>Date</th><th>Sales Rep</th><th>Actions</th></tr></thead><tbody>${AppState.orders.map(o => {
+        const status = o[f.orderStatus]?.value || 'Draft';
+        return `<tr>
+            <td>${o[f.companyName]?.value||'-'}</td>
+            <td><span class="badge badge-${getStatusClass(status)}">${status}</span></td>
+            <td>${formatDate(o[f.quoteDate]?.value)}</td>
+            <td>${o[f.salesRepEmail]?.value||'-'}</td>
+            <td class="actions">
+                ${!['Concessions Approved','Contract Needed','Completed','Cancelled'].includes(status) ? `<button class="btn btn-ghost btn-sm" onclick="loadOrderForEdit(${o[f.recordId].value})" title="Edit Order"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}
+                <button class="btn btn-ghost btn-sm" onclick="viewOrder(${o[f.recordId].value})" title="View Order"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </td>
+        </tr>`;
+    }).join('')}</tbody></table>`;
+}
+
+async function loadOrderHistory(force) {
+    const c = document.getElementById('order-history-table');
+    if (!force && AppState.orders.length) { renderOrderHistoryTable(); return; }
     showLoading(c);
     try {
         const f = CONFIG.fields.orders;
         const r = await queryRecords(CONFIG.tables.orders, [f.recordId, f.orderStatus, f.quoteDate, f.salesRepEmail, f.companyName], null, [{ fieldId: f.dateModified, order: 'DESC' }]);
         AppState.orders = r.data;
-        if (!AppState.orders.length) { c.innerHTML = '<div class="empty-state"><p class="empty-state-title">No orders yet</p><button class="btn btn-primary" onclick="switchTab(\'tab-new-order\')">Create Order</button></div>'; return; }
-        document.getElementById('stat-total-orders').textContent = AppState.orders.length;
-        document.getElementById('stat-pending-orders').textContent = AppState.orders.filter(o => ['Pending','Processing'].includes(o[f.orderStatus]?.value)).length;
-        document.getElementById('stat-completed-orders').textContent = AppState.orders.filter(o => o[f.orderStatus]?.value === 'Completed').length;
-        c.innerHTML = `<table class="data-table"><thead><tr><th>Company</th><th>Status</th><th>Date</th><th>Sales Rep</th><th>Actions</th></tr></thead><tbody>${AppState.orders.map(o => {
-            const status = o[f.orderStatus]?.value || 'Draft';
-            return `<tr>
-                <td>${o[f.companyName]?.value||'-'}</td>
-                <td><span class="badge badge-${getStatusClass(status)}">${status}</span></td>
-                <td>${formatDate(o[f.quoteDate]?.value)}</td>
-                <td>${o[f.salesRepEmail]?.value||'-'}</td>
-                <td class="actions">
-                    ${!['Concessions Approved','Contract Needed','Completed','Cancelled'].includes(status) ? `<button class="btn btn-ghost btn-sm" onclick="loadOrderForEdit(${o[f.recordId].value})" title="Edit Order"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}
-                    <button class="btn btn-ghost btn-sm" onclick="viewOrder(${o[f.recordId].value})" title="View Order"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
-                </td>
-            </tr>`;
-        }).join('')}</tbody></table>`;
+        renderOrderHistoryTable();
     } catch (e) { showError(c, 'Failed to load orders'); }
 }
 
-async function loadQuoteHistory() {
+function renderQuoteHistoryTable() {
     const c = document.getElementById('quote-history-table');
+    const f = CONFIG.fields.quotes3D;
+    if (!AppState.quotes.length) { c.innerHTML = '<div class="empty-state"><p class="empty-state-title">No quotes yet</p><button class="btn btn-primary" onclick="switchTab(\'tab-new-quote\')">Create Quote</button></div>'; return; }
+    document.getElementById('stat-total-quotes').textContent = AppState.quotes.length;
+    document.getElementById('stat-pending-quotes').textContent = AppState.quotes.filter(q => ['Pending Review','Sent to Client'].includes(q[f.quoteStatus]?.value)).length;
+    document.getElementById('stat-approved-quotes').textContent = AppState.quotes.filter(q => q[f.quoteStatus]?.value === 'Approved').length;
+    c.innerHTML = `<table class="data-table"><thead><tr><th>Quote Name</th><th>Company</th><th>Status</th><th>Date</th><th>Sales Rep</th><th>Actions</th></tr></thead><tbody>${AppState.quotes.map(q => {
+        const status = q[f.quoteStatus]?.value || 'Draft';
+        return `<tr>
+            <td>${q[f.quoteName]?.value||'-'}</td>
+            <td>${q[f.companyName]?.value||'-'}</td>
+            <td><span class="badge badge-${getStatusClass(status)}">${status}</span></td>
+            <td>${formatDate(q[f.quoteDate]?.value)}</td>
+            <td>${q[f.salesRepEmail]?.value||'-'}</td>
+            <td class="actions">
+                ${status === 'Draft' ? `<button class="btn btn-ghost btn-sm" onclick="loadQuoteDraft(${q[f.recordId].value})" title="Edit Draft"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}
+                <button class="btn btn-ghost btn-sm" onclick="viewQuote(${q[f.recordId].value})" title="View Quote">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+            </td>
+        </tr>`;
+    }).join('')}</tbody></table>`;
+}
+
+async function loadQuoteHistory(force) {
+    const c = document.getElementById('quote-history-table');
+    if (!force && AppState.quotes.length) { renderQuoteHistoryTable(); return; }
     showLoading(c);
     try {
         const f = CONFIG.fields.quotes3D;
         const r = await queryRecords(CONFIG.tables.quotes3D, [f.recordId, f.quoteName, f.quoteStatus, f.quoteDate, f.salesRepEmail, f.companyName], null, [{ fieldId: f.dateModified, order: 'DESC' }]);
         AppState.quotes = r.data;
-        if (!AppState.quotes.length) { c.innerHTML = '<div class="empty-state"><p class="empty-state-title">No quotes yet</p><button class="btn btn-primary" onclick="switchTab(\'tab-new-quote\')">Create Quote</button></div>'; return; }
-        document.getElementById('stat-total-quotes').textContent = AppState.quotes.length;
-        document.getElementById('stat-pending-quotes').textContent = AppState.quotes.filter(q => ['Pending Review','Sent to Client'].includes(q[f.quoteStatus]?.value)).length;
-        document.getElementById('stat-approved-quotes').textContent = AppState.quotes.filter(q => q[f.quoteStatus]?.value === 'Approved').length;
-        c.innerHTML = `<table class="data-table"><thead><tr><th>Quote Name</th><th>Company</th><th>Status</th><th>Date</th><th>Sales Rep</th><th>Actions</th></tr></thead><tbody>${AppState.quotes.map(q => {
-            const status = q[f.quoteStatus]?.value || 'Draft';
-            return `<tr>
-                <td>${q[f.quoteName]?.value||'-'}</td>
-                <td>${q[f.companyName]?.value||'-'}</td>
-                <td><span class="badge badge-${getStatusClass(status)}">${status}</span></td>
-                <td>${formatDate(q[f.quoteDate]?.value)}</td>
-                <td>${q[f.salesRepEmail]?.value||'-'}</td>
-                <td class="actions">
-                    ${status === 'Draft' ? `<button class="btn btn-ghost btn-sm" onclick="loadQuoteDraft(${q[f.recordId].value})" title="Edit Draft"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}
-                    <button class="btn btn-ghost btn-sm" onclick="viewQuote(${q[f.recordId].value})" title="View Quote">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                    </button>
-                </td>
-            </tr>`;
-        }).join('')}</tbody></table>`;
+        renderQuoteHistoryTable();
     } catch (e) { showError(c, 'Failed to load quotes'); }
 }
 
