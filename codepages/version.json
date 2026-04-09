@@ -1,5 +1,5 @@
 {
-  "version": "2.1.7",
+  "version": "2.1.8",
   "updated": "2026-04-09",
   "notes": "Concession dollar amount field (FID 38) — syncs bidirectionally with percent"
 }
