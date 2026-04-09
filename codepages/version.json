@@ -1,5 +1,5 @@
 {
-  "version": "2.1.4",
-  "updated": "2026-04-08",
-  "notes": "Cache all tab data (orders, quotes, dashboard, price list, cancellations, tourbuilder) — no refetch on tab switch"
+  "version": "2.1.5",
+  "updated": "2026-04-09",
+  "notes": "Security: escapeHtml for all QB data in HTML output; fix token refresh race condition; fix $0 price falsy trap; fix concession % NaN; remove debug logs"
 }

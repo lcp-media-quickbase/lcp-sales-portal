@@ -484,7 +484,8 @@ function updateConcessionPercent(propertyId, lineItemId, pct) {
     if (!orderProp) return;
     var li = orderProp.lineItems.find(l => l.id === lineItemId);
     if (li) {
-        li.concessionPercent = Math.min(100, Math.max(0, parseFloat(pct) || 0));
+        var pctNum = parseFloat(pct);
+        li.concessionPercent = Math.min(100, Math.max(0, isNaN(pctNum) ? 0 : pctNum));
         recalcLineItemTotal(li);
         renderOrderProperties();
     }
@@ -512,9 +513,7 @@ function selectProductForPropertyLine(propertyId, lineItemId) {
             recalcLineItemTotal(li);
             
             // Auto-add 9430 (Virtual Tour Hosting) when 9461 or 9456 is selected
-            console.log('Selected product code:', product.code, 'type:', typeof product.code);
-            if (product.code === '9461' || product.code === '9456' || product.code === 9461 || product.code === 9456) {
-                console.log('Triggering auto-add for 9430');
+            if (String(product.code) === '9461' || String(product.code) === '9456') {
                 autoAddHostingProduct(orderProp, '9430');
             }
             
@@ -1794,8 +1793,8 @@ async function loadOrderForEdit(id) {
 
             const lineItems = (lineItemResults[i]?.data || []).map(li => {
                 lineItemCounter++;
-                const unitPrice = li[lf.quotePrice]?.value || li[lf.codeRetailPrice]?.value || 0;
-                const qty = li[lf.quantity]?.value || 1;
+                const unitPrice = li[lf.quotePrice]?.value ?? li[lf.codeRetailPrice]?.value ?? 0;
+                const qty = li[lf.quantity]?.value ?? 1;
                 return {
                     id: lineItemCounter,
                     productId: li[lf.relatedCode]?.value,
@@ -1804,8 +1803,8 @@ async function loadOrderForEdit(id) {
                     quantity: qty,
                     unitPrice: unitPrice,
                     total: qty * unitPrice,
-                    concession: li[lf.concession]?.value || false,
-                    concessionPercent: li[lf.concessionPercent]?.value || 0
+                    concession: li[lf.concession]?.value ?? false,
+                    concessionPercent: li[lf.concessionPercent]?.value ?? 0
                 };
             });
 
@@ -1938,11 +1937,11 @@ function _dashOrderRow(o, f, editable) {
     var status = o[f.orderStatus]?.value || 'Draft';
     return `<div class="dash-mini-row">
         <div class="dash-mini-left" style="cursor:pointer;" onclick="viewOrder(${o[f.recordId].value})">
-            <div class="dash-mini-company">${o[f.companyName]?.value || '—'}</div>
-            <div class="dash-mini-meta">${formatDate(o[f.quoteDate]?.value) || '—'} &middot; ${o[f.salesRepEmail]?.value || '—'}</div>
+            <div class="dash-mini-company">${escapeHtml(o[f.companyName]?.value || '—')}</div>
+            <div class="dash-mini-meta">${formatDate(o[f.quoteDate]?.value) || '—'} &middot; ${escapeHtml(o[f.salesRepEmail]?.value || '—')}</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
-            <span class="badge badge-${getStatusClass(status)}">${status}</span>
+            <span class="badge badge-${getStatusClass(status)}">${escapeHtml(status)}</span>
             ${editable ? `<button class="btn btn-ghost btn-sm" onclick="loadOrderForEdit(${o[f.recordId].value})" title="Edit Order"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}
         </div>
     </div>`;
@@ -1951,10 +1950,10 @@ function _dashQuoteRow(q, qf) {
     var status = q[qf.quoteStatus]?.value || 'Draft';
     return `<div class="dash-mini-row" onclick="viewQuote(${q[qf.recordId].value})">
         <div class="dash-mini-left">
-            <div class="dash-mini-company">${q[qf.quoteName]?.value || q[qf.companyName]?.value || '—'}</div>
-            <div class="dash-mini-meta">${q[qf.companyName]?.value || '—'} &middot; ${formatDate(q[qf.quoteDate]?.value) || '—'}</div>
+            <div class="dash-mini-company">${escapeHtml(q[qf.quoteName]?.value || q[qf.companyName]?.value || '—')}</div>
+            <div class="dash-mini-meta">${escapeHtml(q[qf.companyName]?.value || '—')} &middot; ${formatDate(q[qf.quoteDate]?.value) || '—'}</div>
         </div>
-        <span class="badge badge-${getStatusClass(status)}">${status}</span>
+        <span class="badge badge-${getStatusClass(status)}">${escapeHtml(status)}</span>
     </div>`;
 }
 function _kpiGrid(ids) {
@@ -2116,8 +2115,8 @@ async function renderAdminDashboard(user) {
             document.getElementById('da-concessions-table').innerHTML = concessions.map(function(o) {
                 return `<div class="dash-mini-row" onclick="viewOrder(${o[f.recordId].value})">
                     <div class="dash-mini-left">
-                        <div class="dash-mini-company">${o[f.companyName]?.value || '—'}</div>
-                        <div class="dash-mini-meta">${o[f.salesRepEmail]?.value || '—'} &middot; ${formatDate(o[f.quoteDate]?.value)}</div>
+                        <div class="dash-mini-company">${escapeHtml(o[f.companyName]?.value || '—')}</div>
+                        <div class="dash-mini-meta">${escapeHtml(o[f.salesRepEmail]?.value || '—')} &middot; ${formatDate(o[f.quoteDate]?.value)}</div>
                     </div>
                     <span class="badge badge-pending">Needs Approval</span>
                 </div>`;
@@ -2183,8 +2182,8 @@ async function renderDirectorDashboard(user) {
                 var status = q[qf.quoteStatus]?.value || 'Pending Review';
                 return `<div class="dash-mini-row">
                     <div class="dash-mini-left">
-                        <div class="dash-mini-company">${q[qf.quoteName]?.value || q[qf.companyName]?.value || '—'}</div>
-                        <div class="dash-mini-meta">${q[qf.companyName]?.value || '—'} &middot; ${formatDate(q[qf.quoteDate]?.value)} &middot; ${q[qf.salesRepEmail]?.value || '—'}</div>
+                        <div class="dash-mini-company">${escapeHtml(q[qf.quoteName]?.value || q[qf.companyName]?.value || '—')}</div>
+                        <div class="dash-mini-meta">${escapeHtml(q[qf.companyName]?.value || '—')} &middot; ${formatDate(q[qf.quoteDate]?.value)} &middot; ${escapeHtml(q[qf.salesRepEmail]?.value || '—')}</div>
                     </div>
                     <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
                         <button class="btn btn-secondary btn-sm" onclick="openLineItemsModal(${q[qf.recordId].value},'${safeName}','${status}')">Add Line Items</button>
@@ -2531,13 +2530,13 @@ function renderCancellationsTable(records) {
         return dir === 'asc' ? cmp : -cmp;
     });
 
-    c.innerHTML = `<table class="data-table"><thead><tr>${headers}</tr></thead><tbody id="cancellations-tbody">${rows.map(row => `<tr data-company="${row.company.toLowerCase()}" data-state="${row.state}" data-search="${row.search}">
-            <td>${row.company||'-'}</td>
-            <td>${row.propertyName||'-'}</td>
-            <td>${row.address||'-'}</td>
+    c.innerHTML = `<table class="data-table"><thead><tr>${headers}</tr></thead><tbody id="cancellations-tbody">${rows.map(row => `<tr data-company="${escapeHtml(row.company.toLowerCase())}" data-state="${escapeHtml(row.state)}" data-search="${escapeHtml(row.search)}">
+            <td>${escapeHtml(row.company)||'-'}</td>
+            <td>${escapeHtml(row.propertyName)||'-'}</td>
+            <td>${escapeHtml(row.address)||'-'}</td>
             <td>${formatDate(row.nextDate)}</td>
             <td>${formatDate(row.cancellationDate)}</td>
-            <td>${row.reason||'-'}</td>
+            <td>${escapeHtml(row.reason)||'-'}</td>
         </tr>`).join('')}</tbody></table>`;
 
     // Re-apply active filters without resetting them
@@ -2646,15 +2645,15 @@ function renderTourBuilderTable(records) {
         return dir === 'asc' ? cmp : -cmp;
     });
 
-    c.innerHTML = `<table class="data-table"><thead><tr>${headers}</tr></thead><tbody id="tourbuilder-tbody">${rows.map(row => `<tr data-client="${row.clientName.toLowerCase()}" data-state="${row.state}" data-search="${row.search}">
-        <td>${row.tourId||'-'}</td>
-        <td>${row.clientName||'-'}</td>
-        <td>${row.propertyName||'-'}</td>
-        <td>${row.street||'-'}</td>
-        <td>${row.city||'-'}</td>
-        <td>${row.state||'-'}</td>
-        <td>${row.unitTours !== '' ? row.unitTours : '-'}</td>
-        <td>${row.tourUrl ? `<a href="${row.tourUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">View Tour</a>` : '-'}</td>
+    c.innerHTML = `<table class="data-table"><thead><tr>${headers}</tr></thead><tbody id="tourbuilder-tbody">${rows.map(row => `<tr data-client="${escapeHtml(row.clientName.toLowerCase())}" data-state="${escapeHtml(row.state)}" data-search="${escapeHtml(row.search)}">
+        <td>${escapeHtml(row.tourId)||'-'}</td>
+        <td>${escapeHtml(row.clientName)||'-'}</td>
+        <td>${escapeHtml(row.propertyName)||'-'}</td>
+        <td>${escapeHtml(row.street)||'-'}</td>
+        <td>${escapeHtml(row.city)||'-'}</td>
+        <td>${escapeHtml(row.state)||'-'}</td>
+        <td>${row.unitTours !== '' ? escapeHtml(String(row.unitTours)) : '-'}</td>
+        <td>${row.tourUrl ? `<a href="${escapeHtml(row.tourUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">View Tour</a>` : '-'}</td>
     </tr>`).join('')}</tbody></table>`;
 
     filterTourBuilderData();
@@ -2762,22 +2761,23 @@ async function viewOrder(id) {
         
         // Build the detail view
         const status = order[f.orderStatus]?.value || 'Draft';
-        const companyName = order[f.companyName]?.value || '-';
-        const ycrmId = order[f.companyYcrmId]?.value || '-';
-        const opportunityId = order[f.ycrmOpportunityId]?.value || '-';
-        const salesRep = order[f.salesRepEmail]?.value || '-';
+        const companyName = escapeHtml(order[f.companyName]?.value || '-');
+        const ycrmId = escapeHtml(order[f.companyYcrmId]?.value || '-');
+        const opportunityId = escapeHtml(order[f.ycrmOpportunityId]?.value || '-');
+        const salesRep = escapeHtml(order[f.salesRepEmail]?.value || '-');
         const orderDate = formatDate(order[f.quoteDate]?.value);
         const expDate = formatDate(order[f.expirationDate]?.value);
-        const notes = order[f.historyNotes]?.value || '';
+        const notes = order[f.historyNotes]?.value || ''; // rich text — rendered as HTML intentionally
         const contractFirst = order[f.contractContactFirst]?.value || '';
         const contractLast = order[f.contractContactLast]?.value || '';
-        const contractContact = [contractFirst, contractLast].filter(Boolean).join(' ');
-        const contractEmail = order[f.contractEmail]?.value || '';
-        const contractPhone = order[f.contractPhone]?.value || '';
+        const contractContact = escapeHtml([contractFirst, contractLast].filter(Boolean).join(' '));
+        const contractEmail = escapeHtml(order[f.contractEmail]?.value || '');
+        const contractPhone = escapeHtml(order[f.contractPhone]?.value || '');
         const concessionsApproval = order[f.concessionsApproval]?.value || '';
-        const concessionsApprovedBy = order[f.concessionsApprovedBy]?.value || '';
+        const _approvedByRaw = order[f.concessionsApprovedBy]?.value || '';
+        const concessionsApprovedBy = escapeHtml(typeof _approvedByRaw === 'object' ? (_approvedByRaw.email || _approvedByRaw.name || 'Unknown') : _approvedByRaw);
         const concessionsApprovedDate = order[f.concessionsApprovedDate]?.value || '';
-        const concessionNotes = order[f.concessionNotes]?.value || '';
+        const concessionNotes = escapeHtml(order[f.concessionNotes]?.value || '');
         const propertyLevelBilling = order[f.propertyLevelBilling]?.value === true;
         
         const needsConcessionApproval = status === 'Concessions Approval Needed';
@@ -2813,7 +2813,7 @@ async function viewOrder(id) {
                 
                 ${hasConcessionDecision ? `
                     <div class="concession-decision-banner ${concessionsApproval === 'Approved' ? 'approved' : 'denied'}">
-                        <strong>Concessions ${concessionsApproval}</strong> by ${typeof concessionsApprovedBy === 'object' ? (concessionsApprovedBy.email || concessionsApprovedBy.name || 'Unknown') : concessionsApprovedBy} on ${formatDateTime(concessionsApprovedDate)}
+                        <strong>Concessions ${escapeHtml(concessionsApproval)}</strong> by ${concessionsApprovedBy} on ${formatDateTime(concessionsApprovedDate)}
                         ${concessionNotes ? `<div style="margin-top:6px;font-weight:400;">${concessionNotes}</div>` : ''}
                     </div>
                 ` : ''}
@@ -2846,15 +2846,15 @@ async function viewOrder(id) {
             
             for (const prop of properties) {
                 const propId = prop[pf.recordId]?.value;
-                const propName = prop[pf.propertyName]?.value || 'Unknown Property';
-                const propAddress = prop[pf.propertyAddress]?.value || '';
-                const billingContact = prop[pf.billingContact]?.value || '-';
-                const billingEmail = prop[pf.billingEmail]?.value || '-';
-                const billingPhone = prop[pf.billingPhone]?.value || '-';
-                
+                const propName = escapeHtml(prop[pf.propertyName]?.value || 'Unknown Property');
+                const propAddress = escapeHtml(prop[pf.propertyAddress]?.value || '');
+                const billingContact = escapeHtml(prop[pf.billingContact]?.value || '-');
+                const billingEmail = escapeHtml(prop[pf.billingEmail]?.value || '-');
+                const billingPhone = escapeHtml(prop[pf.billingPhone]?.value || '-');
+
                 // Get line items for this property
                 const propLineItems = lineItems.filter(li => li[lf.relatedProperty]?.value === propId);
-                
+
                 html += `
                     <div class="property-detail-card">
                         <div class="property-detail-header">
@@ -2882,8 +2882,8 @@ async function viewOrder(id) {
                                 </thead>
                                 <tbody>
                                     ${propLineItems.map(li => {
-                                        const code = li[lf.relatedCode]?.value || '-';
-                                        const desc = li[lf.description]?.value || '-';
+                                        const code = escapeHtml(li[lf.relatedCode]?.value || '-');
+                                        const desc = escapeHtml(li[lf.description]?.value || '-');
                                         const qty = li[lf.quantity]?.value || 0;
                                         const quotePrice = li[lf.quotePrice]?.value;
                                         const retailPrice = li[lf.codeRetailPrice]?.value || 0;
@@ -3032,13 +3032,13 @@ async function viewQuote(id) {
         
         // Build the detail view
         const status = quote[f.quoteStatus]?.value || 'Draft';
-        const quoteName = quote[f.quoteName]?.value || 'Untitled Quote';
-        const companyName = quote[f.companyName]?.value || '-';
-        const ycrmId = quote[f.companyYcrmId]?.value || '-';
-        const salesRep = quote[f.salesRepEmail]?.value || '-';
+        const quoteName = escapeHtml(quote[f.quoteName]?.value || 'Untitled Quote');
+        const companyName = escapeHtml(quote[f.companyName]?.value || '-');
+        const ycrmId = escapeHtml(quote[f.companyYcrmId]?.value || '-');
+        const salesRep = escapeHtml(quote[f.salesRepEmail]?.value || '-');
         const quoteDate = formatDate(quote[f.quoteDate]?.value);
         const expDate = formatDate(quote[f.expirationDate]?.value);
-        const notes = quote[f.historyNotes]?.value || '';
+        const notes = quote[f.historyNotes]?.value || ''; // rich text — rendered as HTML intentionally
         
         const isConverted = status === 'Converted to Order';
         const canConvert = !isConverted && status !== 'Rejected' && status !== 'Expired';
@@ -3092,15 +3092,16 @@ async function viewQuote(id) {
             html += '<div class="order-detail-section"><h4>Properties</h4>';
             
             for (const prop of properties) {
-                const propName = prop[pf.propertyName]?.value || 'Unknown Property';
-                const propAddress = prop[pf.propertyAddress]?.value || '';
-                
+                const propNameRaw = prop[pf.propertyName]?.value || 'Unknown Property';
+                const propName = escapeHtml(propNameRaw);
+                const propAddress = escapeHtml(prop[pf.propertyAddress]?.value || '');
+
                 // Find attachments for this property (stored in description as [PropertyName])
                 const propAttachments = attachments.filter(att => {
                     const desc = att[af.description]?.value || '';
-                    return desc.startsWith(`[${propName}]`);
+                    return desc.startsWith(`[${propNameRaw}]`);
                 });
-                
+
                 html += `
                     <div class="property-detail-card">
                         <div class="property-detail-header">
@@ -3110,26 +3111,26 @@ async function viewQuote(id) {
                             </div>
                         </div>
                 `;
-                
+
                 if (propAttachments.length) {
                     html += `<div class="property-attachments"><strong>Attachments:</strong><ul style="margin: 8px 0 0 20px;">`;
                     for (const att of propAttachments) {
-                        const description = (att[af.description]?.value || '').replace(`[${propName}]`, '').trim();
+                        const description = escapeHtml((att[af.description]?.value || '').replace(`[${propNameRaw}]`, '').trim());
                         const linkUrl = att[af.linkToFile]?.value || '';
                         const fileInfo = att[af.fileAttachment]?.value;
 
                         let linkHtml = '';
                         if (linkUrl) {
-                            linkHtml = `<a href="${linkUrl}" target="_blank" style="color: var(--lcp-blue);">View Link</a>`;
+                            linkHtml = `<a href="${escapeHtml(linkUrl)}" target="_blank" style="color: var(--lcp-blue);">View Link</a>`;
                         } else if (fileInfo && fileInfo.url) {
-                            linkHtml = `<a href="${fileInfo.url}" target="_blank" style="color: var(--lcp-blue);">${fileInfo.filename || 'Download'}</a>`;
+                            linkHtml = `<a href="${escapeHtml(fileInfo.url)}" target="_blank" style="color: var(--lcp-blue);">${escapeHtml(fileInfo.filename || 'Download')}</a>`;
                         }
 
                         html += `<li>${description ? description + ' ' : ''}${linkHtml}</li>`;
                     }
                     html += `</ul></div>`;
                 }
-                
+
                 html += `</div>`;
             }
             html += '</div>';
@@ -3144,13 +3145,13 @@ async function viewQuote(id) {
             </tr></thead><tbody>`;
             for (const li of lineItems) {
                 html += `<tr>
-                    <td>${[li[lf.productName]?.value, li[lf.description]?.value].filter(Boolean).join(' — ') || '-'}</td>
+                    <td>${escapeHtml([li[lf.productName]?.value, li[lf.description]?.value].filter(Boolean).join(' — ') || '-')}</td>
                     <td>${li[lf.quantity]?.value || '-'}</td>
                     <td>${li[lf.stills]?.value || '-'}</td>
                     <td>${li[lf.panos]?.value || '-'}</td>
                     <td>${(() => { const p = li[lf.quotePrice]?.value ?? li[lf.productRetailPrice]?.value; return p != null ? '$' + Number(p).toFixed(2) : '-'; })()}</td>
                     <td>${li[lf.total]?.value != null ? '$' + Number(li[lf.total].value).toFixed(2) : '-'}</td>
-                    <td>${li[lf.notes]?.value || ''}</td>
+                    <td>${escapeHtml(li[lf.notes]?.value || '')}</td>
                 </tr>`;
             }
             html += '</tbody></table>';

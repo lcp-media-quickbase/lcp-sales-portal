@@ -2,7 +2,7 @@
 // App ID: bvvpht7z6 | Realm: lcp360-5583.quickbase.com
 
 const CONFIG = {
-    version: '2.1.4',
+    version: '2.1.5',
     versionUrl: 'https://raw.githubusercontent.com/lcp-media-quickbase/lcp-sales-portal/main/codepages/version.json',
     
     getRealmHostname: function() { return window.location.hostname; },
@@ -125,6 +125,7 @@ initTheme();
 
 var TEMP_TOKEN_LIFETIME = 4 * 60 * 1000; // 4 min (tokens expire at 5)
 var _tempTokens = {}; // { tableId: { token, expiresAt } }
+var _tokenRequests = {}; // { tableId: Promise } — deduplicate concurrent fetches
 
 // Tables in current app vs parent app
 var CURRENT_APP_TABLES = ['bvvpht73m', 'bvvpht749', 'bvvpht76j', 'bvvpht773', 'bvvpht79i'];
@@ -136,33 +137,46 @@ async function getTempToken(tableId) {
     if (cached && Date.now() < cached.expiresAt) {
         return cached.token;
     }
-    
-    var realm = CONFIG.getRealmHostname();
-    var resp = await fetch(
-        'https://api.quickbase.com/v1/auth/temporary/' + tableId,
-        {
-            method: 'GET',
-            headers: {
-                'QB-Realm-Hostname': realm,
-                'Content-Type': 'application/json'
-            },
-            credentials: 'include'
-        }
-    );
-    
-    if (!resp.ok) {
-        var errData = await resp.json().catch(function() { return {}; });
-        console.error('getTempToken failed for', tableId, ':', resp.status, errData);
-        throw new Error(errData.message || 'Failed to get temp token for ' + tableId);
+
+    // Reuse any in-flight request to avoid parallel fetches for the same table
+    if (_tokenRequests[tableId]) {
+        return _tokenRequests[tableId];
     }
-    
-    var data = await resp.json();
-    _tempTokens[tableId] = {
-        token: data.temporaryAuthorization,
-        expiresAt: Date.now() + TEMP_TOKEN_LIFETIME
-    };
-    console.log('[Auth] Temp token acquired for', tableId);
-    return data.temporaryAuthorization;
+
+    _tokenRequests[tableId] = (async function() {
+        try {
+            var realm = CONFIG.getRealmHostname();
+            var resp = await fetch(
+                'https://api.quickbase.com/v1/auth/temporary/' + tableId,
+                {
+                    method: 'GET',
+                    headers: {
+                        'QB-Realm-Hostname': realm,
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include'
+                }
+            );
+
+            if (!resp.ok) {
+                var errData = await resp.json().catch(function() { return {}; });
+                console.error('getTempToken failed for', tableId, ':', resp.status, errData);
+                throw new Error(errData.message || 'Failed to get temp token for ' + tableId);
+            }
+
+            var data = await resp.json();
+            _tempTokens[tableId] = {
+                token: data.temporaryAuthorization,
+                expiresAt: Date.now() + TEMP_TOKEN_LIFETIME
+            };
+            console.log('[Auth] Temp token acquired for', tableId);
+            return data.temporaryAuthorization;
+        } finally {
+            delete _tokenRequests[tableId];
+        }
+    })();
+
+    return _tokenRequests[tableId];
 }
 
 async function qbApiRequest(tableId, endpoint, method, body) {
@@ -274,6 +288,16 @@ async function getCurrentUser() {
 // ============================================================================
 // UI UTILITIES
 // ============================================================================
+
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
 
 function showLoading(c) { c.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p>Loading...</p></div>'; }
 function showError(c, m) { c.innerHTML = `<div class="error-message"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg><p>${m}</p></div>`; }
