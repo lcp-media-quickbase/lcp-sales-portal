@@ -38,7 +38,7 @@ const CONFIG = {
             recordId: 3, quantity: 6, total: 7, description: 8, notes: 9, relatedOrder: 10,
             orderQuoteDate: 11, orderExpirationDate: 12, relatedCode: 13, codeProductNames: 14,
             codeProductDescription: 15, codeRetailPrice: 16, codeUnitOfMeasure: 17, codeBillingFrequency: 18,
-            concession: 21, concessionPercent: 22, relatedProperty: 23, quotePrice: 34, concessionFlag: 41
+            concession: 21, concessionPercent: 22, concessionAmount: 38, relatedProperty: 23, quotePrice: 34, concessionFlag: 41
         },
         quotes3D: {
             recordId: 3, dateCreated: 1, dateModified: 2, quoteDate: 6, expirationDate: 7,

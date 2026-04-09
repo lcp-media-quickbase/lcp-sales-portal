@@ -1,5 +1,5 @@
 {
-  "version": "2.1.6",
+  "version": "2.1.7",
   "updated": "2026-04-09",
-  "notes": "Eliminate duplicate getCurrentUser() call on page load"
+  "notes": "Concession dollar amount field (FID 38) — syncs bidirectionally with percent"
 }
