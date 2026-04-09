@@ -32,11 +32,10 @@ function buildDashboard() {
 
 async function prefillCurrentUserEmail() {
     try {
-        var user = await getCurrentUser();
+        var user = AppState.currentUser || await getCurrentUser();
         if (user && user.email) {
             document.getElementById('order-sales-email').value = user.email;
             document.getElementById('quote-sales-email').value = user.email;
-            console.log('Prefilled sales rep email:', user.email);
         }
     } catch (e) {
         console.error('Failed to prefill user email:', e);

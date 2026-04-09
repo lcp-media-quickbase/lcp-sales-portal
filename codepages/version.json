@@ -1,5 +1,5 @@
 {
-  "version": "2.1.5",
+  "version": "2.1.6",
   "updated": "2026-04-09",
-  "notes": "Security: escapeHtml for all QB data in HTML output; fix token refresh race condition; fix $0 price falsy trap; fix concession % NaN; remove debug logs"
+  "notes": "Eliminate duplicate getCurrentUser() call on page load"
 }
