@@ -2,7 +2,7 @@
 // App ID: bvvpht7z6 | Realm: lcp360-5583.quickbase.com
 
 const CONFIG = {
-    version: '2.1.12',
+    version: '2.1.13',
     versionUrl: 'https://raw.githubusercontent.com/lcp-media-quickbase/lcp-sales-portal/main/codepages/version.json',
     
     getRealmHostname: function() { return window.location.hostname; },
@@ -311,7 +311,12 @@ function showSuccess(msg) {
 }
 
 function formatCurrency(v) { return (v || v === 0) ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v) : '$0.00'; }
-function formatDate(d) { return d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : ''; }
+function formatDate(d) {
+    if (!d) return '';
+    const s = String(d).split('T')[0];
+    const [y, m, day] = s.split('-').map(Number);
+    return new Date(y, m - 1, day).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}
 function formatDateTime(d) { return d ? new Date(d).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''; }
 function getTodayISO() { return new Date().toISOString().split('T')[0]; }
 function getExpirationDate(days = 30) { const d = new Date(); d.setDate(d.getDate() + days); return d.toISOString().split('T')[0]; }

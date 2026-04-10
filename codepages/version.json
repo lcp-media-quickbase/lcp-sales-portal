@@ -1,5 +1,5 @@
 {
-  "version": "2.1.12",
+  "version": "2.1.13",
   "updated": "2026-04-10",
-  "notes": "Dashboard contract panel includes Contract Created, Awaiting Signature, Contract Signed statuses"
+  "notes": "Fix date display off-by-one due to UTC timezone offset"
 }
