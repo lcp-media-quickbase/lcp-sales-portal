@@ -420,14 +420,24 @@
             <!-- TAB: Company Info -->
             <div id="tab-company-info" class="tab-content">
                 <div class="page-header">
-                    <h1 class="page-title">Company Info</h1>
-                    <p class="page-subtitle">Client company profiles and details</p>
+                    <div>
+                        <h1 class="page-title">Company Info</h1>
+                        <p class="page-subtitle">Client company profiles and opportunity data</p>
+                    </div>
+                    <button class="btn btn-secondary" onclick="loadCompanyInfo(true)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                        Refresh
+                    </button>
                 </div>
                 <div class="page-content">
-                    <div class="empty-state" style="padding: 80px 20px;">
-                        <svg class="empty-state-icon" style="width:48px;height:48px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                        <p class="empty-state-title">Coming Soon</p>
-                        <p class="empty-state-text">Company information management is under development.</p>
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">All Companies</h2>
+                        </div>
+                        <div class="price-filter" style="padding-bottom:16px;">
+                            <input type="text" class="form-input" id="company-info-search" placeholder="Search by name or yCRM ID..." oninput="filterCompanyInfo()" style="flex:2;">
+                        </div>
+                        <div id="company-info-table"></div>
                     </div>
                 </div>
             </div>

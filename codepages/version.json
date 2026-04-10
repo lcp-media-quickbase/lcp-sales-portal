@@ -1,5 +1,5 @@
 {
-  "version": "2.1.22",
+  "version": "2.1.23",
   "updated": "2026-04-10",
-  "notes": "Tickets tab: list view, create/edit modal, detail view connected to QB table bttx6hkh4"
+  "notes": "Company Info tab: sortable table from QB table btnjgrsk8 with search, yCRM ID, TourBuilder ID, property count, opportunity values"
 }

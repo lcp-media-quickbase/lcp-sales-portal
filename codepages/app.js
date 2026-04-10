@@ -5,7 +5,7 @@ const AppState = {
     currentProductCallback: null, currentPropertyCallback: null,
     orderProperties: [], // [{propertyId, property, lineItems: [{id, productId, productName, quantity, unitPrice, total}], billingContact, billingEmail, billingPhone}]
     quoteProperties: [], // [{propertyId, property, attachments: [{id, file, description, linkUrl, needsReupload}]}]
-    products: [], products3D: [], properties: [], clients: [], orders: [], quotes: [], priceList: [], cancellations: [], tourbuilder: [], tickets: [],
+    products: [], products3D: [], properties: [], clients: [], orders: [], quotes: [], priceList: [], cancellations: [], tourbuilder: [], tickets: [], companyInfo: [],
     attachmentCounter: 0,
     editingOrderId: null,
     editingQuoteId: null,
@@ -4112,4 +4112,112 @@ async function openTicketDetail(id) {
         content.innerHTML = `<div class="error-message"><p>Failed to load ticket: ${escapeHtml(e.message)}</p></div>`;
         console.error(e);
     }
+}
+
+// ============================================================================
+// COMPANY INFO
+// ============================================================================
+
+var _companyInfoSort = { col: 'name', dir: 'asc' };
+
+async function loadCompanyInfo(force) {
+    const c = document.getElementById('company-info-table');
+    if (!c) return;
+    if (!force && AppState.companyInfo.length) { renderCompanyInfoTable(AppState.companyInfo); return; }
+    showLoading(c);
+    try {
+        const f = CONFIG.fields.companiesInfo;
+        const r = await queryRecords(
+            CONFIG.tables.companiesInfo,
+            [f.recordId, f.name, f.ycrmId, f.tourBuilderId, f.propertyCount, f.totalOpportunityValue, f.totalOpportunityValueYTD],
+            '{12.XEX.\'\'}',
+            [{ fieldId: f.name, order: 'ASC' }]
+        );
+        AppState.companyInfo = r.data || [];
+        renderCompanyInfoTable(AppState.companyInfo);
+    } catch (e) {
+        const c2 = document.getElementById('company-info-table');
+        if (c2) showError(c2, 'Failed to load company data: ' + e.message);
+    }
+}
+
+function sortCompanyInfo(col) {
+    if (_companyInfoSort.col === col) {
+        _companyInfoSort.dir = _companyInfoSort.dir === 'asc' ? 'desc' : 'asc';
+    } else {
+        _companyInfoSort.col = col;
+        _companyInfoSort.dir = col === 'name' ? 'asc' : 'desc';
+    }
+    filterCompanyInfo();
+}
+
+function filterCompanyInfo() {
+    const search = (document.getElementById('company-info-search')?.value || '').toLowerCase();
+    const f = CONFIG.fields.companiesInfo;
+    var records = AppState.companyInfo.filter(function(r) {
+        if (!search) return true;
+        var name = (r[f.name]?.value || '').toLowerCase();
+        var ycrmId = String(r[f.ycrmId]?.value || '').toLowerCase();
+        return name.includes(search) || ycrmId.includes(search);
+    });
+    renderCompanyInfoTable(records);
+}
+
+function renderCompanyInfoTable(records) {
+    const c = document.getElementById('company-info-table');
+    if (!c) return;
+    const f = CONFIG.fields.companiesInfo;
+
+    if (!records.length) {
+        c.innerHTML = '<div class="empty-state"><p class="empty-state-title">No companies found</p></div>';
+        return;
+    }
+
+    var col = _companyInfoSort.col;
+    var dir = _companyInfoSort.dir;
+    var sorted = records.slice().sort(function(a, b) {
+        var av, bv;
+        if (col === 'name')        { av = (a[f.name]?.value || '').toLowerCase();             bv = (b[f.name]?.value || '').toLowerCase(); }
+        else if (col === 'ycrmId') { av = a[f.ycrmId]?.value || '';                           bv = b[f.ycrmId]?.value || ''; }
+        else if (col === 'props')  { av = a[f.propertyCount]?.value || 0;                     bv = b[f.propertyCount]?.value || 0; }
+        else if (col === 'opp')    { av = a[f.totalOpportunityValue]?.value || 0;             bv = b[f.totalOpportunityValue]?.value || 0; }
+        else if (col === 'oppYTD') { av = a[f.totalOpportunityValueYTD]?.value || 0;          bv = b[f.totalOpportunityValueYTD]?.value || 0; }
+        else                       { av = (a[f.name]?.value || '').toLowerCase();             bv = (b[f.name]?.value || '').toLowerCase(); }
+        if (av < bv) return dir === 'asc' ? -1 : 1;
+        if (av > bv) return dir === 'asc' ?  1 : -1;
+        return 0;
+    });
+
+    function th(label, colKey) {
+        var arrow = col === colKey ? (dir === 'asc' ? ' &#x25B2;' : ' &#x25BC;') : '';
+        return '<th style="cursor:pointer;user-select:none;" onclick="sortCompanyInfo(\'' + colKey + '\')">' + label + arrow + '</th>';
+    }
+
+    c.innerHTML =
+        '<div style="overflow-x:auto;">' +
+        '<table class="data-table">' +
+            '<thead><tr>' +
+                th('Name', 'name') +
+                th('yCRM ID', 'ycrmId') +
+                '<th>TourBuilder ID</th>' +
+                th('# Properties', 'props') +
+                th('Total Opportunity', 'opp') +
+                th('Opportunity YTD', 'oppYTD') +
+            '</tr></thead>' +
+            '<tbody>' + sorted.map(function(r) {
+                var propCount = r[f.propertyCount]?.value || 0;
+                var oppVal    = r[f.totalOpportunityValue]?.value;
+                var oppYTD    = r[f.totalOpportunityValueYTD]?.value;
+                var tourId    = r[f.tourBuilderId]?.value || '—';
+                var ycrmId    = r[f.ycrmId]?.value || '—';
+                return '<tr>' +
+                    '<td><strong>' + escapeHtml(r[f.name]?.value || '—') + '</strong></td>' +
+                    '<td>' + escapeHtml(String(ycrmId)) + '</td>' +
+                    '<td>' + escapeHtml(String(tourId)) + '</td>' +
+                    '<td style="text-align:right">' + propCount.toLocaleString() + '</td>' +
+                    '<td style="text-align:right">' + (oppVal != null ? formatCurrency(oppVal) : '—') + '</td>' +
+                    '<td style="text-align:right">' + (oppYTD != null ? formatCurrency(oppYTD) : '—') + '</td>' +
+                '</tr>';
+            }).join('') + '</tbody>' +
+        '</table></div>';
 }
