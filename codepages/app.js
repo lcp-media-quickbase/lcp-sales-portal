@@ -2454,28 +2454,133 @@ async function saveLineItems() {
 async function loadReports(force) {
     var c = document.getElementById('reports-content');
     if (!c) return;
-    if (!force && c.dataset.loaded) return;
+    if (!force && _reportsCache) { renderReports(_reportsCache.orders, _reportsCache.quotes); return; }
     showLoading(c);
     try {
         var f = CONFIG.fields.orders;
         var qf = CONFIG.fields.quotes3D;
         var [ordersResult, quotesResult] = await Promise.all([
             queryRecords(CONFIG.tables.orders,
-                [f.recordId, f.orderStatus, f.quoteDate, f.salesRepEmail, f.companyName, f.orderTotal, f.propertyCount],
-                null, [{fieldId: f.dateModified, order: 'DESC'}]),
+                [f.recordId, f.orderStatus, f.quoteDate, f.salesRepEmail, f.companyName, f.orderTotal, f.propertyCount, f.commissionValue, f.nonCommissionValue],
+                null, [{fieldId: f.quoteDate, order: 'DESC'}]),
             queryRecords(CONFIG.tables.quotes3D,
                 [qf.recordId, qf.quoteStatus, qf.quoteDate, qf.salesRepEmail, qf.companyName, qf.quoteTotal],
                 null, [{fieldId: qf.dateModified, order: 'DESC'}])
         ]);
-        c.dataset.loaded = '1';
-        renderReports(ordersResult.data || [], quotesResult.data || []);
+        _reportsCache = { orders: ordersResult.data || [], quotes: quotesResult.data || [] };
+        renderReports(_reportsCache.orders, _reportsCache.quotes);
     } catch(e) {
         showError(c, 'Failed to load reports: ' + e.message);
     }
 }
 
+var _reportsCache = null;
+
 function renderReports(orders, quotes) {
     var c = document.getElementById('reports-content');
+    var ACTIVE   = 'background:none;border:none;border-bottom:2px solid var(--primary);color:var(--primary);font-weight:600;font-size:14px;padding:10px 20px;cursor:pointer;margin-bottom:-2px;';
+    var INACTIVE = 'background:none;border:none;border-bottom:2px solid transparent;color:var(--text-secondary);font-weight:normal;font-size:14px;padding:10px 20px;cursor:pointer;margin-bottom:-2px;';
+    c.innerHTML = `
+        <div style="display:flex;border-bottom:2px solid var(--border-color);margin-bottom:24px;">
+            <button id="rsubtab-btn-overview" style="${ACTIVE}" onclick="switchReportsTab('overview')">Overview</button>
+            <button id="rsubtab-btn-sales" style="${INACTIVE}" onclick="switchReportsTab('sales')">Sales Report</button>
+        </div>
+        <div id="rsubtab-overview"></div>
+        <div id="rsubtab-sales" style="display:none;"></div>`;
+    _renderReportsOverview(orders, quotes);
+    _renderSalesReport(orders, 'current-month');
+}
+
+function switchReportsTab(tab) {
+    var ACTIVE   = 'background:none;border:none;border-bottom:2px solid var(--primary);color:var(--primary);font-weight:600;font-size:14px;padding:10px 20px;cursor:pointer;margin-bottom:-2px;';
+    var INACTIVE = 'background:none;border:none;border-bottom:2px solid transparent;color:var(--text-secondary);font-weight:normal;font-size:14px;padding:10px 20px;cursor:pointer;margin-bottom:-2px;';
+    ['overview','sales'].forEach(function(t) {
+        var btn  = document.getElementById('rsubtab-btn-' + t);
+        var pane = document.getElementById('rsubtab-' + t);
+        if (btn)  btn.style.cssText  = t === tab ? ACTIVE : INACTIVE;
+        if (pane) pane.style.display = t === tab ? '' : 'none';
+    });
+}
+
+function applyReportPeriodFilter() {
+    if (!_reportsCache) return;
+    var period = document.getElementById('report-period-select')?.value || 'current-month';
+    _renderSalesReport(_reportsCache.orders, period);
+}
+
+function _getReportDateRange(period) {
+    var now = new Date(), y = now.getFullYear(), m = now.getMonth();
+    if (period === 'current-month') return { from: new Date(y, m, 1),     to: new Date(y, m + 1, 0) };
+    if (period === 'last-month')    return { from: new Date(y, m - 1, 1), to: new Date(y, m, 0) };
+    if (period === 'last-3')        return { from: new Date(y, m - 3, 1), to: now };
+    if (period === 'last-6')        return { from: new Date(y, m - 6, 1), to: now };
+    if (period === 'ytd')           return { from: new Date(y, 0, 1),     to: now };
+    return null;
+}
+
+function _renderSalesReport(orders, period) {
+    var c = document.getElementById('rsubtab-sales');
+    if (!c) return;
+    var f = CONFIG.fields.orders;
+    var range = _getReportDateRange(period);
+    var filtered = orders.filter(function(o) {
+        if (o[f.orderStatus]?.value === 'Cancelled') return false;
+        if (!range) return true;
+        var d = o[f.quoteDate]?.value;
+        if (!d) return false;
+        var p = String(d).split('T')[0].split('-').map(Number);
+        var date = new Date(p[0], p[1] - 1, p[2]);
+        return date >= range.from && date <= range.to;
+    });
+    var totalNonComm = filtered.reduce(function(s, o) { return s + (o[f.nonCommissionValue]?.value || 0); }, 0);
+    var totalComm    = filtered.reduce(function(s, o) { return s + (o[f.commissionValue]?.value || 0); }, 0);
+    var totalVal     = filtered.reduce(function(s, o) { return s + (o[f.orderTotal]?.value || 0); }, 0);
+    var periodOptions = [
+        { value: 'current-month', label: 'Current Month' },
+        { value: 'last-month',    label: 'Last Month' },
+        { value: 'last-3',        label: 'Last 3 Months' },
+        { value: 'last-6',        label: 'Last 6 Months' },
+        { value: 'ytd',           label: 'Year to Date' },
+        { value: 'all',           label: 'All Time' }
+    ];
+    c.innerHTML = `
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+            <label style="font-size:13px;font-weight:600;color:var(--text-secondary);">Period:</label>
+            <select id="report-period-select" class="form-input" style="width:auto;" onchange="applyReportPeriodFilter()">
+                ${periodOptions.map(function(o) { return `<option value="${o.value}"${o.value === period ? ' selected' : ''}>${o.label}</option>`; }).join('')}
+            </select>
+            <span style="font-size:13px;color:var(--text-muted);">${filtered.length} order${filtered.length !== 1 ? 's' : ''}</span>
+        </div>
+        ${filtered.length ? `
+        <div style="overflow-x:auto;">
+            <table class="data-table">
+                <thead><tr>
+                    <th>Order Date</th><th>Sales Rep</th><th>Company</th>
+                    <th style="text-align:right">Non-Commission</th>
+                    <th style="text-align:right">Commission</th>
+                    <th style="text-align:right">Total Value</th>
+                </tr></thead>
+                <tbody>${filtered.map(function(o) { return `<tr>
+                    <td>${formatDate(o[f.quoteDate]?.value) || '—'}</td>
+                    <td>${escapeHtml(o[f.salesRepEmail]?.value || '—')}</td>
+                    <td>${escapeHtml(o[f.companyName]?.value || '—')}</td>
+                    <td style="text-align:right">${formatCurrency(o[f.nonCommissionValue]?.value || 0)}</td>
+                    <td style="text-align:right">${formatCurrency(o[f.commissionValue]?.value || 0)}</td>
+                    <td style="text-align:right"><strong>${formatCurrency(o[f.orderTotal]?.value || 0)}</strong></td>
+                </tr>`; }).join('')}</tbody>
+                <tfoot><tr style="font-weight:600;border-top:2px solid var(--border-color);">
+                    <td colspan="3" style="padding-top:10px;">Totals</td>
+                    <td style="text-align:right;padding-top:10px;">${formatCurrency(totalNonComm)}</td>
+                    <td style="text-align:right;padding-top:10px;">${formatCurrency(totalComm)}</td>
+                    <td style="text-align:right;padding-top:10px;">${formatCurrency(totalVal)}</td>
+                </tr></tfoot>
+            </table>
+        </div>` : `<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:14px;">No orders found for this period.</div>`}`;
+}
+
+function _renderReportsOverview(orders, quotes) {
+    var c = document.getElementById('rsubtab-overview');
+    if (!c) return;
     var f = CONFIG.fields.orders;
     var qf = CONFIG.fields.quotes3D;
 

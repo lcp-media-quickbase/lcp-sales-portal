@@ -1,5 +1,5 @@
 {
-  "version": "2.1.15",
+  "version": "2.1.16",
   "updated": "2026-04-10",
-  "notes": "Admin-only Reports tab with revenue KPIs, status breakdown, monthly trend, top reps, top companies"
+  "notes": "Sales Report sub-tab with period filter and commission/non-commission breakdown"
 }
