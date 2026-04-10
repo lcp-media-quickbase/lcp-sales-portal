@@ -1,5 +1,5 @@
 {
-  "version": "2.1.8",
-  "updated": "2026-04-09",
-  "notes": "Concession dollar amount field (FID 38) — syncs bidirectionally with percent"
+  "version": "2.1.9",
+  "updated": "2026-04-10",
+  "notes": "Fix contract file upload — remove spurious /0 version suffix from QB Files API URL"
 }

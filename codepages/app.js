@@ -1351,7 +1351,7 @@ async function uploadFileToField(tableId, recordId, fieldId, file) {
     const formData = new FormData();
     formData.append('file', file);
     const resp = await fetch(
-        `https://api.quickbase.com/v1/files/${tableId}/${recordId}/${fieldId}/0`,
+        `https://api.quickbase.com/v1/files/${tableId}/${recordId}/${fieldId}`,
         {
             method: 'POST',
             headers: {
