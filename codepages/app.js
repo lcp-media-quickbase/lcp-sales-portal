@@ -1346,27 +1346,17 @@ async function generatePropertyWorksheet(orderId, baseName) {
 // ============================================================================
 
 async function uploadFileToField(tableId, recordId, fieldId, file) {
-    const realm = CONFIG.getRealmHostname();
-    const token = await getTempToken(tableId);
-    const formData = new FormData();
-    formData.append('file', file);
-    const resp = await fetch(
-        `https://api.quickbase.com/v1/files/${tableId}/${recordId}/${fieldId}`,
-        {
-            method: 'POST',
-            headers: {
-                'QB-Realm-Hostname': realm,
-                'Authorization': `QB-TEMP-TOKEN ${token}`
-            },
-            body: formData,
-            credentials: 'include'
-        }
-    );
-    if (!resp.ok) {
-        const errText = await resp.text().catch(() => String(resp.status));
-        throw new Error(`File upload to FID ${fieldId} failed: ${errText}`);
+    const arrayBuffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
     }
-    return resp.json().catch(() => ({}));
+    const base64 = btoa(binary);
+    return updateRecord(tableId, {
+        3: { value: recordId },
+        [fieldId]: { value: { fileName: file.name, data: base64 } }
+    });
 }
 
 async function generateAndUploadContracts(orderId, opportunityId, companyName) {
