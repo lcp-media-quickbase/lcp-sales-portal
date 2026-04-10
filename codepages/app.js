@@ -2066,7 +2066,7 @@ async function renderSalesDashboard(user) {
             New Order
         </button>`;
 
-    var contractStatuses = ['Concessions Approved','Contract Needed','Completed'];
+    var contractStatuses = ['Contract Created','Awaiting Signature','Contract Signed','Concessions Approved','Contract Needed','Completed'];
 
     dashContent.innerHTML = `
         <div class="dash-kpi-row">
@@ -2181,7 +2181,7 @@ async function renderAdminDashboard(user) {
         var orders = ordersResult.data || [];
         var quotes = quotesResult.data || [];
         var concessions = concessionsResult.data || [];
-        var contractStatuses = ['Concessions Approved','Contract Needed','Completed'];
+        var contractStatuses = ['Contract Created','Awaiting Signature','Contract Signed','Concessions Approved','Contract Needed','Completed'];
         var pendingOrders = orders.filter(function(o){ return !contractStatuses.includes(o[f.orderStatus]?.value) && o[f.orderStatus]?.value !== 'Cancelled'; });
         var contractOrders = orders.filter(function(o){ return contractStatuses.includes(o[f.orderStatus]?.value); });
 

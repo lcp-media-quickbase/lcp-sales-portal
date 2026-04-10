@@ -1,5 +1,5 @@
 {
-  "version": "2.1.11",
+  "version": "2.1.12",
   "updated": "2026-04-10",
-  "notes": "Required fields for contract contact info and property unit count; save progress modal"
+  "notes": "Dashboard contract panel includes Contract Created, Awaiting Signature, Contract Signed statuses"
 }
