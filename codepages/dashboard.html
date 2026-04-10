@@ -67,6 +67,14 @@
 
                 <div class="nav-section">
                     <div class="nav-section-title">Resources</div>
+                    <a class="nav-item" data-tab="tab-current-projects" onclick="switchTab('tab-current-projects')">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+                        Current Projects
+                    </a>
+                    <a class="nav-item" data-tab="tab-tickets" onclick="switchTab('tab-tickets')">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2z"/></svg>
+                        Tickets
+                    </a>
                     <a class="nav-item" data-tab="tab-price-list" onclick="switchTab('tab-price-list')">
                         <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                         Charge Codes
@@ -482,6 +490,36 @@
                             </select>
                         </div>
                         <div id="cancellations-table"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: Current Projects -->
+            <div id="tab-current-projects" class="tab-content">
+                <div class="page-header">
+                    <h1 class="page-title">Current Projects</h1>
+                    <p class="page-subtitle">Active projects and deliverables</p>
+                </div>
+                <div class="page-content">
+                    <div class="empty-state" style="padding: 80px 20px;">
+                        <svg class="empty-state-icon" style="width:48px;height:48px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+                        <p class="empty-state-text">Current Projects</p>
+                        <p class="empty-state-subtext">Content coming soon</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: Tickets -->
+            <div id="tab-tickets" class="tab-content">
+                <div class="page-header">
+                    <h1 class="page-title">Tickets</h1>
+                    <p class="page-subtitle">Support and request tickets</p>
+                </div>
+                <div class="page-content">
+                    <div class="empty-state" style="padding: 80px 20px;">
+                        <svg class="empty-state-icon" style="width:48px;height:48px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2z"/></svg>
+                        <p class="empty-state-text">Tickets</p>
+                        <p class="empty-state-subtext">Content coming soon</p>
                     </div>
                 </div>
             </div>

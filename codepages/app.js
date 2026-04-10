@@ -2559,6 +2559,7 @@ function _renderSalesReport(orders) {
         return true;
     });
 
+    var totalProps   = filtered.reduce(function(s, o) { return s + (o[f.propertyCount]?.value || 0); }, 0);
     var totalNonComm = filtered.reduce(function(s, o) { return s + (o[f.nonCommissionValue]?.value || 0); }, 0);
     var totalComm    = filtered.reduce(function(s, o) { return s + (o[f.commissionValue]?.value || 0); }, 0);
     var totalVal     = filtered.reduce(function(s, o) { return s + (o[f.orderTotal]?.value || 0); }, 0);
@@ -2617,6 +2618,7 @@ function _renderSalesReport(orders) {
                 '<table class="data-table">' +
                     '<thead><tr>' +
                         '<th>Order Date</th><th>Sales Rep</th><th>Company</th>' +
+                        '<th style="text-align:right">Properties</th>' +
                         '<th style="text-align:right">Non-Commission</th>' +
                         '<th style="text-align:right">Commission</th>' +
                         '<th style="text-align:right">Total Value</th>' +
@@ -2626,6 +2628,7 @@ function _renderSalesReport(orders) {
                             '<td>' + (formatDate(o[f.quoteDate]?.value) || '—') + '</td>' +
                             '<td>' + escapeHtml(o[f.salesRepEmail]?.value || '—') + '</td>' +
                             '<td>' + escapeHtml(o[f.companyName]?.value || '—') + '</td>' +
+                            '<td style="text-align:right">' + (o[f.propertyCount]?.value || 0) + '</td>' +
                             '<td style="text-align:right">' + formatCurrency(o[f.nonCommissionValue]?.value || 0) + '</td>' +
                             '<td style="text-align:right">' + formatCurrency(o[f.commissionValue]?.value || 0) + '</td>' +
                             '<td style="text-align:right"><strong>' + formatCurrency(o[f.orderTotal]?.value || 0) + '</strong></td>' +
@@ -2633,6 +2636,7 @@ function _renderSalesReport(orders) {
                     }).join('') + '</tbody>' +
                     '<tfoot><tr style="font-weight:600;border-top:2px solid var(--border-color);">' +
                         '<td colspan="3" style="padding-top:10px;">Totals</td>' +
+                        '<td style="text-align:right;padding-top:10px;">' + totalProps + '</td>' +
                         '<td style="text-align:right;padding-top:10px;">' + formatCurrency(totalNonComm) + '</td>' +
                         '<td style="text-align:right;padding-top:10px;">' + formatCurrency(totalComm) + '</td>' +
                         '<td style="text-align:right;padding-top:10px;">' + formatCurrency(totalVal) + '</td>' +

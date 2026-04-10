@@ -1,5 +1,5 @@
 {
-  "version": "2.1.19",
+  "version": "2.1.20",
   "updated": "2026-04-10",
-  "notes": "Sales Report Excel: add Property Count column before Non-Commission"
+  "notes": "Sales Report: add Property Count column; add Current Projects and Tickets nav tabs"
 }
