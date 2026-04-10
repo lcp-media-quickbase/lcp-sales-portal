@@ -3163,7 +3163,19 @@ function filterTourBuilderData() {
     });
 }
 
-function getStatusClass(s) { if (!s) return 'draft'; const l = s.toLowerCase(); if (l.includes('pending')||l.includes('processing')||l.includes('review')||l.includes('sent')) return 'pending'; if (l.includes('completed')||l.includes('approved')||l.includes('converted')) return 'approved'; if (l.includes('rejected')||l.includes('cancelled')||l.includes('expired')||l.includes('denied')) return 'rejected'; return 'draft'; }
+function getStatusClass(s) {
+    if (!s) return 'draft';
+    // Exact matches for workflow-specific statuses that need distinct colors
+    if (s === 'Concessions Approval Needed') return 'concessions-needed'; // orange
+    if (s === 'Contract Created')            return 'info';               // blue
+    if (s === 'Contract Signed')             return 'signed';             // teal
+    // Keyword fallbacks
+    const l = s.toLowerCase();
+    if (l.includes('pending')||l.includes('processing')||l.includes('review')||l.includes('sent')||l.includes('awaiting')||l.includes('needed')) return 'pending'; // amber
+    if (l.includes('completed')||l.includes('approved')||l.includes('converted')) return 'approved'; // green
+    if (l.includes('rejected')||l.includes('cancelled')||l.includes('expired')||l.includes('denied')) return 'rejected'; // red
+    return 'draft'; // grey
+}
 
 // ============================================================================
 // FORM RESET & VIEW

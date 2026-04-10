@@ -1,5 +1,5 @@
 {
-  "version": "2.1.20",
+  "version": "2.1.21",
   "updated": "2026-04-10",
-  "notes": "Sales Report: add Property Count column; add Current Projects and Tickets nav tabs"
+  "notes": "Distinct colors for all order statuses everywhere they appear"
 }
