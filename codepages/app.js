@@ -2659,19 +2659,20 @@ function downloadSalesReport() {
         if (_reportFilters.rep && o[f.salesRepEmail]?.value !== _reportFilters.rep) return false;
         return true;
     });
-    var rows = [['Order Date', 'Sales Rep', 'Company', 'Non-Commission', 'Commission', 'Total Value']];
+    var rows = [['Order Date', 'Sales Rep', 'Company', 'Property Count', 'Non-Commission', 'Commission', 'Total Value']];
     filtered.forEach(function(o) {
         rows.push([
             formatDate(o[f.quoteDate]?.value) || '',
             o[f.salesRepEmail]?.value || '',
             o[f.companyName]?.value || '',
+            o[f.propertyCount]?.value || 0,
             o[f.nonCommissionValue]?.value || 0,
             o[f.commissionValue]?.value || 0,
             o[f.orderTotal]?.value || 0
         ]);
     });
     // Build SpreadsheetML XML so Excel opens it natively with proper number types
-    var numCols = new Set([3, 4, 5]); // Non-Commission, Commission, Total Value columns
+    var numCols = new Set([3, 4, 5, 6]); // Property Count, Non-Commission, Commission, Total Value columns
     var xml = '<?xml version="1.0"?>\n<?mso-application progid="Excel.Sheet"?>\n' +
         '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">\n' +
         '<Worksheet ss:Name="Sales Report"><Table>\n';
