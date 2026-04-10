@@ -2,7 +2,7 @@
 // App ID: bvvpht7z6 | Realm: lcp360-5583.quickbase.com
 
 const CONFIG = {
-    version: '2.1.14',
+    version: '2.1.15',
     versionUrl: 'https://raw.githubusercontent.com/lcp-media-quickbase/lcp-sales-portal/main/codepages/version.json',
     
     getRealmHostname: function() { return window.location.hostname; },
@@ -350,6 +350,7 @@ function switchTab(tabId) {
     else if (tabId === 'tab-price-list') loadPriceList();
     else if (tabId === 'tab-cancellations') loadCancellations();
     else if (tabId === 'tab-tourbuilder') loadTourBuilderData();
+    else if (tabId === 'tab-reports') loadReports();
 }
 
 // ============================================================================

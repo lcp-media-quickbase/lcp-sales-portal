@@ -2006,6 +2006,9 @@ async function loadDashboard(force) {
     showLoading(dashContent);
 
     var role = user?.role;
+    var reportsNav = document.getElementById('nav-reports');
+    if (reportsNav) reportsNav.style.display = role === 'Administrator' ? '' : 'none';
+
     if (role === '3D Director') {
         await renderDirectorDashboard(user);
     } else if (role === 'Administrator') {
@@ -2442,6 +2445,158 @@ async function saveLineItems() {
         saveBtn.textContent = 'Save Line Items';
         saveBtn.disabled = false;
     }
+}
+
+// ============================================================================
+// REPORTS
+// ============================================================================
+
+async function loadReports(force) {
+    var c = document.getElementById('reports-content');
+    if (!c) return;
+    if (!force && c.dataset.loaded) return;
+    showLoading(c);
+    try {
+        var f = CONFIG.fields.orders;
+        var qf = CONFIG.fields.quotes3D;
+        var [ordersResult, quotesResult] = await Promise.all([
+            queryRecords(CONFIG.tables.orders,
+                [f.recordId, f.orderStatus, f.quoteDate, f.salesRepEmail, f.companyName, f.orderTotal, f.propertyCount],
+                null, [{fieldId: f.dateModified, order: 'DESC'}]),
+            queryRecords(CONFIG.tables.quotes3D,
+                [qf.recordId, qf.quoteStatus, qf.quoteDate, qf.salesRepEmail, qf.companyName, qf.quoteTotal],
+                null, [{fieldId: qf.dateModified, order: 'DESC'}])
+        ]);
+        c.dataset.loaded = '1';
+        renderReports(ordersResult.data || [], quotesResult.data || []);
+    } catch(e) {
+        showError(c, 'Failed to load reports: ' + e.message);
+    }
+}
+
+function renderReports(orders, quotes) {
+    var c = document.getElementById('reports-content');
+    var f = CONFIG.fields.orders;
+    var qf = CONFIG.fields.quotes3D;
+
+    var activeOrders = orders.filter(function(o) { return o[f.orderStatus]?.value !== 'Cancelled'; });
+    var totalRevenue = activeOrders.reduce(function(s, o) { return s + (o[f.orderTotal]?.value || 0); }, 0);
+    var completedOrders = activeOrders.filter(function(o) { return o[f.orderStatus]?.value === 'Completed'; });
+    var completedRevenue = completedOrders.reduce(function(s, o) { return s + (o[f.orderTotal]?.value || 0); }, 0);
+    var avgOrder = activeOrders.length ? totalRevenue / activeOrders.length : 0;
+
+    var contractStatuses = ['Contract Created','Awaiting Signature','Contract Signed','Concessions Approved','Contract Needed','Completed'];
+    var pipeline = activeOrders.filter(function(o) { return !contractStatuses.includes(o[f.orderStatus]?.value); });
+    var pipelineValue = pipeline.reduce(function(s, o) { return s + (o[f.orderTotal]?.value || 0); }, 0);
+
+    // --- by status ---
+    var statusMap = {};
+    activeOrders.forEach(function(o) {
+        var s = o[f.orderStatus]?.value || 'Draft';
+        if (!statusMap[s]) statusMap[s] = { count: 0, total: 0 };
+        statusMap[s].count++;
+        statusMap[s].total += o[f.orderTotal]?.value || 0;
+    });
+    var statusRows = Object.entries(statusMap).sort(function(a, b) { return b[1].total - a[1].total; });
+
+    // --- by rep ---
+    var repMap = {};
+    activeOrders.forEach(function(o) {
+        var rep = o[f.salesRepEmail]?.value || 'Unknown';
+        if (!repMap[rep]) repMap[rep] = { count: 0, total: 0 };
+        repMap[rep].count++;
+        repMap[rep].total += o[f.orderTotal]?.value || 0;
+    });
+    var repRows = Object.entries(repMap).sort(function(a, b) { return b[1].total - a[1].total; }).slice(0, 10);
+
+    // --- by company ---
+    var coMap = {};
+    activeOrders.forEach(function(o) {
+        var co = o[f.companyName]?.value || 'Unknown';
+        if (!coMap[co]) coMap[co] = { count: 0, total: 0 };
+        coMap[co].count++;
+        coMap[co].total += o[f.orderTotal]?.value || 0;
+    });
+    var coRows = Object.entries(coMap).sort(function(a, b) { return b[1].total - a[1].total; }).slice(0, 10);
+
+    // --- monthly trend (last 12 months) ---
+    var monthMap = {};
+    activeOrders.forEach(function(o) {
+        var d = o[f.quoteDate]?.value;
+        if (!d) return;
+        var key = String(d).substring(0, 7); // YYYY-MM
+        if (!monthMap[key]) monthMap[key] = { count: 0, total: 0 };
+        monthMap[key].count++;
+        monthMap[key].total += o[f.orderTotal]?.value || 0;
+    });
+    var monthRows = Object.entries(monthMap).sort(function(a, b) { return b[0].localeCompare(a[0]); }).slice(0, 12);
+
+    // --- quote conversion ---
+    var totalQuotes = quotes.length;
+    var convertedQuotes = quotes.filter(function(q) { return q[qf.quoteStatus]?.value === 'Converted'; }).length;
+    var conversionRate = totalQuotes ? Math.round(convertedQuotes / totalQuotes * 100) : 0;
+    var quoteRevenue = quotes.reduce(function(s, q) { return s + (q[qf.quoteTotal]?.value || 0); }, 0);
+
+    function repTable(rows, valueKey) {
+        if (!rows.length) return '<p style="color:var(--text-muted);font-size:13px;padding:12px 0;">No data</p>';
+        return `<table class="data-table"><thead><tr><th>${valueKey === 'rep' ? 'Sales Rep' : 'Company'}</th><th style="text-align:right">Orders</th><th style="text-align:right">Revenue</th></tr></thead><tbody>${
+            rows.map(function(r) {
+                return `<tr><td>${escapeHtml(r[0])}</td><td style="text-align:right">${r[1].count}</td><td style="text-align:right">${formatCurrency(r[1].total)}</td></tr>`;
+            }).join('')
+        }</tbody></table>`;
+    }
+
+    c.innerHTML = `
+        <div class="dash-kpi-row" style="margin-bottom:24px;">
+            <div><div class="dash-section-label">All Orders</div>
+                <div class="dash-kpi-grid" style="grid-template-columns:repeat(4,1fr);">
+                    <div class="stat-card"><div class="stat-label">Total Revenue</div><div class="stat-value blue">${formatCurrency(totalRevenue)}</div></div>
+                    <div class="stat-card"><div class="stat-label">Active Orders</div><div class="stat-value">${activeOrders.length}</div></div>
+                    <div class="stat-card"><div class="stat-label">Avg Order Value</div><div class="stat-value">${formatCurrency(avgOrder)}</div></div>
+                    <div class="stat-card"><div class="stat-label">Completed Revenue</div><div class="stat-value">${formatCurrency(completedRevenue)}</div></div>
+                </div>
+            </div>
+            <div><div class="dash-section-label">Pipeline &amp; Quotes</div>
+                <div class="dash-kpi-grid" style="grid-template-columns:repeat(4,1fr);">
+                    <div class="stat-card"><div class="stat-label">Pipeline Value</div><div class="stat-value blue">${formatCurrency(pipelineValue)}</div></div>
+                    <div class="stat-card"><div class="stat-label">In Pipeline</div><div class="stat-value">${pipeline.length}</div></div>
+                    <div class="stat-card"><div class="stat-label">Quote Revenue</div><div class="stat-value">${formatCurrency(quoteRevenue)}</div></div>
+                    <div class="stat-card"><div class="stat-label">Conversion Rate</div><div class="stat-value blue">${conversionRate}% <span style="font-size:12px;font-weight:normal;color:var(--text-muted);">(${convertedQuotes}/${totalQuotes})</span></div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="dash-cols" style="margin-bottom:24px;">
+            <div class="dash-panel">
+                <div class="dash-panel-header"><span class="dash-panel-title">Revenue by Status</span></div>
+                <table class="data-table"><thead><tr><th>Status</th><th style="text-align:right">Orders</th><th style="text-align:right">Revenue</th></tr></thead><tbody>${
+                    statusRows.map(function(r) {
+                        return `<tr><td><span class="badge badge-${getStatusClass(r[0])}">${escapeHtml(r[0])}</span></td><td style="text-align:right">${r[1].count}</td><td style="text-align:right">${formatCurrency(r[1].total)}</td></tr>`;
+                    }).join('')
+                }</tbody></table>
+            </div>
+            <div class="dash-panel">
+                <div class="dash-panel-header"><span class="dash-panel-title">Monthly Trend</span></div>
+                <table class="data-table"><thead><tr><th>Month</th><th style="text-align:right">Orders</th><th style="text-align:right">Revenue</th></tr></thead><tbody>${
+                    monthRows.map(function(r) {
+                        var parts = r[0].split('-');
+                        var label = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1).toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+                        return `<tr><td>${label}</td><td style="text-align:right">${r[1].count}</td><td style="text-align:right">${formatCurrency(r[1].total)}</td></tr>`;
+                    }).join('')
+                }</tbody></table>
+            </div>
+        </div>
+
+        <div class="dash-cols">
+            <div class="dash-panel">
+                <div class="dash-panel-header"><span class="dash-panel-title">Top Sales Reps</span></div>
+                ${repTable(repRows, 'rep')}
+            </div>
+            <div class="dash-panel">
+                <div class="dash-panel-header"><span class="dash-panel-title">Top Companies</span></div>
+                ${repTable(coRows, 'co')}
+            </div>
+        </div>`;
 }
 
 // ============================================================================
