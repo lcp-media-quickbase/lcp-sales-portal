@@ -1,5 +1,5 @@
 {
-  "version": "2.1.21",
+  "version": "2.1.22",
   "updated": "2026-04-10",
-  "notes": "Distinct colors for all order statuses everywhere they appear"
+  "notes": "Tickets tab: list view, create/edit modal, detail view connected to QB table bttx6hkh4"
 }

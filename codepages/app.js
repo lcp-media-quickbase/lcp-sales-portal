@@ -5,7 +5,7 @@ const AppState = {
     currentProductCallback: null, currentPropertyCallback: null,
     orderProperties: [], // [{propertyId, property, lineItems: [{id, productId, productName, quantity, unitPrice, total}], billingContact, billingEmail, billingPhone}]
     quoteProperties: [], // [{propertyId, property, attachments: [{id, file, description, linkUrl, needsReupload}]}]
-    products: [], products3D: [], properties: [], clients: [], orders: [], quotes: [], priceList: [], cancellations: [], tourbuilder: [],
+    products: [], products3D: [], properties: [], clients: [], orders: [], quotes: [], priceList: [], cancellations: [], tourbuilder: [], tickets: [],
     attachmentCounter: 0,
     editingOrderId: null,
     editingQuoteId: null,
@@ -3171,7 +3171,7 @@ function getStatusClass(s) {
     if (s === 'Contract Signed')             return 'signed';             // teal
     // Keyword fallbacks
     const l = s.toLowerCase();
-    if (l.includes('pending')||l.includes('processing')||l.includes('review')||l.includes('sent')||l.includes('awaiting')||l.includes('needed')) return 'pending'; // amber
+    if (l.includes('pending')||l.includes('processing')||l.includes('review')||l.includes('sent')||l.includes('awaiting')||l.includes('needed')||l.includes('open')||l.includes('progress')||l.includes('hold')) return 'pending'; // amber
     if (l.includes('completed')||l.includes('approved')||l.includes('converted')) return 'approved'; // green
     if (l.includes('rejected')||l.includes('cancelled')||l.includes('expired')||l.includes('denied')) return 'rejected'; // red
     return 'draft'; // grey
@@ -3762,5 +3762,354 @@ async function convertQuoteToOrder(quoteId) {
     } catch (e) {
         console.error('Convert quote to order failed:', e);
         alert('Failed to load quote: ' + e.message);
+    }
+}
+
+// ============================================================================
+// TICKETS
+// ============================================================================
+
+var _ticketsSort = { col: 'dateCreated', dir: 'desc' };
+
+// Fallback options — overridden by values found in actual QB records
+var _TICKET_TYPE_DEFAULTS = ['Photo', 'Video', '3D Tour', 'Editing', 'Revision', 'Floor Plan', 'Other'];
+var _TICKET_STATUS_DEFAULTS = ['Open', 'In Progress', 'Pending Review', 'On Hold', 'Completed', 'Rejected', 'Closed'];
+
+async function loadTickets(force) {
+    const c = document.getElementById('tickets-table');
+    if (!c) return;
+    if (!force && AppState.tickets.length) {
+        renderTicketsStats(AppState.tickets);
+        renderTicketsTable(AppState.tickets);
+        return;
+    }
+    showLoading(c);
+    try {
+        const f = CONFIG.fields.tickets;
+        const r = await queryRecords(
+            CONFIG.tables.tickets,
+            [f.recordId, f.dateCreated, f.dateModified, f.requestType, f.requestStatus,
+             f.requestedBy, f.assignee, f.projectName, f.propertyName,
+             f.clientRequest, f.completed, f.closed, f.closedBy, f.dateClosed],
+            null,
+            [{ fieldId: f.dateCreated, order: 'DESC' }]
+        );
+        const records = r.data || [];
+        AppState.tickets = records;
+
+        // Populate type filter from actual data
+        const types = [...new Set(records.map(rec => rec[f.requestType]?.value).filter(Boolean))].sort();
+        const typeSelect = document.getElementById('tickets-filter-type');
+        if (typeSelect) {
+            const curr = typeSelect.value;
+            typeSelect.innerHTML = '<option value="">All Types</option>' +
+                types.map(t => `<option value="${escapeHtml(t)}"${t === curr ? ' selected' : ''}>${escapeHtml(t)}</option>`).join('');
+        }
+
+        // Populate status filter from actual data
+        const statuses = [...new Set(records.map(rec => rec[f.requestStatus]?.value).filter(Boolean))].sort();
+        const statusSelect = document.getElementById('tickets-filter-status');
+        if (statusSelect) {
+            const curr = statusSelect.value;
+            statusSelect.innerHTML = '<option value="">All Statuses</option>' +
+                statuses.map(s => `<option value="${escapeHtml(s)}"${s === curr ? ' selected' : ''}>${escapeHtml(s)}</option>`).join('');
+        }
+
+        renderTicketsStats(records);
+        renderTicketsTable(records);
+    } catch (e) {
+        showError(c, 'Failed to load tickets: ' + escapeHtml(e.message));
+        console.error(e);
+    }
+}
+
+function _ticketUserLabel(val) {
+    // QB User fields return { id, email, name, userName } or a plain string
+    if (!val) return '-';
+    if (typeof val === 'object') return val.name || val.email || val.userName || '-';
+    return String(val);
+}
+
+function renderTicketsStats(records) {
+    const f = CONFIG.fields.tickets;
+    const el = document.getElementById('tickets-stats');
+    if (!el) return;
+    const total = records.length;
+    const open = records.filter(r => !r[f.closed]?.value && !r[f.completed]?.value).length;
+    const completed = records.filter(r => r[f.completed]?.value).length;
+    const closed = records.filter(r => r[f.closed]?.value).length;
+    el.innerHTML = `
+        <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value">${total}</div></div>
+        <div class="stat-card"><div class="stat-label">Open</div><div class="stat-value">${open}</div></div>
+        <div class="stat-card"><div class="stat-label">Completed</div><div class="stat-value blue">${completed}</div></div>
+        <div class="stat-card"><div class="stat-label">Closed</div><div class="stat-value">${closed}</div></div>
+    `;
+}
+
+function renderTicketsTable(records) {
+    const c = document.getElementById('tickets-table');
+    if (!c) return;
+    const f = CONFIG.fields.tickets;
+    const { col, dir } = _ticketsSort;
+
+    if (!records.length) {
+        c.innerHTML = '<div class="empty-state"><p class="empty-state-title">No tickets found</p></div>';
+        return;
+    }
+
+    const cols = [
+        { key: 'recordId',     label: '#' },
+        { key: 'requestType',  label: 'Type' },
+        { key: 'requestStatus', label: 'Status' },
+        { key: 'projectName',  label: 'Project' },
+        { key: 'propertyName', label: 'Property' },
+        { key: 'requestedBy',  label: 'Requested By' },
+        { key: 'dateCreated',  label: 'Date' },
+        { key: '_action',      label: '' }
+    ];
+
+    const sortArrow = dir === 'asc' ? ' ▲' : ' ▼';
+    const headers = cols.map(h => {
+        if (h.key === '_action') return '<th></th>';
+        return `<th style="cursor:pointer;user-select:none;" onclick="sortTickets('${h.key}')">${h.label}${col === h.key ? `<span style="color:var(--lcp-blue)">${sortArrow}</span>` : ''}</th>`;
+    }).join('');
+
+    const rows = records.map(rec => {
+        const status = rec[f.requestStatus]?.value || '';
+        const type   = rec[f.requestType]?.value || '';
+        const proj   = rec[f.projectName]?.value || '';
+        const prop   = rec[f.propertyName]?.value || '';
+        const reqBy  = _ticketUserLabel(rec[f.requestedBy]?.value);
+        const recId  = rec[f.recordId]?.value || '';
+        const created = rec[f.dateCreated]?.value || '';
+        return {
+            recordId: recId, requestType: type, requestStatus: status,
+            projectName: proj, propertyName: prop, requestedBy: reqBy,
+            dateCreated: created,
+            search: [recId, type, status, proj, prop, reqBy].join(' ').toLowerCase()
+        };
+    });
+
+    rows.sort((a, b) => {
+        const av = String(a[col] || '');
+        const bv = String(b[col] || '');
+        const cmp = av < bv ? -1 : av > bv ? 1 : 0;
+        return dir === 'asc' ? cmp : -cmp;
+    });
+
+    c.innerHTML = `<table class="data-table"><thead><tr>${headers}</tr></thead><tbody id="tickets-tbody">` +
+        rows.map(row => `<tr
+            data-type="${escapeHtml((row.requestType || '').toLowerCase())}"
+            data-status="${escapeHtml((row.requestStatus || '').toLowerCase())}"
+            data-search="${escapeHtml(row.search)}"
+            style="cursor:pointer;"
+            onclick="openTicketDetail(${row.recordId})">
+            <td>${escapeHtml(String(row.recordId))}</td>
+            <td>${escapeHtml(row.requestType) || '-'}</td>
+            <td><span class="badge badge-${getStatusClass(row.requestStatus)}">${escapeHtml(row.requestStatus) || 'No Status'}</span></td>
+            <td>${escapeHtml(row.projectName) || '-'}</td>
+            <td>${escapeHtml(row.propertyName) || '-'}</td>
+            <td>${escapeHtml(row.requestedBy)}</td>
+            <td>${formatDate(row.dateCreated)}</td>
+            <td onclick="event.stopPropagation()">
+                <button class="btn btn-secondary btn-sm" onclick="openEditTicket(${row.recordId})">Edit</button>
+            </td>
+        </tr>`).join('') + '</tbody></table>';
+
+    filterTickets();
+}
+
+function sortTickets(col) {
+    if (_ticketsSort.col === col) {
+        _ticketsSort.dir = _ticketsSort.dir === 'asc' ? 'desc' : 'asc';
+    } else {
+        _ticketsSort.col = col;
+        _ticketsSort.dir = 'asc';
+    }
+    renderTicketsTable(AppState.tickets);
+}
+
+function filterTickets() {
+    const search = (document.getElementById('tickets-search')?.value || '').toLowerCase();
+    const type   = (document.getElementById('tickets-filter-type')?.value || '').toLowerCase();
+    const status = (document.getElementById('tickets-filter-status')?.value || '').toLowerCase();
+    document.querySelectorAll('#tickets-tbody tr').forEach(row => {
+        const matchSearch = !search || (row.dataset.search || '').includes(search);
+        const matchType   = !type   || row.dataset.type === type;
+        const matchStatus = !status || row.dataset.status === status;
+        row.style.display = (matchSearch && matchType && matchStatus) ? '' : 'none';
+    });
+}
+
+function _populateTicketTypeSelect(selected) {
+    const f = CONFIG.fields.tickets;
+    const existing = [...new Set(AppState.tickets.map(r => r[f.requestType]?.value).filter(Boolean))].sort();
+    const types = existing.length ? existing : _TICKET_TYPE_DEFAULTS;
+    document.getElementById('ticket-request-type').innerHTML =
+        '<option value="">Select a type...</option>' +
+        types.map(t => `<option value="${escapeHtml(t)}"${t === selected ? ' selected' : ''}>${escapeHtml(t)}</option>`).join('');
+}
+
+function _populateTicketStatusSelect(selected) {
+    const f = CONFIG.fields.tickets;
+    const existing = [...new Set(AppState.tickets.map(r => r[f.requestStatus]?.value).filter(Boolean))].sort();
+    const statuses = existing.length ? existing : _TICKET_STATUS_DEFAULTS;
+    document.getElementById('ticket-request-status').innerHTML =
+        '<option value="">Select status...</option>' +
+        statuses.map(s => `<option value="${escapeHtml(s)}"${s === selected ? ' selected' : ''}>${escapeHtml(s)}</option>`).join('');
+}
+
+function openNewTicketModal() {
+    document.getElementById('ticket-modal-title').textContent = 'New Ticket';
+    document.getElementById('ticket-edit-id').value = '';
+    document.getElementById('ticket-description').value = '';
+    document.getElementById('ticket-comments').value = '';
+    document.getElementById('ticket-client-request').checked = false;
+    document.getElementById('ticket-submit-btn').textContent = 'Create Ticket';
+    document.getElementById('ticket-submit-btn').disabled = false;
+    _populateTicketTypeSelect('');
+    _populateTicketStatusSelect('Open');
+    openModal('ticket-modal');
+}
+
+function openEditTicket(id) {
+    const f = CONFIG.fields.tickets;
+    const rec = AppState.tickets.find(r => r[f.recordId]?.value == id);
+    if (!rec) { alert('Ticket not found in current session — try refreshing.'); return; }
+
+    document.getElementById('ticket-modal-title').textContent = 'Edit Ticket #' + id;
+    document.getElementById('ticket-edit-id').value = id;
+    document.getElementById('ticket-description').value = rec[f.description]?.value || '';
+    document.getElementById('ticket-comments').value = rec[f.comments]?.value || '';
+    document.getElementById('ticket-client-request').checked = !!rec[f.clientRequest]?.value;
+    document.getElementById('ticket-submit-btn').textContent = 'Save Changes';
+    document.getElementById('ticket-submit-btn').disabled = false;
+    _populateTicketTypeSelect(rec[f.requestType]?.value);
+    _populateTicketStatusSelect(rec[f.requestStatus]?.value);
+    openModal('ticket-modal');
+}
+
+async function submitTicket() {
+    const editId      = document.getElementById('ticket-edit-id').value;
+    const requestType = document.getElementById('ticket-request-type').value;
+    const requestStatus = document.getElementById('ticket-request-status').value;
+    const description = document.getElementById('ticket-description').value.trim();
+    const comments    = document.getElementById('ticket-comments').value.trim();
+    const clientRequest = document.getElementById('ticket-client-request').checked;
+
+    if (!requestType) { alert('Please select a request type.'); return; }
+
+    const f = CONFIG.fields.tickets;
+    const data = {
+        [f.requestType]:   { value: requestType },
+        [f.description]:   { value: description },
+        [f.comments]:      { value: comments },
+        [f.clientRequest]: { value: clientRequest }
+    };
+    if (requestStatus) data[f.requestStatus] = { value: requestStatus };
+
+    const btn = document.getElementById('ticket-submit-btn');
+    btn.disabled = true;
+    btn.textContent = editId ? 'Saving...' : 'Creating...';
+
+    try {
+        if (editId) {
+            data[f.recordId] = { value: parseInt(editId) };
+            await updateRecord(CONFIG.tables.tickets, data);
+            showSuccess('Ticket #' + editId + ' updated.');
+        } else {
+            await createRecord(CONFIG.tables.tickets, data);
+            showSuccess('Ticket created successfully.');
+        }
+        closeModal('ticket-modal');
+        loadTickets(true);
+    } catch (e) {
+        console.error('submitTicket failed:', e);
+        alert('Failed to save ticket: ' + e.message);
+        btn.disabled = false;
+        btn.textContent = editId ? 'Save Changes' : 'Create Ticket';
+    }
+}
+
+async function openTicketDetail(id) {
+    document.getElementById('ticket-detail-title').textContent = 'Ticket #' + id;
+    openModal('ticket-detail-modal');
+    const content = document.getElementById('ticket-detail-content');
+    content.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p>Loading...</p></div>';
+
+    try {
+        const f = CONFIG.fields.tickets;
+        const r = await queryRecords(
+            CONFIG.tables.tickets,
+            [f.recordId, f.dateCreated, f.dateModified, f.requestType, f.requestStatus,
+             f.requestedBy, f.assignee, f.projectName, f.propertyName, f.description,
+             f.comments, f.clientRequest, f.completed, f.closed, f.closedBy, f.dateClosed],
+            `{3.EX.${id}}`
+        );
+        if (!r.data?.length) {
+            content.innerHTML = '<div class="empty-state"><p>Ticket not found.</p></div>';
+            return;
+        }
+        const rec = r.data[0];
+        const status      = rec[f.requestStatus]?.value || '';
+        const type        = rec[f.requestType]?.value || '';
+        const proj        = rec[f.projectName]?.value || '';
+        const prop        = rec[f.propertyName]?.value || '';
+        const reqBy       = _ticketUserLabel(rec[f.requestedBy]?.value);
+        const assignee    = _ticketUserLabel(rec[f.assignee]?.value);
+        const closedBy    = _ticketUserLabel(rec[f.closedBy]?.value);
+        const description = rec[f.description]?.value || '';
+        const comments    = rec[f.comments]?.value || '';
+        const isClosed    = !!rec[f.closed]?.value;
+        const isCompleted = !!rec[f.completed]?.value;
+        const isClient    = !!rec[f.clientRequest]?.value;
+
+        const metaItem = (label, value) =>
+            `<div style="padding:10px 0;border-bottom:1px solid var(--border-color);">
+                <div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-secondary);margin-bottom:4px;">${label}</div>
+                <div style="font-size:14px;color:var(--text-primary);">${value}</div>
+            </div>`;
+
+        content.innerHTML = `
+            <div style="padding:20px;">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:12px;">
+                    <div>
+                        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                            <h2 style="margin:0;font-size:20px;">Ticket #${id}</h2>
+                            ${status ? `<span class="badge badge-${getStatusClass(status)}">${escapeHtml(status)}</span>` : ''}
+                            ${isCompleted ? '<span class="badge badge-approved">Completed</span>' : ''}
+                            ${isClosed ? '<span class="badge badge-rejected">Closed</span>' : ''}
+                            ${isClient ? '<span class="badge badge-info">Client Request</span>' : ''}
+                        </div>
+                        ${type ? `<div style="margin-top:6px;font-size:13px;color:var(--text-secondary);">${escapeHtml(type)}</div>` : ''}
+                    </div>
+                    <button class="btn btn-secondary btn-sm" onclick="openEditTicket(${id});closeModal('ticket-detail-modal');">Edit</button>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px;margin-bottom:20px;">
+                    ${metaItem('Requested By', escapeHtml(reqBy))}
+                    ${metaItem('Assignee', escapeHtml(assignee))}
+                    ${metaItem('Project', escapeHtml(proj) || '-')}
+                    ${metaItem('Property', escapeHtml(prop) || '-')}
+                    ${metaItem('Date Created', formatDate(rec[f.dateCreated]?.value))}
+                    ${metaItem('Last Modified', formatDate(rec[f.dateModified]?.value))}
+                    ${isClosed ? metaItem('Closed By', escapeHtml(closedBy)) : ''}
+                    ${rec[f.dateClosed]?.value ? metaItem('Date Closed', formatDate(rec[f.dateClosed]?.value)) : ''}
+                </div>
+
+                ${description ? `<div style="margin-bottom:16px;">
+                    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-secondary);margin-bottom:8px;">Description</div>
+                    <div style="background:var(--surface-2,var(--bg-card));border:1px solid var(--border-color);border-radius:8px;padding:12px 14px;font-size:14px;line-height:1.65;">${description}</div>
+                </div>` : ''}
+
+                ${comments ? `<div>
+                    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-secondary);margin-bottom:8px;">Comments</div>
+                    <div style="background:var(--surface-2,var(--bg-card));border:1px solid var(--border-color);border-radius:8px;padding:12px 14px;font-size:14px;line-height:1.65;white-space:pre-wrap;">${escapeHtml(comments)}</div>
+                </div>` : ''}
+            </div>
+        `;
+    } catch (e) {
+        content.innerHTML = `<div class="error-message"><p>Failed to load ticket: ${escapeHtml(e.message)}</p></div>`;
+        console.error(e);
     }
 }

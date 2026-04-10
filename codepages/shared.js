@@ -2,7 +2,7 @@
 // App ID: bvvpht7z6 | Realm: lcp360-5583.quickbase.com
 
 const CONFIG = {
-    version: '2.1.21',
+    version: '2.1.22',
     versionUrl: 'https://raw.githubusercontent.com/lcp-media-quickbase/lcp-sales-portal/main/codepages/version.json',
     
     getRealmHostname: function() { return window.location.hostname; },
@@ -21,7 +21,8 @@ const CONFIG = {
         yardiCodes: 'bvkv6qbt9',
         propertiesMaster: 'bvdjrndec',
         cancellations: 'bvwdykdiw',
-        tourbuilder: 'budf3gkff'
+        tourbuilder: 'budf3gkff',
+        tickets: 'bttx6hkh4'
     },
     
     fields: {
@@ -82,6 +83,14 @@ const CONFIG = {
         tourbuilder: {
             recordId: 3, tourId: 6, propertyName: 7, street: 9, city: 10, state: 11,
             clientName: 17, unitTours: 22, tourUrl: 23
+        },
+        tickets: {
+            recordId: 3, dateCreated: 1, dateModified: 2,
+            requestType: 17, requestDate: 18, assignee: 19, requestedBy: 20,
+            description: 21, requestStatus: 23, comments: 27,
+            clientRequest: 16, relatedProject: 6, projectName: 7,
+            projectStatus: 34, propertyName: 63,
+            completed: 43, closed: 59, closedBy: 60, dateClosed: 31
         }
     },
     
@@ -351,6 +360,7 @@ function switchTab(tabId) {
     else if (tabId === 'tab-cancellations') loadCancellations();
     else if (tabId === 'tab-tourbuilder') loadTourBuilderData();
     else if (tabId === 'tab-reports') loadReports();
+    else if (tabId === 'tab-tickets') loadTickets();
 }
 
 // ============================================================================
