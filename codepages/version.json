@@ -1,5 +1,5 @@
 {
-  "version": "2.1.13",
+  "version": "2.1.14",
   "updated": "2026-04-10",
-  "notes": "Fix date display off-by-one due to UTC timezone offset"
+  "notes": "Dashboard reports filtered by current user; dollar amount and property count on all report rows"
 }

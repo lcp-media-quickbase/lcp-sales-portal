@@ -2022,12 +2022,15 @@ function _dashEmptyRow(msg) {
 }
 function _dashOrderRow(o, f, editable) {
     var status = o[f.orderStatus]?.value || 'Draft';
+    var total = o[f.orderTotal]?.value;
+    var propCount = o[f.propertyCount]?.value || 0;
     return `<div class="dash-mini-row">
         <div class="dash-mini-left" style="cursor:pointer;" onclick="viewOrder(${o[f.recordId].value})">
             <div class="dash-mini-company">${escapeHtml(o[f.companyName]?.value || '—')}</div>
-            <div class="dash-mini-meta">${formatDate(o[f.quoteDate]?.value) || '—'} &middot; ${escapeHtml(o[f.salesRepEmail]?.value || '—')}</div>
+            <div class="dash-mini-meta">${formatDate(o[f.quoteDate]?.value) || '—'} &middot; ${propCount} prop${propCount === 1 ? '' : 's'}</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
+            ${total != null ? `<span style="font-size:13px;font-weight:600;color:var(--text-primary);white-space:nowrap;">${formatCurrency(total)}</span>` : ''}
             <span class="badge badge-${getStatusClass(status)}">${escapeHtml(status)}</span>
             ${editable ? `<button class="btn btn-ghost btn-sm" onclick="loadOrderForEdit(${o[f.recordId].value})" title="Edit Order"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}
         </div>
@@ -2035,12 +2038,16 @@ function _dashOrderRow(o, f, editable) {
 }
 function _dashQuoteRow(q, qf) {
     var status = q[qf.quoteStatus]?.value || 'Draft';
+    var total = q[qf.quoteTotal]?.value;
     return `<div class="dash-mini-row" onclick="viewQuote(${q[qf.recordId].value})">
         <div class="dash-mini-left">
             <div class="dash-mini-company">${escapeHtml(q[qf.quoteName]?.value || q[qf.companyName]?.value || '—')}</div>
             <div class="dash-mini-meta">${escapeHtml(q[qf.companyName]?.value || '—')} &middot; ${formatDate(q[qf.quoteDate]?.value) || '—'}</div>
         </div>
-        <span class="badge badge-${getStatusClass(status)}">${escapeHtml(status)}</span>
+        <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
+            ${total != null ? `<span style="font-size:13px;font-weight:600;color:var(--text-primary);white-space:nowrap;">${formatCurrency(total)}</span>` : ''}
+            <span class="badge badge-${getStatusClass(status)}">${escapeHtml(status)}</span>
+        </div>
     </div>`;
 }
 function _kpiGrid(ids) {
@@ -2096,9 +2103,9 @@ async function renderSalesDashboard(user) {
         var emailFilter = user?.email ? `{${f.salesRepEmail}.EX.'${user.email}'}` : null;
         var quoteEmailFilter = user?.email ? `{${qf.salesRepEmail}.EX.'${user.email}'}` : null;
         var [ordersResult, quotesResult] = await Promise.all([
-            queryRecords(CONFIG.tables.orders, [f.recordId, f.orderStatus, f.quoteDate, f.salesRepEmail, f.companyName],
+            queryRecords(CONFIG.tables.orders, [f.recordId, f.orderStatus, f.quoteDate, f.salesRepEmail, f.companyName, f.orderTotal, f.propertyCount],
                 emailFilter, [{fieldId: f.dateModified, order: 'DESC'}]),
-            queryRecords(CONFIG.tables.quotes3D, [qf.recordId, qf.quoteName, qf.quoteStatus, qf.quoteDate, qf.salesRepEmail, qf.companyName],
+            queryRecords(CONFIG.tables.quotes3D, [qf.recordId, qf.quoteName, qf.quoteStatus, qf.quoteDate, qf.salesRepEmail, qf.companyName, qf.quoteTotal],
                 quoteEmailFilter, [{fieldId: qf.dateModified, order: 'DESC'}])
         ]);
         var orders = ordersResult.data || [];
@@ -2170,11 +2177,13 @@ async function renderAdminDashboard(user) {
         </div>`;
 
     try {
+        var emailFilter = user?.email ? `{${f.salesRepEmail}.EX.'${user.email}'}` : null;
+        var quoteEmailFilter = user?.email ? `{${qf.salesRepEmail}.EX.'${user.email}'}` : null;
         var [ordersResult, quotesResult, concessionsResult] = await Promise.all([
-            queryRecords(CONFIG.tables.orders, [f.recordId, f.orderStatus, f.quoteDate, f.salesRepEmail, f.companyName],
-                null, [{fieldId: f.dateModified, order: 'DESC'}]),
-            queryRecords(CONFIG.tables.quotes3D, [qf.recordId, qf.quoteName, qf.quoteStatus, qf.quoteDate, qf.salesRepEmail, qf.companyName],
-                null, [{fieldId: qf.dateModified, order: 'DESC'}]),
+            queryRecords(CONFIG.tables.orders, [f.recordId, f.orderStatus, f.quoteDate, f.salesRepEmail, f.companyName, f.orderTotal, f.propertyCount],
+                emailFilter, [{fieldId: f.dateModified, order: 'DESC'}]),
+            queryRecords(CONFIG.tables.quotes3D, [qf.recordId, qf.quoteName, qf.quoteStatus, qf.quoteDate, qf.salesRepEmail, qf.companyName, qf.quoteTotal],
+                quoteEmailFilter, [{fieldId: qf.dateModified, order: 'DESC'}]),
             queryRecords(CONFIG.tables.orders, [f.recordId, f.orderStatus, f.quoteDate, f.salesRepEmail, f.companyName],
                 `{${f.orderStatus}.EX.'Concessions Approval Needed'}`, [{fieldId: f.dateModified, order: 'DESC'}])
         ]);
