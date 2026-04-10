@@ -2609,7 +2609,7 @@ function _renderSalesReport(orders) {
             '</div>' +
             '<div style="display:flex;align-items:flex-end;gap:12px;margin-left:auto;">' +
                 '<span style="font-size:13px;color:var(--text-muted);padding-bottom:7px;">' + filtered.length + ' order' + (filtered.length !== 1 ? 's' : '') + '</span>' +
-                '<button class="btn btn-secondary" style="white-space:nowrap;" onclick="downloadSalesReport()">&#x2B07; Download CSV</button>' +
+                '<button class="btn btn-secondary" style="white-space:nowrap;" onclick="downloadSalesReport()">&#x2B07; Download Excel</button>' +
             '</div>' +
         '</div>' +
         (filtered.length ?
@@ -2670,18 +2670,29 @@ function downloadSalesReport() {
             o[f.orderTotal]?.value || 0
         ]);
     });
-    var BOM = '\uFEFF';
-    var csv = BOM + rows.map(function(row) {
-        return row.map(function(cell) {
-            var s = String(cell).replace(/"/g, '""');
-            return /[,"\n]/.test(s) ? '"' + s + '"' : s;
-        }).join(',');
-    }).join('\n');
-    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    // Build SpreadsheetML XML so Excel opens it natively with proper number types
+    var numCols = new Set([3, 4, 5]); // Non-Commission, Commission, Total Value columns
+    var xml = '<?xml version="1.0"?>\n<?mso-application progid="Excel.Sheet"?>\n' +
+        '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">\n' +
+        '<Worksheet ss:Name="Sales Report"><Table>\n';
+    rows.forEach(function(row, rowIndex) {
+        xml += '<Row>';
+        row.forEach(function(cell, colIndex) {
+            if (rowIndex > 0 && numCols.has(colIndex)) {
+                xml += '<Cell><Data ss:Type="Number">' + (Number(cell) || 0) + '</Data></Cell>';
+            } else {
+                var escaped = String(cell).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                xml += '<Cell><Data ss:Type="String">' + escaped + '</Data></Cell>';
+            }
+        });
+        xml += '</Row>\n';
+    });
+    xml += '</Table></Worksheet></Workbook>';
+    var blob = new Blob([xml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url;
-    a.download = 'sales-report-' + new Date().toISOString().substring(0, 10) + '.csv';
+    a.download = 'sales-report-' + new Date().toISOString().substring(0, 10) + '.xls';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
