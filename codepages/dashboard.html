@@ -142,22 +142,22 @@
 
                                 <div class="form-col-mid">
                                     <div class="form-group">
-                                        <label class="form-label">Contract Contact First Name</label>
+                                        <label class="form-label required">Contract Contact First Name</label>
                                         <input type="text" class="form-input" id="order-contract-first" placeholder="First name">
                                     </div>
 
                                     <div class="form-group">
-                                        <label class="form-label">Contract Contact Last Name</label>
+                                        <label class="form-label required">Contract Contact Last Name</label>
                                         <input type="text" class="form-input" id="order-contract-last" placeholder="Last name">
                                     </div>
 
                                     <div class="form-group">
-                                        <label class="form-label">Contract Email</label>
+                                        <label class="form-label required">Contract Email</label>
                                         <input type="email" class="form-input" id="order-contract-email" placeholder="email@company.com">
                                     </div>
 
                                     <div class="form-group">
-                                        <label class="form-label">Contract Phone</label>
+                                        <label class="form-label required">Contract Phone</label>
                                         <input type="tel" class="form-input" id="order-contract-phone" placeholder="(555) 123-4567" oninput="formatPhoneNumber(this)">
                                     </div>
                                 </div>
@@ -682,6 +682,22 @@
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     Deny Concessions
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save Progress Modal -->
+    <div id="save-progress-modal" class="modal">
+        <div class="modal-content" style="max-width: 440px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Saving Order</h3>
+            </div>
+            <div class="modal-body" style="padding: 24px;">
+                <div id="save-progress-steps"></div>
+                <div id="save-progress-error" style="display:none;margin-top:16px;padding:10px 12px;background:rgba(255,71,87,0.1);border-radius:8px;color:var(--error);font-size:13px;"></div>
+                <div id="save-progress-footer" style="display:none;margin-top:16px;text-align:right;">
+                    <button class="btn btn-secondary" onclick="closeModal('save-progress-modal')">Dismiss</button>
+                </div>
             </div>
         </div>
     </div>

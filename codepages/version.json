@@ -1,5 +1,5 @@
 {
-  "version": "2.1.10",
+  "version": "2.1.11",
   "updated": "2026-04-10",
-  "notes": "Fix contract file upload — use records API with base64 instead of files endpoint"
+  "notes": "Required fields for contract contact info and property unit count; save progress modal"
 }

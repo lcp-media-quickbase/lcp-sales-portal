@@ -618,19 +618,19 @@ function renderOrderProperties() {
             </div>
             <div class="property-group-billing">
                 <div class="billing-field">
-                    <label class="billing-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Contact</label>
+                    <label class="billing-label required"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Contact</label>
                     <input type="text" class="form-input billing-input" id="billing-contact-${op.propertyId}" value="${op.billingContact || ''}" placeholder="Contact name" onchange="updatePropertyBilling(${op.propertyId},'billingContact',this.value)">
                 </div>
                 <div class="billing-field">
-                    <label class="billing-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Email</label>
+                    <label class="billing-label required"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Email</label>
                     <input type="email" class="form-input billing-input" id="billing-email-${op.propertyId}" value="${op.billingEmail || ''}" placeholder="billing@company.com" onchange="updatePropertyBilling(${op.propertyId},'billingEmail',this.value)">
                 </div>
                 <div class="billing-field">
-                    <label class="billing-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>Phone</label>
+                    <label class="billing-label required"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>Phone</label>
                     <input type="tel" class="form-input billing-input" id="billing-phone-${op.propertyId}" value="${op.billingPhone || ''}" placeholder="(555) 123-4567" oninput="formatPhoneNumber(this)" onchange="updatePropertyBilling(${op.propertyId},'billingPhone',this.value)">
                 </div>
                 <div class="billing-field">
-                    <label class="billing-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>Units</label>
+                    <label class="billing-label required"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>Units</label>
                     <input type="number" class="form-input billing-input" id="unit-count-${op.propertyId}" value="${op.unitCount || ''}" placeholder="Unit count" min="0" onchange="updatePropertyBilling(${op.propertyId},'unitCount',parseInt(this.value)||0)">
                 </div>
             </div>
@@ -1071,6 +1071,60 @@ function render3DProductGrid() {
 }
 
 // ============================================================================
+// SAVE PROGRESS MODAL
+// ============================================================================
+
+var _saveProgressActiveStep = -1;
+
+var SAVE_PROGRESS_STEPS = [
+    'Creating order',
+    'Creating line items',
+    'Generating contract PDF',
+    'Generating contract DOCX',
+    'Generating property worksheet'
+];
+
+function showSaveProgressModal() {
+    _saveProgressActiveStep = -1;
+    var c = document.getElementById('save-progress-steps');
+    c.innerHTML = SAVE_PROGRESS_STEPS.map((s, i) => `
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 0;${i < SAVE_PROGRESS_STEPS.length - 1 ? 'border-bottom:1px solid var(--border-color)' : ''}">
+            <div id="pstep-icon-${i}" style="width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--border-color)" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>
+            </div>
+            <span id="pstep-label-${i}" style="font-size:14px;color:var(--text-muted);">${s}</span>
+        </div>
+    `).join('');
+    document.getElementById('save-progress-error').style.display = 'none';
+    document.getElementById('save-progress-footer').style.display = 'none';
+    openModal('save-progress-modal');
+}
+
+function setSaveProgressStep(i, status) {
+    var icon = document.getElementById('pstep-icon-' + i);
+    var label = document.getElementById('pstep-label-' + i);
+    if (!icon) return;
+    if (status === 'active') {
+        _saveProgressActiveStep = i;
+        icon.innerHTML = '<div class="spinner" style="width:16px;height:16px;border-width:2px;margin-bottom:0;"></div>';
+        label.style.color = 'var(--text-primary)';
+        label.style.fontWeight = '600';
+    } else if (status === 'done') {
+        icon.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
+        label.style.color = 'var(--text-secondary)';
+        label.style.fontWeight = 'normal';
+    } else if (status === 'error') {
+        icon.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--error)" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+        label.style.color = 'var(--error)';
+        label.style.fontWeight = '600';
+    } else if (status === 'skip') {
+        icon.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+        label.style.color = 'var(--text-muted)';
+        label.style.fontStyle = 'italic';
+    }
+}
+
+// ============================================================================
 // SAVE OPERATIONS
 // ============================================================================
 
@@ -1086,26 +1140,33 @@ async function saveOrder() {
     if (!email) { alert('Sales rep email required'); return; }
     if (!ycrmOpportunity) { alert('yCRM Opportunity ID required'); return; }
     if (!AppState.selectedClient) { alert('Please select a client'); return; }
+    if (!contractFirst || !contractLast || !contractEmail || !contractPhone) {
+        alert('Contract contact info (first name, last name, email, phone) is required');
+        return;
+    }
     if (!AppState.orderProperties.length) { alert('Please add at least one property'); return; }
-    
+
     // Check each property has at least one line item with a product selected
     var hasLineItems = AppState.orderProperties.some(op => op.lineItems.some(li => li.productId));
     if (!hasLineItems) { alert('Please add at least one product to a line item'); return; }
-    
-    // Check each property has billing contact info
+
+    // Check each property has billing contact info and unit count
     for (const op of AppState.orderProperties) {
         if (!op.billingContact || !op.billingEmail || !op.billingPhone) {
-            alert('Billing contact information (name, email, phone) required for all properties');
+            alert(`Billing contact (name, email, phone) required for: ${op.property.name}`);
+            return;
+        }
+        if (!op.unitCount) {
+            alert(`Unit count required for: ${op.property.name}`);
             return;
         }
     }
     
-    // Show saving indicator
+    // Show progress modal
     var saveBtn = document.querySelector('#order-form .btn-primary');
-    var originalText = saveBtn.textContent;
-    saveBtn.textContent = 'Saving...';
     saveBtn.disabled = true;
-    
+    showSaveProgressModal();
+
     try {
         const f = CONFIG.fields.orders;
         const pf = CONFIG.fields.properties;
@@ -1117,6 +1178,8 @@ async function saveOrder() {
         );
         const orderStatus = hasConcessions ? 'Concessions Approval Needed' : 'Contract Needed';
 
+        // Step 0: Create order record
+        setSaveProgressStep(0, 'active');
         const orderData = {
             [f.salesRepEmail]: { value: email },
             [f.quoteDate]: { value: getTodayISO() },
@@ -1143,7 +1206,6 @@ async function saveOrder() {
             await updateRecord(CONFIG.tables.orders, orderData);
             console.log('Updated draft order:', orderId);
         } else {
-            // Creating a new order
             const orderResult = await createRecord(CONFIG.tables.orders, orderData);
             orderId = orderResult.metadata?.createdRecordIds?.[0];
             if (!orderId) {
@@ -1152,10 +1214,11 @@ async function saveOrder() {
             }
             console.log('Created order:', orderId);
         }
-        
-        // 2. For each property, create a property link record and line items
+        setSaveProgressStep(0, 'done');
+
+        // Step 1: Create property links and line items
+        setSaveProgressStep(1, 'active');
         for (const op of AppState.orderProperties) {
-            // Create property link record with billing contact info
             const propertyData = {
                 [pf.relatedOrder]: { value: orderId },
                 [pf.relatedProperty]: { value: op.propertyId },
@@ -1163,7 +1226,7 @@ async function saveOrder() {
                 [pf.billingEmail]: { value: op.billingEmail || '' },
                 [pf.billingPhone]: { value: op.billingPhone || '' }
             };
-            
+
             const propResult = await createRecord(CONFIG.tables.properties, propertyData);
             const propertyLinkId = propResult.metadata?.createdRecordIds?.[0];
             console.log('Created property link:', propertyLinkId, 'for property:', op.propertyId);
@@ -1177,24 +1240,21 @@ async function saveOrder() {
                 });
             }
 
-            // 3. Create line items for this property
             for (const li of op.lineItems) {
                 if (li.productId || li.productCode) {
-                    const lineItemData = { 
+                    const lineItemData = {
                         [lf.relatedOrder]: { value: orderId },
                         [lf.relatedProperty]: { value: propertyLinkId },
                         [lf.relatedCode]: { value: li.productCode },
-                        [lf.description]: { value: li.productName }, 
+                        [lf.description]: { value: li.productName },
                         [lf.quantity]: { value: li.quantity },
                         [lf.concession]: { value: li.concession || false },
                         [lf.concessionPercent]: { value: li.concessionPercent || 0 },
                         [lf.concessionAmount]: { value: li.concessionAmount || 0 }
                     };
-                    // Save quotePrice - formula will use this over retail price
                     if (li.unitPrice && li.unitPrice > 0) {
                         lineItemData[lf.quotePrice] = { value: li.unitPrice };
                     }
-                    
                     const liResult = await createRecord(CONFIG.tables.orderLineItems, lineItemData);
                     if (liResult.metadata?.lineErrors && Object.keys(liResult.metadata.lineErrors).length > 0) {
                         console.error('Line item creation error:', liResult.metadata.lineErrors);
@@ -1204,8 +1264,9 @@ async function saveOrder() {
                 }
             }
         }
-        
-        // Workflow 1: confirm no concessions in DB (FID 41), then generate contracts sequentially
+        setSaveProgressStep(1, 'done');
+
+        // Steps 2–4: Generate contracts (skipped if concessions present)
         const companyName = AppState.selectedClient?.name || '';
         const concessionCheck = await queryRecords(
             CONFIG.tables.orderLineItems, [lf.recordId],
@@ -1215,8 +1276,9 @@ async function saveOrder() {
             await generateAndUploadContracts(orderId, ycrmOpportunity, companyName);
         } else {
             console.log('[Contracts] Skipped — concessions found in DB for order', orderId);
+            [2, 3, 4].forEach(i => setSaveProgressStep(i, 'skip'));
         }
-        
+
         // If this order was converted from a quote, update the quote status
         if (AppState.convertingQuoteId) {
             const qf = CONFIG.fields.quotes3D;
@@ -1227,16 +1289,20 @@ async function saveOrder() {
             console.log('Updated quote', AppState.convertingQuoteId, 'status to Converted to Order');
             AppState.convertingQuoteId = null;
         }
-        
+
+        closeModal('save-progress-modal');
         showSuccess('Order created successfully!');
         resetOrderForm();
         switchTab('tab-dashboard');
-        
-    } catch (e) { 
-        console.error('Save order failed:', e); 
-        alert('Failed to save order: ' + e.message); 
+
+    } catch (e) {
+        console.error('Save order failed:', e);
+        if (_saveProgressActiveStep >= 0) setSaveProgressStep(_saveProgressActiveStep, 'error');
+        var errEl = document.getElementById('save-progress-error');
+        if (errEl) { errEl.textContent = e.message; errEl.style.display = 'block'; }
+        var footerEl = document.getElementById('save-progress-footer');
+        if (footerEl) footerEl.style.display = 'block';
     } finally {
-        saveBtn.textContent = originalText;
         saveBtn.disabled = false;
     }
 }
@@ -1386,7 +1452,8 @@ async function generateAndUploadContracts(orderId, opportunityId, companyName) {
     });
     console.log('[Contracts] Status → Contract Needed for order', orderId);
 
-    // Step 2: Generate PDF → upload to FID 12
+    // Step 2 (progress): Generate PDF → upload to FID 12
+    setSaveProgressStep(2, 'active');
     const pdfGenUrl = `https://api.quickbase.com/v1/docTemplates/${CONTRACT_TEMPLATE_ID}/generate?tableId=${tableId}&realm=${realmShort}&filename=${safeFileName}&format=pdf&recordId=${orderId}`;
     const pdfResp = await fetch(pdfGenUrl, {
         method: 'GET',
@@ -1401,8 +1468,10 @@ async function generateAndUploadContracts(orderId, opportunityId, companyName) {
     await uploadFileToField(tableId, orderId, f.orderPDF,
         new File([pdfBlob], `${baseName}.pdf`, { type: 'application/pdf' }));
     console.log('[Contracts] PDF uploaded to FID', f.orderPDF);
+    setSaveProgressStep(2, 'done');
 
-    // Step 3: Generate DOCX → upload to FID 38
+    // Step 3 (progress): Generate DOCX → upload to FID 38
+    setSaveProgressStep(3, 'active');
     const docxGenUrl = `https://api.quickbase.com/v1/docTemplates/${CONTRACT_TEMPLATE_ID}/generate?tableId=${tableId}&realm=${realmShort}&filename=${safeFileName}&format=docx&recordId=${orderId}`;
     const docxResp = await fetch(docxGenUrl, {
         method: 'GET',
@@ -1417,16 +1486,19 @@ async function generateAndUploadContracts(orderId, opportunityId, companyName) {
     await uploadFileToField(tableId, orderId, f.orderDOCX,
         new File([docxBlob], `${baseName}.docx`, { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }));
     console.log('[Contracts] DOCX uploaded to FID', f.orderDOCX);
+    setSaveProgressStep(3, 'done');
 
-    // Step 4: Set status → "Contract Created"
+    // Set status → "Contract Created"
     await updateRecord(tableId, {
         [f.recordId]: { value: orderId },
         [f.orderStatus]: { value: 'Contract Created' }
     });
     console.log('[Contracts] Status → Contract Created for order', orderId);
 
-    // Step 5: Generate property worksheet → upload to FID 13
+    // Step 4 (progress): Generate property worksheet → upload to FID 13
+    setSaveProgressStep(4, 'active');
     await generatePropertyWorksheet(orderId, baseName);
+    setSaveProgressStep(4, 'done');
 }
 
 async function saveQuote() {

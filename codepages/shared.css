@@ -138,7 +138,7 @@ body {
 .form-group { display: flex; flex-direction: column; gap: 6px; }
 .form-group.full-width { grid-column: 1 / -1; }
 .form-label { font-size: 13px; font-weight: 500; color: var(--text-secondary); }
-.form-label.required::after { content: ' *'; color: var(--error); }
+.form-label.required::after, .billing-label.required::after { content: ' *'; color: var(--error); }
 
 .form-input, .form-select, .form-textarea {
     background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px;
