@@ -1,5 +1,5 @@
 {
-  "version": "2.1.16",
+  "version": "2.1.17",
   "updated": "2026-04-10",
-  "notes": "Sales Report sub-tab with period filter and commission/non-commission breakdown"
+  "notes": "Sales Report: custom date range, company/rep filters, CSV download"
 }

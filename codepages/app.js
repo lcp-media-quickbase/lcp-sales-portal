@@ -2475,6 +2475,7 @@ async function loadReports(force) {
 }
 
 var _reportsCache = null;
+var _reportFilters = { period: 'current-month', customFrom: '', customTo: '', company: '', rep: '' };
 
 function renderReports(orders, quotes) {
     var c = document.getElementById('reports-content');
@@ -2488,7 +2489,8 @@ function renderReports(orders, quotes) {
         <div id="rsubtab-overview"></div>
         <div id="rsubtab-sales" style="display:none;"></div>`;
     _renderReportsOverview(orders, quotes);
-    _renderSalesReport(orders, 'current-month');
+    _reportFilters = { period: 'current-month', customFrom: '', customTo: '', company: '', rep: '' };
+    _renderSalesReport(orders);
 }
 
 function switchReportsTab(tab) {
@@ -2504,8 +2506,12 @@ function switchReportsTab(tab) {
 
 function applyReportPeriodFilter() {
     if (!_reportsCache) return;
-    var period = document.getElementById('report-period-select')?.value || 'current-month';
-    _renderSalesReport(_reportsCache.orders, period);
+    _reportFilters.period    = document.getElementById('report-period-select')?.value || 'current-month';
+    _reportFilters.customFrom = document.getElementById('report-date-from')?.value || '';
+    _reportFilters.customTo   = document.getElementById('report-date-to')?.value || '';
+    _reportFilters.company   = document.getElementById('report-company-filter')?.value || '';
+    _reportFilters.rep       = document.getElementById('report-rep-filter')?.value || '';
+    _renderSalesReport(_reportsCache.orders);
 }
 
 function _getReportDateRange(period) {
@@ -2515,67 +2521,171 @@ function _getReportDateRange(period) {
     if (period === 'last-3')        return { from: new Date(y, m - 3, 1), to: now };
     if (period === 'last-6')        return { from: new Date(y, m - 6, 1), to: now };
     if (period === 'ytd')           return { from: new Date(y, 0, 1),     to: now };
+    if (period === 'custom') {
+        var p1 = _reportFilters.customFrom ? _reportFilters.customFrom.split('-').map(Number) : null;
+        var p2 = _reportFilters.customTo   ? _reportFilters.customTo.split('-').map(Number)   : null;
+        var from = p1 ? new Date(p1[0], p1[1] - 1, p1[2]) : null;
+        var to   = p2 ? new Date(p2[0], p2[1] - 1, p2[2]) : null;
+        if (from && to) return { from: from, to: to };
+        if (from)       return { from: from, to: new Date() };
+        return null;
+    }
     return null;
 }
 
-function _renderSalesReport(orders, period) {
+function _renderSalesReport(orders) {
     var c = document.getElementById('rsubtab-sales');
     if (!c) return;
     var f = CONFIG.fields.orders;
+    var period = _reportFilters.period;
+
+    // Build unique company/rep lists from all non-cancelled orders for dropdowns
+    var allActive = orders.filter(function(o) { return o[f.orderStatus]?.value !== 'Cancelled'; });
+    var companies = Array.from(new Set(allActive.map(function(o) { return o[f.companyName]?.value || ''; }).filter(Boolean))).sort();
+    var reps      = Array.from(new Set(allActive.map(function(o) { return o[f.salesRepEmail]?.value || ''; }).filter(Boolean))).sort();
+
+    // Apply all filters
     var range = _getReportDateRange(period);
-    var filtered = orders.filter(function(o) {
-        if (o[f.orderStatus]?.value === 'Cancelled') return false;
-        if (!range) return true;
-        var d = o[f.quoteDate]?.value;
-        if (!d) return false;
-        var p = String(d).split('T')[0].split('-').map(Number);
-        var date = new Date(p[0], p[1] - 1, p[2]);
-        return date >= range.from && date <= range.to;
+    var filtered = allActive.filter(function(o) {
+        if (range) {
+            var d = o[f.quoteDate]?.value;
+            if (!d) return false;
+            var p = String(d).split('T')[0].split('-').map(Number);
+            var date = new Date(p[0], p[1] - 1, p[2]);
+            if (date < range.from || date > range.to) return false;
+        }
+        if (_reportFilters.company && o[f.companyName]?.value !== _reportFilters.company) return false;
+        if (_reportFilters.rep && o[f.salesRepEmail]?.value !== _reportFilters.rep) return false;
+        return true;
     });
+
     var totalNonComm = filtered.reduce(function(s, o) { return s + (o[f.nonCommissionValue]?.value || 0); }, 0);
     var totalComm    = filtered.reduce(function(s, o) { return s + (o[f.commissionValue]?.value || 0); }, 0);
     var totalVal     = filtered.reduce(function(s, o) { return s + (o[f.orderTotal]?.value || 0); }, 0);
+
     var periodOptions = [
         { value: 'current-month', label: 'Current Month' },
         { value: 'last-month',    label: 'Last Month' },
         { value: 'last-3',        label: 'Last 3 Months' },
         { value: 'last-6',        label: 'Last 6 Months' },
         { value: 'ytd',           label: 'Year to Date' },
-        { value: 'all',           label: 'All Time' }
+        { value: 'all',           label: 'All Time' },
+        { value: 'custom',        label: 'Custom Range' }
     ];
-    c.innerHTML = `
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
-            <label style="font-size:13px;font-weight:600;color:var(--text-secondary);">Period:</label>
-            <select id="report-period-select" class="form-input" style="width:auto;" onchange="applyReportPeriodFilter()">
-                ${periodOptions.map(function(o) { return `<option value="${o.value}"${o.value === period ? ' selected' : ''}>${o.label}</option>`; }).join('')}
-            </select>
-            <span style="font-size:13px;color:var(--text-muted);">${filtered.length} order${filtered.length !== 1 ? 's' : ''}</span>
-        </div>
-        ${filtered.length ? `
-        <div style="overflow-x:auto;">
-            <table class="data-table">
-                <thead><tr>
-                    <th>Order Date</th><th>Sales Rep</th><th>Company</th>
-                    <th style="text-align:right">Non-Commission</th>
-                    <th style="text-align:right">Commission</th>
-                    <th style="text-align:right">Total Value</th>
-                </tr></thead>
-                <tbody>${filtered.map(function(o) { return `<tr>
-                    <td>${formatDate(o[f.quoteDate]?.value) || '—'}</td>
-                    <td>${escapeHtml(o[f.salesRepEmail]?.value || '—')}</td>
-                    <td>${escapeHtml(o[f.companyName]?.value || '—')}</td>
-                    <td style="text-align:right">${formatCurrency(o[f.nonCommissionValue]?.value || 0)}</td>
-                    <td style="text-align:right">${formatCurrency(o[f.commissionValue]?.value || 0)}</td>
-                    <td style="text-align:right"><strong>${formatCurrency(o[f.orderTotal]?.value || 0)}</strong></td>
-                </tr>`; }).join('')}</tbody>
-                <tfoot><tr style="font-weight:600;border-top:2px solid var(--border-color);">
-                    <td colspan="3" style="padding-top:10px;">Totals</td>
-                    <td style="text-align:right;padding-top:10px;">${formatCurrency(totalNonComm)}</td>
-                    <td style="text-align:right;padding-top:10px;">${formatCurrency(totalComm)}</td>
-                    <td style="text-align:right;padding-top:10px;">${formatCurrency(totalVal)}</td>
-                </tr></tfoot>
-            </table>
-        </div>` : `<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:14px;">No orders found for this period.</div>`}`;
+
+    var isCustom = period === 'custom';
+
+    c.innerHTML =
+        '<div style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;margin-bottom:20px;padding:16px;background:var(--bg-secondary);border-radius:8px;">' +
+            '<div style="display:flex;flex-direction:column;gap:4px;">' +
+                '<label style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px;">Period</label>' +
+                '<select id="report-period-select" class="form-input" style="width:auto;" onchange="applyReportPeriodFilter()">' +
+                    periodOptions.map(function(o) { return '<option value="' + o.value + '"' + (o.value === period ? ' selected' : '') + '>' + o.label + '</option>'; }).join('') +
+                '</select>' +
+            '</div>' +
+            '<div id="report-custom-range" style="display:' + (isCustom ? 'flex' : 'none') + ';align-items:flex-end;gap:8px;">' +
+                '<div style="display:flex;flex-direction:column;gap:4px;">' +
+                    '<label style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px;">From</label>' +
+                    '<input type="date" id="report-date-from" class="form-input" style="width:auto;" value="' + (_reportFilters.customFrom || '') + '" onchange="applyReportPeriodFilter()">' +
+                '</div>' +
+                '<div style="display:flex;flex-direction:column;gap:4px;">' +
+                    '<label style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px;">To</label>' +
+                    '<input type="date" id="report-date-to" class="form-input" style="width:auto;" value="' + (_reportFilters.customTo || '') + '" onchange="applyReportPeriodFilter()">' +
+                '</div>' +
+            '</div>' +
+            '<div style="display:flex;flex-direction:column;gap:4px;">' +
+                '<label style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px;">Company</label>' +
+                '<select id="report-company-filter" class="form-input" style="width:auto;max-width:200px;" onchange="applyReportPeriodFilter()">' +
+                    '<option value="">All Companies</option>' +
+                    companies.map(function(co) { return '<option value="' + escapeHtml(co) + '"' + (co === _reportFilters.company ? ' selected' : '') + '>' + escapeHtml(co) + '</option>'; }).join('') +
+                '</select>' +
+            '</div>' +
+            '<div style="display:flex;flex-direction:column;gap:4px;">' +
+                '<label style="font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px;">Sales Rep</label>' +
+                '<select id="report-rep-filter" class="form-input" style="width:auto;max-width:200px;" onchange="applyReportPeriodFilter()">' +
+                    '<option value="">All Reps</option>' +
+                    reps.map(function(rep) { return '<option value="' + escapeHtml(rep) + '"' + (rep === _reportFilters.rep ? ' selected' : '') + '>' + escapeHtml(rep) + '</option>'; }).join('') +
+                '</select>' +
+            '</div>' +
+            '<div style="display:flex;align-items:flex-end;gap:12px;margin-left:auto;">' +
+                '<span style="font-size:13px;color:var(--text-muted);padding-bottom:7px;">' + filtered.length + ' order' + (filtered.length !== 1 ? 's' : '') + '</span>' +
+                '<button class="btn btn-secondary" style="white-space:nowrap;" onclick="downloadSalesReport()">&#x2B07; Download CSV</button>' +
+            '</div>' +
+        '</div>' +
+        (filtered.length ?
+            '<div style="overflow-x:auto;">' +
+                '<table class="data-table">' +
+                    '<thead><tr>' +
+                        '<th>Order Date</th><th>Sales Rep</th><th>Company</th>' +
+                        '<th style="text-align:right">Non-Commission</th>' +
+                        '<th style="text-align:right">Commission</th>' +
+                        '<th style="text-align:right">Total Value</th>' +
+                    '</tr></thead>' +
+                    '<tbody>' + filtered.map(function(o) {
+                        return '<tr>' +
+                            '<td>' + (formatDate(o[f.quoteDate]?.value) || '—') + '</td>' +
+                            '<td>' + escapeHtml(o[f.salesRepEmail]?.value || '—') + '</td>' +
+                            '<td>' + escapeHtml(o[f.companyName]?.value || '—') + '</td>' +
+                            '<td style="text-align:right">' + formatCurrency(o[f.nonCommissionValue]?.value || 0) + '</td>' +
+                            '<td style="text-align:right">' + formatCurrency(o[f.commissionValue]?.value || 0) + '</td>' +
+                            '<td style="text-align:right"><strong>' + formatCurrency(o[f.orderTotal]?.value || 0) + '</strong></td>' +
+                        '</tr>';
+                    }).join('') + '</tbody>' +
+                    '<tfoot><tr style="font-weight:600;border-top:2px solid var(--border-color);">' +
+                        '<td colspan="3" style="padding-top:10px;">Totals</td>' +
+                        '<td style="text-align:right;padding-top:10px;">' + formatCurrency(totalNonComm) + '</td>' +
+                        '<td style="text-align:right;padding-top:10px;">' + formatCurrency(totalComm) + '</td>' +
+                        '<td style="text-align:right;padding-top:10px;">' + formatCurrency(totalVal) + '</td>' +
+                    '</tr></tfoot>' +
+                '</table>' +
+            '</div>'
+        : '<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:14px;">No orders found for the selected filters.</div>');
+}
+
+function downloadSalesReport() {
+    if (!_reportsCache) return;
+    var f = CONFIG.fields.orders;
+    var range = _getReportDateRange(_reportFilters.period);
+    var filtered = _reportsCache.orders.filter(function(o) {
+        if (o[f.orderStatus]?.value === 'Cancelled') return false;
+        if (range) {
+            var d = o[f.quoteDate]?.value;
+            if (!d) return false;
+            var p = String(d).split('T')[0].split('-').map(Number);
+            var date = new Date(p[0], p[1] - 1, p[2]);
+            if (date < range.from || date > range.to) return false;
+        }
+        if (_reportFilters.company && o[f.companyName]?.value !== _reportFilters.company) return false;
+        if (_reportFilters.rep && o[f.salesRepEmail]?.value !== _reportFilters.rep) return false;
+        return true;
+    });
+    var rows = [['Order Date', 'Sales Rep', 'Company', 'Non-Commission', 'Commission', 'Total Value']];
+    filtered.forEach(function(o) {
+        rows.push([
+            formatDate(o[f.quoteDate]?.value) || '',
+            o[f.salesRepEmail]?.value || '',
+            o[f.companyName]?.value || '',
+            o[f.nonCommissionValue]?.value || 0,
+            o[f.commissionValue]?.value || 0,
+            o[f.orderTotal]?.value || 0
+        ]);
+    });
+    var BOM = '\uFEFF';
+    var csv = BOM + rows.map(function(row) {
+        return row.map(function(cell) {
+            var s = String(cell).replace(/"/g, '""');
+            return /[,"\n]/.test(s) ? '"' + s + '"' : s;
+        }).join(',');
+    }).join('\n');
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'sales-report-' + new Date().toISOString().substring(0, 10) + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 }
 
 function _renderReportsOverview(orders, quotes) {
