@@ -1,5 +1,5 @@
 {
-  "version": "2.1.43",
+  "version": "2.1.44",
   "updated": "2026-04-13",
-  "notes": "Refresh dashboard panels automatically after order submission"
+  "notes": "Dashboard order rows: property/properties wording, product types line"
 }

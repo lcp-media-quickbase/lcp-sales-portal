@@ -2044,17 +2044,39 @@ async function loadDashboard(force) {
 }
 
 // Shared helpers for building dashboard panels
+async function _fetchDashProductTypes(displayedOrders, f) {
+    var map = {};
+    if (!displayedOrders.length || !AppState.products || !AppState.products.length) return map;
+    try {
+        var lf = CONFIG.fields.orderLineItems;
+        var ids = displayedOrders.map(function(o){ return o[f.recordId].value; });
+        var orFilter = ids.map(function(id){ return `{${lf.relatedOrder}.EX.${id}}`; }).join('OR');
+        var result = await queryRecords(CONFIG.tables.orderLineItems, [lf.relatedOrder, lf.relatedCode], orFilter);
+        (result.data || []).forEach(function(li) {
+            var oid = li[lf.relatedOrder]?.value;
+            var code = li[lf.relatedCode]?.value;
+            if (!oid || !code) return;
+            var product = AppState.products.find(function(p){ return String(p.code) === String(code); });
+            var assetType = product && product.assetType;
+            if (!assetType) return;
+            if (!map[oid]) map[oid] = [];
+            if (!map[oid].includes(assetType)) map[oid].push(assetType);
+        });
+    } catch(e) { console.warn('Dashboard product types fetch failed:', e); }
+    return map;
+}
 function _dashEmptyRow(msg) {
     return `<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">${msg}</div>`;
 }
-function _dashOrderRow(o, f, editable) {
+function _dashOrderRow(o, f, editable, productTypes) {
     var status = o[f.orderStatus]?.value || 'Draft';
     var total = o[f.orderTotal]?.value;
     var propCount = o[f.propertyCount]?.value || 0;
     return `<div class="dash-mini-row">
         <div class="dash-mini-left" style="cursor:pointer;" onclick="viewOrder(${o[f.recordId].value})">
             <div class="dash-mini-company">${escapeHtml(o[f.companyName]?.value || '—')}</div>
-            <div class="dash-mini-meta">${formatDate(o[f.quoteDate]?.value) || '—'} &middot; ${propCount} prop${propCount === 1 ? '' : 's'}</div>
+            <div class="dash-mini-meta">${formatDate(o[f.quoteDate]?.value) || '—'} &middot; ${propCount} ${propCount === 1 ? 'property' : 'properties'}</div>
+            ${productTypes && productTypes.length ? `<div class="dash-mini-products">${productTypes.map(escapeHtml).join(' &middot; ')}</div>` : ''}
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
             ${total != null ? `<span style="font-size:13px;font-weight:600;color:var(--text-primary);white-space:nowrap;">${formatCurrency(total)}</span>` : ''}
@@ -2147,8 +2169,9 @@ async function renderSalesDashboard(user) {
         document.getElementById('ds-q-pending').textContent = quotes.filter(function(q){ return ['Pending Review','Sent to Client'].includes(q[qf.quoteStatus]?.value); }).length;
         document.getElementById('ds-q-approved').textContent = quotes.filter(function(q){ return q[qf.quoteStatus]?.value === 'Approved'; }).length;
 
-        document.getElementById('ds-pending-orders').innerHTML = pendingOrders.slice(0,5).map(function(o){ return _dashOrderRow(o,f,true); }).join('') || _dashEmptyRow('No pending orders');
-        document.getElementById('ds-contract-orders').innerHTML = contractOrders.slice(0,5).map(function(o){ return _dashOrderRow(o,f,false); }).join('') || _dashEmptyRow('No contract orders yet');
+        var productTypesMap = await _fetchDashProductTypes([...pendingOrders.slice(0,5), ...contractOrders.slice(0,5)], f);
+        document.getElementById('ds-pending-orders').innerHTML = pendingOrders.slice(0,5).map(function(o){ return _dashOrderRow(o,f,true,productTypesMap[o[f.recordId].value]); }).join('') || _dashEmptyRow('No pending orders');
+        document.getElementById('ds-contract-orders').innerHTML = contractOrders.slice(0,5).map(function(o){ return _dashOrderRow(o,f,false,productTypesMap[o[f.recordId].value]); }).join('') || _dashEmptyRow('No contract orders yet');
         document.getElementById('ds-recent-quotes').innerHTML = quotes.slice(0,5).map(function(q){ return _dashQuoteRow(q,qf); }).join('') || _dashEmptyRow('No quotes yet');
     } catch(e) { console.error('renderSalesDashboard failed:', e); }
 }
@@ -2228,8 +2251,9 @@ async function renderAdminDashboard(user) {
         document.getElementById('da-q-pending').textContent = quotes.filter(function(q){ return ['Pending Review','Sent to Client'].includes(q[qf.quoteStatus]?.value); }).length;
         document.getElementById('da-q-approved').textContent = quotes.filter(function(q){ return q[qf.quoteStatus]?.value === 'Approved'; }).length;
 
-        document.getElementById('da-pending-orders').innerHTML = pendingOrders.slice(0,5).map(function(o){ return _dashOrderRow(o,f); }).join('') || _dashEmptyRow('No pending orders');
-        document.getElementById('da-contract-orders').innerHTML = contractOrders.slice(0,5).map(function(o){ return _dashOrderRow(o,f); }).join('') || _dashEmptyRow('No contract orders yet');
+        var productTypesMap = await _fetchDashProductTypes([...pendingOrders.slice(0,5), ...contractOrders.slice(0,5)], f);
+        document.getElementById('da-pending-orders').innerHTML = pendingOrders.slice(0,5).map(function(o){ return _dashOrderRow(o,f,false,productTypesMap[o[f.recordId].value]); }).join('') || _dashEmptyRow('No pending orders');
+        document.getElementById('da-contract-orders').innerHTML = contractOrders.slice(0,5).map(function(o){ return _dashOrderRow(o,f,false,productTypesMap[o[f.recordId].value]); }).join('') || _dashEmptyRow('No contract orders yet');
         document.getElementById('da-recent-quotes').innerHTML = quotes.slice(0,5).map(function(q){ return _dashQuoteRow(q,qf); }).join('') || _dashEmptyRow('No quotes yet');
 
         if (concessions.length) {
