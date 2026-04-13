@@ -3340,7 +3340,13 @@ async function viewOrder(id) {
         const needsConcessionApproval = status === 'Concessions Approval Needed';
         const hasConcessionDecision = concessionsApproval === 'Approved' || concessionsApproval === 'Denied';
         const hasContractContact = contractContact || contractEmail || contractPhone;
-        
+        const hasPdf = order[f.orderPDF]?.value != null;
+        const hasDocx = order[f.orderDOCX]?.value != null;
+        const rawOrderName = (order[f.ycrmOpportunityId]?.value && order[f.companyName]?.value)
+            ? `${order[f.ycrmOpportunityId].value} - ${order[f.companyName].value}`
+            : (order[f.companyName]?.value || `Order_Contract_${id}`);
+        const dlName = rawOrderName.replace(/[\/\\:*?"<>|']/g, '');
+
         let html = `
             <div class="order-detail">
                 <div class="order-detail-header">
@@ -3354,16 +3360,40 @@ async function viewOrder(id) {
                             <span><strong>Opportunity ID:</strong> ${opportunityId}</span>
                         </div>
                     </div>
-                    ${needsConcessionApproval ? `
-                        <div class="concession-approval-actions">
-                            <button class="btn btn-success" onclick="approveConcession(${id})">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                                Approve
-                            </button>
-                            <button class="btn btn-danger" onclick="denyConcession(${id})">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                                Deny
-                            </button>
+                    ${(needsConcessionApproval || hasPdf || hasDocx) ? `
+                        <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">
+                            ${needsConcessionApproval ? `
+                                <div class="concession-approval-actions">
+                                    <button class="btn btn-success" onclick="approveConcession(${id})">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                        Approve
+                                    </button>
+                                    <button class="btn btn-danger" onclick="denyConcession(${id})">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                        Deny
+                                    </button>
+                                </div>
+                            ` : ''}
+                            ${(hasPdf || hasDocx) ? `
+                                <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+                                    ${hasPdf ? `
+                                        <button class="btn btn-ghost btn-sm" onclick="viewContractPdf(${id}, 0)" title="View Contract PDF">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                            View PDF
+                                        </button>
+                                        <button class="btn btn-ghost btn-sm" onclick="downloadContractFile(${id}, ${f.orderPDF}, 0, '${dlName}.pdf')" title="Download Contract PDF">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                            Download PDF
+                                        </button>
+                                    ` : ''}
+                                    ${hasDocx ? `
+                                        <button class="btn btn-ghost btn-sm" onclick="downloadContractFile(${id}, ${f.orderDOCX}, 0, '${dlName}.docx')" title="Download Contract Word">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                                            Download Word
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            ` : ''}
                         </div>
                     ` : ''}
                 </div>
