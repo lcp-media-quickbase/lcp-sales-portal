@@ -3456,6 +3456,17 @@ async function viewOrder(id) {
     }
 }
 
+function loadPdfJs() {
+    if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        script.onload = () => resolve(window.pdfjsLib);
+        script.onerror = () => reject(new Error('Failed to load PDF.js'));
+        document.head.appendChild(script);
+    });
+}
+
 async function viewContractPdf(orderId) {
     const panel = document.getElementById('order-pdf-panel');
     const container = document.getElementById('order-pdf-canvas-container');
@@ -3471,8 +3482,7 @@ async function viewContractPdf(orderId) {
         const resp = await fetch(url, { headers: { 'QB-Realm-Hostname': realm, 'Authorization': `QB-TEMP-TOKEN ${token}` } });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const arrayBuffer = await resp.arrayBuffer();
-        const pdfjsLib = window.pdfjsLib;
-        if (!pdfjsLib) throw new Error('PDF renderer not loaded');
+        const pdfjsLib = await loadPdfJs();
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         container.innerHTML = '';
