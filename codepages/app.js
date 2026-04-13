@@ -3487,8 +3487,14 @@ async function viewContractPdf(orderId, versionNumber) {
         const token = await getTempToken(CONFIG.tables.orders);
         const url = `https://api.quickbase.com/v1/files/${CONFIG.tables.orders}/${orderId}/${CONFIG.fields.orders.orderPDF}/${versionNumber ?? 0}`;
         const resp = await fetch(url, { headers: { 'QB-Realm-Hostname': realm, 'Authorization': `QB-TEMP-TOKEN ${token}` } });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status} from ${url}`);
         const arrayBuffer = await resp.arrayBuffer();
+        // Verify we actually got PDF bytes (first 5 bytes of a PDF are always "%PDF-")
+        const header = new TextDecoder().decode(arrayBuffer.slice(0, 5));
+        if (!header.startsWith('%PDF')) {
+            const preview = new TextDecoder().decode(arrayBuffer.slice(0, 300));
+            throw new Error(`QB returned non-PDF (${arrayBuffer.byteLength} bytes, Content-Type: ${resp.headers.get('content-type')}): ${preview}`);
+        }
         const pdfjsLib = await loadPdfJs();
         // Do NOT set workerSrc — PDF.js finds window.pdfjsWorker and uses fake in-thread worker
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
