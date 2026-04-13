@@ -1,5 +1,5 @@
 {
-  "version": "2.1.28",
+  "version": "2.1.29",
   "updated": "2026-04-13",
-  "notes": "View PDF opens inline iframe panel in order detail modal instead of new tab"
+  "notes": "Fix View PDF iframe: fetch via API to blob URL so browser renders inline instead of downloading"
 }

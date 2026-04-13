@@ -3456,16 +3456,40 @@ async function viewOrder(id) {
     }
 }
 
-function viewContractPdf(orderId) {
-    const realm = window.location.protocol + '//' + CONFIG.getRealmHostname() + '/';
-    const url = `${realm}up/${CONFIG.tables.orders}/a/r${orderId}/e${CONFIG.fields.orders.orderPDF}/v0`;
+async function viewContractPdf(orderId) {
     const panel = document.getElementById('order-pdf-panel');
     const iframe = document.getElementById('order-pdf-iframe');
     const mc = document.querySelector('#order-detail-modal .modal-content');
-    iframe.src = url;
+    // Expand modal and show panel immediately with loading state
     panel.style.display = 'flex';
     mc.style.maxWidth = '1500px';
     mc.style.height = '88vh';
+    iframe.src = '';
+    iframe.style.display = 'none';
+    let loadingEl = panel.querySelector('.pdf-loading');
+    if (!loadingEl) {
+        loadingEl = document.createElement('div');
+        loadingEl.className = 'pdf-loading';
+        loadingEl.style.cssText = 'flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:14px;';
+        loadingEl.textContent = 'Loading PDF...';
+        panel.appendChild(loadingEl);
+    }
+    loadingEl.style.display = 'flex';
+    try {
+        const realm = CONFIG.getRealmHostname();
+        const token = await getTempToken(CONFIG.tables.orders);
+        const url = `https://api.quickbase.com/v1/files/${CONFIG.tables.orders}/${orderId}/${CONFIG.fields.orders.orderPDF}/0`;
+        const resp = await fetch(url, { headers: { 'QB-Realm-Hostname': realm, 'Authorization': `QB-TEMP-TOKEN ${token}` } });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const blob = await resp.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        iframe.src = blobUrl;
+        iframe.style.display = 'block';
+        loadingEl.style.display = 'none';
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 300000);
+    } catch (e) {
+        loadingEl.textContent = 'Failed to load PDF: ' + e.message;
+    }
 }
 
 function closeContractPdf() {
@@ -3475,6 +3499,9 @@ function closeContractPdf() {
     if (!panel) return;
     panel.style.display = 'none';
     iframe.src = '';
+    iframe.style.display = 'block';
+    const loadingEl = panel.querySelector('.pdf-loading');
+    if (loadingEl) loadingEl.style.display = 'none';
     mc.style.maxWidth = '900px';
     mc.style.height = '';
 }
