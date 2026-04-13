@@ -3458,50 +3458,49 @@ async function viewOrder(id) {
 
 async function viewContractPdf(orderId) {
     const panel = document.getElementById('order-pdf-panel');
-    const iframe = document.getElementById('order-pdf-iframe');
+    const container = document.getElementById('order-pdf-canvas-container');
     const mc = document.querySelector('#order-detail-modal .modal-content');
-    // Expand modal and show panel immediately with loading state
     panel.style.display = 'flex';
     mc.style.maxWidth = '1500px';
     mc.style.height = '88vh';
-    iframe.src = '';
-    iframe.style.display = 'none';
-    let loadingEl = panel.querySelector('.pdf-loading');
-    if (!loadingEl) {
-        loadingEl = document.createElement('div');
-        loadingEl.className = 'pdf-loading';
-        loadingEl.style.cssText = 'flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:14px;';
-        loadingEl.textContent = 'Loading PDF...';
-        panel.appendChild(loadingEl);
-    }
-    loadingEl.style.display = 'flex';
+    container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#ccc;font-size:14px;">Loading PDF...</div>';
     try {
         const realm = CONFIG.getRealmHostname();
         const token = await getTempToken(CONFIG.tables.orders);
         const url = `https://api.quickbase.com/v1/files/${CONFIG.tables.orders}/${orderId}/${CONFIG.fields.orders.orderPDF}/0`;
         const resp = await fetch(url, { headers: { 'QB-Realm-Hostname': realm, 'Authorization': `QB-TEMP-TOKEN ${token}` } });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const blob = new Blob([await resp.arrayBuffer()], { type: 'application/pdf' });
-        const blobUrl = URL.createObjectURL(blob);
-        iframe.src = blobUrl;
-        iframe.style.display = 'block';
-        loadingEl.style.display = 'none';
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 300000);
+        const arrayBuffer = await resp.arrayBuffer();
+        const pdfjsLib = window.pdfjsLib;
+        if (!pdfjsLib) throw new Error('PDF renderer not loaded');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        container.innerHTML = '';
+        const panelWidth = container.clientWidth - 24;
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+            const page = await pdf.getPage(pageNum);
+            const unscaled = page.getViewport({ scale: 1 });
+            const scale = Math.max(1, panelWidth / unscaled.width);
+            const viewport = page.getViewport({ scale });
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            canvas.style.cssText = 'display:block;width:100%;margin-bottom:8px;box-shadow:0 2px 8px rgba(0,0,0,0.4);';
+            container.appendChild(canvas);
+            await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+        }
     } catch (e) {
-        loadingEl.textContent = 'Failed to load PDF: ' + e.message;
+        container.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#f88;font-size:14px;">Failed to load PDF: ${e.message}</div>`;
     }
 }
 
 function closeContractPdf() {
     const panel = document.getElementById('order-pdf-panel');
-    const iframe = document.getElementById('order-pdf-iframe');
+    const container = document.getElementById('order-pdf-canvas-container');
     const mc = document.querySelector('#order-detail-modal .modal-content');
     if (!panel) return;
     panel.style.display = 'none';
-    iframe.src = '';
-    iframe.style.display = 'block';
-    const loadingEl = panel.querySelector('.pdf-loading');
-    if (loadingEl) loadingEl.style.display = 'none';
+    if (container) container.innerHTML = '';
     mc.style.maxWidth = '900px';
     mc.style.height = '';
 }

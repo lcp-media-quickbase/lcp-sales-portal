@@ -1,5 +1,5 @@
 {
-  "version": "2.1.30",
+  "version": "2.1.31",
   "updated": "2026-04-13",
-  "notes": "Fix PDF viewer: use embed tag + force application/pdf blob type for inline rendering"
+  "notes": "PDF viewer: use PDF.js canvas renderer to bypass browser plugin restrictions in nested iframes"
 }

@@ -704,7 +704,7 @@
                         <span style="font-weight: 600; font-size: 13px;">Contract PDF</span>
                         <button class="btn btn-ghost btn-sm" onclick="closeContractPdf()">&#x2715; Close</button>
                     </div>
-                    <embed id="order-pdf-iframe" src="" type="application/pdf" style="flex: 1; border: none; width: 100%; min-height: 0; display: block;">
+                    <div id="order-pdf-canvas-container" style="flex: 1; overflow-y: auto; padding: 12px; background: #525659; min-height: 0;"></div>
                 </div>
             </div>
         </div>
@@ -857,6 +857,7 @@
         </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="shared.js"></script>
     <script src="app.js"></script>
     <script>buildDashboard();</script>
