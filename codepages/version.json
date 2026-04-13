@@ -1,5 +1,5 @@
 {
-  "version": "2.1.24",
+  "version": "2.1.25",
   "updated": "2026-04-13",
-  "notes": "Client dropdowns (orders + quotes): filter out clients with no yCRM ID"
+  "notes": "Order contracts: View PDF, Download PDF, Download Word buttons in history table and detail view"
 }
