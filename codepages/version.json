@@ -1,5 +1,5 @@
 {
-  "version": "2.1.25",
+  "version": "2.1.26",
   "updated": "2026-04-13",
-  "notes": "Order contracts: View PDF, Download PDF, Download Word buttons in history table and detail view"
+  "notes": "Fix View PDF: use QB iframe.html dbpage URL instead of fetch/blob approach"
 }
