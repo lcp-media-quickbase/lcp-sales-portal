@@ -1,5 +1,5 @@
 {
-  "version": "2.1.38",
+  "version": "2.1.39",
   "updated": "2026-04-13",
-  "notes": "Performance: targeted DOM updates for line-item handlers, debounced search filters, single-pass client filter, GPU hint for spinner"
+  "notes": "Fix version mismatch: sync CONFIG.version in shared.js with version.json to stop false refresh banner"
 }
