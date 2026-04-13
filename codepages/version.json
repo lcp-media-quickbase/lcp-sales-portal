@@ -1,5 +1,5 @@
 {
-  "version": "2.1.52",
+  "version": "2.1.53",
   "updated": "2026-04-13",
-  "notes": "Remove Download Word button from order detail modal"
+  "notes": "Disable Enter key form submission on order form"
 }

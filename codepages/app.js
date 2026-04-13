@@ -43,7 +43,9 @@ async function prefillCurrentUserEmail() {
 }
 
 function setupFormHandlers() {
-    document.getElementById('order-form').addEventListener('submit', async e => { e.preventDefault(); await saveOrder(); });
+    const orderForm = document.getElementById('order-form');
+    orderForm.addEventListener('submit', async e => { e.preventDefault(); await saveOrder(); });
+    orderForm.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') e.preventDefault(); });
     document.getElementById('quote-form').addEventListener('submit', async e => { e.preventDefault(); await saveQuote(); });
 }
 
