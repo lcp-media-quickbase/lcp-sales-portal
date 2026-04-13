@@ -1,5 +1,5 @@
 {
-  "version": "2.1.47",
+  "version": "2.1.48",
   "updated": "2026-04-13",
-  "notes": "Add edit button back to Pending Orders dashboard rows"
+  "notes": "Fix admin dashboard Pending Orders missing editable flag"
 }

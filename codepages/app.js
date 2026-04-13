@@ -2253,7 +2253,7 @@ async function renderAdminDashboard(user) {
         document.getElementById('da-q-approved').textContent = quotes.filter(function(q){ return q[qf.quoteStatus]?.value === 'Approved'; }).length;
 
         var productTypesMap = await _fetchDashProductTypes([...pendingOrders.slice(0,5), ...contractOrders.slice(0,5)], f);
-        document.getElementById('da-pending-orders').innerHTML = pendingOrders.slice(0,5).map(function(o){ return _dashOrderRow(o,f,false,productTypesMap[o[f.recordId].value]); }).join('') || _dashEmptyRow('No pending orders');
+        document.getElementById('da-pending-orders').innerHTML = pendingOrders.slice(0,5).map(function(o){ return _dashOrderRow(o,f,true,productTypesMap[o[f.recordId].value]); }).join('') || _dashEmptyRow('No pending orders');
         document.getElementById('da-contract-orders').innerHTML = contractOrders.slice(0,5).map(function(o){ return _dashOrderRow(o,f,false,productTypesMap[o[f.recordId].value]); }).join('') || _dashEmptyRow('No contract orders yet');
         document.getElementById('da-recent-quotes').innerHTML = quotes.slice(0,5).map(function(q){ return _dashQuoteRow(q,qf); }).join('') || _dashEmptyRow('No quotes yet');
 
