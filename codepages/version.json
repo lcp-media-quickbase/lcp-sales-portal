@@ -1,5 +1,5 @@
 {
-  "version": "2.1.33",
+  "version": "2.1.34",
   "updated": "2026-04-13",
-  "notes": "PDF viewer: pass correct QB file version number to files API instead of hardcoded 0"
+  "notes": "PDF viewer: load pdf.worker.min.js as regular script; omit workerSrc so PDF.js uses fake in-thread worker, bypassing worker-src: none CSP"
 }

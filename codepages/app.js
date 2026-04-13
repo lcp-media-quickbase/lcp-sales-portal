@@ -3457,14 +3457,21 @@ async function viewOrder(id) {
 }
 
 function loadPdfJs() {
-    if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
-    return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-        script.onload = () => resolve(window.pdfjsLib);
-        script.onerror = () => reject(new Error('Failed to load PDF.js'));
-        document.head.appendChild(script);
+    if (window._pdfjsLoaded) return Promise.resolve(window.pdfjsLib);
+    const injectScript = (src) => new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = () => reject(new Error('Failed to load ' + src.split('/').pop()));
+        document.head.appendChild(s);
     });
+    // Load both scripts as regular <script> tags (not as Web Workers).
+    // QuickBase CSP has worker-src: none, which blocks any Worker creation.
+    // PDF.js detects window.pdfjsWorker.WorkerMessageHandler and automatically
+    // falls back to a fake in-thread worker when no workerSrc is set.
+    return injectScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js')
+        .then(() => injectScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'))
+        .then(() => { window._pdfjsLoaded = true; return window.pdfjsLib; });
 }
 
 async function viewContractPdf(orderId, versionNumber) {
@@ -3483,7 +3490,7 @@ async function viewContractPdf(orderId, versionNumber) {
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const arrayBuffer = await resp.arrayBuffer();
         const pdfjsLib = await loadPdfJs();
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        // Do NOT set workerSrc — PDF.js finds window.pdfjsWorker and uses fake in-thread worker
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         container.innerHTML = '';
         const panelWidth = container.clientWidth - 24;
