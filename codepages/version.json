@@ -1,5 +1,5 @@
 {
-  "version": "2.1.23",
-  "updated": "2026-04-10",
-  "notes": "Company Info tab: sortable table from QB table btnjgrsk8 with search, yCRM ID, TourBuilder ID, property count, opportunity values"
+  "version": "2.1.24",
+  "updated": "2026-04-13",
+  "notes": "Client dropdowns (orders + quotes): filter out clients with no yCRM ID"
 }

@@ -87,15 +87,16 @@ function renderClientList(searchTerm) {
     if (!AppState.clients.length) { c.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted)">No clients found</div>'; return; }
     
     var term = (searchTerm || '').toLowerCase().trim();
-    var filtered = term 
-        ? AppState.clients.filter(cl => (cl.name || '').toLowerCase().includes(term) || (cl.ycrmId || '').toLowerCase().includes(term))
-        : AppState.clients;
-    
+    var withId = AppState.clients.filter(cl => cl.ycrmId);
+    var filtered = term
+        ? withId.filter(cl => (cl.name || '').toLowerCase().includes(term) || (cl.ycrmId || '').toLowerCase().includes(term))
+        : withId;
+
     if (!filtered.length) {
         c.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted)">No matching clients</div>';
         return;
     }
-    
+
     var limited = filtered.slice(0, CLIENT_DISPLAY_LIMIT);
     var html = limited.map(cl => `<div class="client-item ${AppState.selectedClient?.id===cl.id?'selected':''}" onclick="selectClient(${cl.id})"><div class="client-item-name">${cl.name || 'No name'}</div><div class="client-item-id">${cl.ycrmId || 'No ID'}</div></div>`).join('');
     
@@ -148,15 +149,16 @@ function renderQuoteClientList(searchTerm) {
     if (!AppState.clients.length) { c.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted)">No clients found</div>'; return; }
     
     var term = (searchTerm || '').toLowerCase().trim();
-    var filtered = term 
-        ? AppState.clients.filter(cl => (cl.name || '').toLowerCase().includes(term) || (cl.ycrmId || '').toLowerCase().includes(term))
-        : AppState.clients;
-    
+    var withId = AppState.clients.filter(cl => cl.ycrmId);
+    var filtered = term
+        ? withId.filter(cl => (cl.name || '').toLowerCase().includes(term) || (cl.ycrmId || '').toLowerCase().includes(term))
+        : withId;
+
     if (!filtered.length) {
         c.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted)">No matching clients</div>';
         return;
     }
-    
+
     var limited = filtered.slice(0, CLIENT_DISPLAY_LIMIT);
     var html = limited.map(cl => `<div class="client-item ${AppState.selectedQuoteClient?.id===cl.id?'selected':''}" onclick="selectQuoteClient(${cl.id})"><div class="client-item-name">${cl.name || 'No name'}</div><div class="client-item-id">${cl.ycrmId || 'No ID'}</div></div>`).join('');
     
