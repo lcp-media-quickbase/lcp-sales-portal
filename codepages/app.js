@@ -2116,7 +2116,7 @@ async function renderSalesDashboard(user) {
                 <div id="ds-pending-orders"><div class="loading-spinner"><div class="spinner"></div><p>Loading...</p></div></div>
             </div>
             <div class="dash-panel">
-                <div class="dash-panel-header"><span class="dash-panel-title">Contract Created</span><a class="dash-view-all" onclick="switchTab('tab-order-history')">View all</a></div>
+                <div class="dash-panel-header"><span class="dash-panel-title">Submitted Orders</span><a class="dash-view-all" onclick="switchTab('tab-order-history')">View all</a></div>
                 <div id="ds-contract-orders"><div class="loading-spinner"><div class="spinner"></div><p>Loading...</p></div></div>
             </div>
         </div>
@@ -2193,7 +2193,7 @@ async function renderAdminDashboard(user) {
                 <div id="da-pending-orders"><div class="loading-spinner"><div class="spinner"></div><p>Loading...</p></div></div>
             </div>
             <div class="dash-panel">
-                <div class="dash-panel-header"><span class="dash-panel-title">Contract Created</span><a class="dash-view-all" onclick="switchTab('tab-order-history')">View all</a></div>
+                <div class="dash-panel-header"><span class="dash-panel-title">Submitted Orders</span><a class="dash-view-all" onclick="switchTab('tab-order-history')">View all</a></div>
                 <div id="da-contract-orders"><div class="loading-spinner"><div class="spinner"></div><p>Loading...</p></div></div>
             </div>
         </div>

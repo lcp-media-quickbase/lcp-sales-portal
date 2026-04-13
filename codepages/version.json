@@ -1,5 +1,5 @@
 {
-  "version": "2.1.40",
+  "version": "2.1.41",
   "updated": "2026-04-13",
-  "notes": "Eyeball icon on order view buttons; commas on order detail dollar fields; concession % and $ columns in order detail"
+  "notes": "Rename dashboard panel 'Contract Created' to 'Submitted Orders'"
 }
