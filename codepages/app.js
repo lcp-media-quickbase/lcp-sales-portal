@@ -2076,7 +2076,7 @@ function _dashOrderRow(o, f, editable, productTypes) {
         <div class="dash-mini-left" style="cursor:pointer;" onclick="viewOrder(${o[f.recordId].value})">
             <div class="dash-mini-company">${escapeHtml(o[f.companyName]?.value || '—')}</div>
             <div class="dash-mini-meta">${formatDate(o[f.quoteDate]?.value) || '—'} &middot; ${propCount} ${propCount === 1 ? 'property' : 'properties'}</div>
-            ${productTypes && productTypes.length ? `<div class="dash-mini-products">${productTypes.map(escapeHtml).join(' &middot; ')}</div>` : ''}
+            ${productTypes && productTypes.length ? `<div class="dash-mini-products">${productTypes.map(function(t){ return `<span class="badge-type ${escapeHtml(t.toLowerCase().replace(/\s+/g,'-'))}">${escapeHtml(t)}</span>`; }).join('')}</div>` : ''}
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
             ${total != null ? `<span style="font-size:13px;font-weight:600;color:var(--text-primary);white-space:nowrap;">${formatCurrency(total)}</span>` : ''}
