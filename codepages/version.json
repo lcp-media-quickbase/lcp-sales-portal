@@ -1,5 +1,5 @@
 {
-  "version": "2.1.46",
+  "version": "2.1.47",
   "updated": "2026-04-13",
-  "notes": "Pending Orders dashboard rows open in edit mode on click"
+  "notes": "Add edit button back to Pending Orders dashboard rows"
 }

@@ -2082,6 +2082,7 @@ function _dashOrderRow(o, f, editable, productTypes) {
         <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
             ${total != null ? `<span style="font-size:13px;font-weight:600;color:var(--text-primary);white-space:nowrap;">${formatCurrency(total)}</span>` : ''}
             <span class="badge badge-${getStatusClass(status)}">${escapeHtml(status)}</span>
+            ${editable ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();loadOrderForEdit(${id})" title="Edit Order"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}
         </div>
     </div>`;
 }
