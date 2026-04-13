@@ -1,5 +1,5 @@
 {
-  "version": "2.1.27",
+  "version": "2.1.28",
   "updated": "2026-04-13",
-  "notes": "Fix View PDF: use QB direct file URL (/up/{table}/a/r{id}/e{fid}/v0)"
+  "notes": "View PDF opens inline iframe panel in order detail modal instead of new tab"
 }

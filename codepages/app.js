@@ -2857,7 +2857,7 @@ function renderOrderHistoryTable() {
             <td>${o[f.salesRepEmail]?.value||'-'}</td>
             <td class="actions">
                 ${!['Concessions Approved','Contract Needed','Completed','Cancelled'].includes(status) ? `<button class="btn btn-ghost btn-sm" onclick="loadOrderForEdit(${oid})" title="Edit Order"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}
-                ${pdfVer !== undefined ? `<button class="btn btn-ghost btn-sm" onclick="viewContractPdf(${oid})" title="View Contract PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>` : ''}
+                ${pdfVer !== undefined ? `<button class="btn btn-ghost btn-sm" onclick="viewOrderAndPdf(${oid})" title="View Contract PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>` : ''}
                 ${pdfVer !== undefined ? `<button class="btn btn-ghost btn-sm" onclick="downloadContractFile(${oid}, ${f.orderPDF}, ${pdfVer}, '${pdfName}')" title="Download PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg></button>` : ''}
                 ${docxVer !== undefined ? `<button class="btn btn-ghost btn-sm" onclick="downloadContractFile(${oid}, ${f.orderDOCX}, ${docxVer}, '${docxName}')" title="Download Word"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/><line x1="9" y1="12" x2="12" y2="12"/></svg></button>` : ''}
                 <button class="btn btn-ghost btn-sm" onclick="viewOrder(${oid})" title="View Order"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg></button>
@@ -3224,8 +3224,9 @@ function resetQuoteForm() {
     prefillCurrentUserEmail();
 }
 
-async function viewOrder(id) { 
+async function viewOrder(id) {
     openModal('order-detail-modal');
+    closeContractPdf();
     const content = document.getElementById('order-detail-content');
     content.innerHTML = '<div class="loading-spinner"></div>';
     
@@ -3458,7 +3459,29 @@ async function viewOrder(id) {
 function viewContractPdf(orderId) {
     const realm = window.location.protocol + '//' + CONFIG.getRealmHostname() + '/';
     const url = `${realm}up/${CONFIG.tables.orders}/a/r${orderId}/e${CONFIG.fields.orders.orderPDF}/v0`;
-    window.open(url, '_blank');
+    const panel = document.getElementById('order-pdf-panel');
+    const iframe = document.getElementById('order-pdf-iframe');
+    const mc = document.querySelector('#order-detail-modal .modal-content');
+    iframe.src = url;
+    panel.style.display = 'flex';
+    mc.style.maxWidth = '1500px';
+    mc.style.height = '88vh';
+}
+
+function closeContractPdf() {
+    const panel = document.getElementById('order-pdf-panel');
+    const iframe = document.getElementById('order-pdf-iframe');
+    const mc = document.querySelector('#order-detail-modal .modal-content');
+    if (!panel) return;
+    panel.style.display = 'none';
+    iframe.src = '';
+    mc.style.maxWidth = '900px';
+    mc.style.height = '';
+}
+
+async function viewOrderAndPdf(id) {
+    await viewOrder(id);
+    viewContractPdf(id);
 }
 
 async function downloadContractFile(orderId, fieldId, versionNumber, fileName) {
