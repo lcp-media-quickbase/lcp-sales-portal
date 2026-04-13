@@ -1,5 +1,5 @@
 {
-  "version": "2.1.49",
+  "version": "2.1.50",
   "updated": "2026-04-13",
-  "notes": "Add View PDF, Download PDF, Download Word buttons to order detail modal"
+  "notes": "Rename contract buttons to Addendum in order detail modal"
 }
