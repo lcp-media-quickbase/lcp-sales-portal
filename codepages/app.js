@@ -1317,6 +1317,7 @@ async function saveOrder() {
         showSuccess('Order created successfully!');
         resetOrderForm();
         switchTab('tab-dashboard');
+        loadDashboard(true);
 
     } catch (e) {
         console.error('Save order failed:', e);

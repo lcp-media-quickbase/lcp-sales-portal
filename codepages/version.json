@@ -1,5 +1,5 @@
 {
-  "version": "2.1.42",
+  "version": "2.1.43",
   "updated": "2026-04-13",
-  "notes": "Add order total dollar column to all orders history table"
+  "notes": "Refresh dashboard panels automatically after order submission"
 }
