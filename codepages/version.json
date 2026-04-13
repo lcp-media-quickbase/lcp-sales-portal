@@ -1,5 +1,5 @@
 {
-  "version": "2.1.50",
+  "version": "2.1.51",
   "updated": "2026-04-13",
-  "notes": "Rename contract buttons to Addendum in order detail modal"
+  "notes": "Rename Contract statuses to Addendum (Needed, Created, Signed)"
 }

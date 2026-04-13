@@ -1199,7 +1199,7 @@ async function saveOrder() {
         const hasConcessions = AppState.orderProperties.some(op =>
             op.lineItems.some(li => li.productId && li.concession)
         );
-        const orderStatus = hasConcessions ? 'Concessions Approval Needed' : 'Contract Needed';
+        const orderStatus = hasConcessions ? 'Concessions Approval Needed' : 'Addendum Needed';
 
         // Step 0: Create order record
         setSaveProgressStep(0, 'active');
@@ -1469,12 +1469,12 @@ async function generateAndUploadContracts(orderId, opportunityId, companyName) {
     }
     const safeFileName = encodeURIComponent(baseName.replace(/[\/\\:*?"<>|]/g, ''));
 
-    // Step 1: Set status → "Contract Needed"
+    // Step 1: Set status → "Addendum Needed"
     await updateRecord(tableId, {
         [f.recordId]: { value: orderId },
-        [f.orderStatus]: { value: 'Contract Needed' }
+        [f.orderStatus]: { value: 'Addendum Needed' }
     });
-    console.log('[Contracts] Status → Contract Needed for order', orderId);
+    console.log('[Contracts] Status → Addendum Needed for order', orderId);
 
     // Step 2 (progress): Generate PDF → upload to FID 12
     setSaveProgressStep(2, 'active');
@@ -1512,12 +1512,12 @@ async function generateAndUploadContracts(orderId, opportunityId, companyName) {
     console.log('[Contracts] DOCX uploaded to FID', f.orderDOCX);
     setSaveProgressStep(3, 'done');
 
-    // Set status → "Contract Created"
+    // Set status → "Addendum Created"
     await updateRecord(tableId, {
         [f.recordId]: { value: orderId },
-        [f.orderStatus]: { value: 'Contract Created' }
+        [f.orderStatus]: { value: 'Addendum Created' }
     });
-    console.log('[Contracts] Status → Contract Created for order', orderId);
+    console.log('[Contracts] Status → Addendum Created for order', orderId);
 
     // Step 4 (progress): Generate property worksheet → upload to FID 13
     setSaveProgressStep(4, 'active');
@@ -2123,7 +2123,7 @@ async function renderSalesDashboard(user) {
             New Order
         </button>`;
 
-    var contractStatuses = ['Contract Created','Awaiting Signature','Contract Signed','Concessions Approved','Contract Needed','Completed'];
+    var contractStatuses = ['Addendum Created','Awaiting Signature','Addendum Signed','Concessions Approved','Addendum Needed','Completed'];
 
     dashContent.innerHTML = `
         <div class="dash-kpi-row">
@@ -2241,7 +2241,7 @@ async function renderAdminDashboard(user) {
         var orders = ordersResult.data || [];
         var quotes = quotesResult.data || [];
         var concessions = concessionsResult.data || [];
-        var contractStatuses = ['Contract Created','Awaiting Signature','Contract Signed','Concessions Approved','Contract Needed','Completed'];
+        var contractStatuses = ['Addendum Created','Awaiting Signature','Addendum Signed','Concessions Approved','Addendum Needed','Completed'];
         var pendingOrders = orders.filter(function(o){ return !contractStatuses.includes(o[f.orderStatus]?.value) && o[f.orderStatus]?.value !== 'Cancelled'; });
         var contractOrders = orders.filter(function(o){ return contractStatuses.includes(o[f.orderStatus]?.value); });
 
@@ -2765,7 +2765,7 @@ function _renderReportsOverview(orders, quotes) {
     var completedRevenue = completedOrders.reduce(function(s, o) { return s + (o[f.orderTotal]?.value || 0); }, 0);
     var avgOrder = activeOrders.length ? totalRevenue / activeOrders.length : 0;
 
-    var contractStatuses = ['Contract Created','Awaiting Signature','Contract Signed','Concessions Approved','Contract Needed','Completed'];
+    var contractStatuses = ['Addendum Created','Awaiting Signature','Addendum Signed','Concessions Approved','Addendum Needed','Completed'];
     var pipeline = activeOrders.filter(function(o) { return !contractStatuses.includes(o[f.orderStatus]?.value); });
     var pipelineValue = pipeline.reduce(function(s, o) { return s + (o[f.orderTotal]?.value || 0); }, 0);
 
@@ -2901,7 +2901,7 @@ function renderOrderHistoryTable() {
             <td>${o[f.salesRepEmail]?.value||'-'}</td>
             <td style="text-align:right;font-weight:500;color:var(--lcp-blue)">${total != null && total > 0 ? formatCurrency(total) : '-'}</td>
             <td class="actions">
-                ${!['Concessions Approved','Contract Needed','Completed','Cancelled'].includes(status) ? `<button class="btn btn-ghost btn-sm" onclick="loadOrderForEdit(${oid})" title="Edit Order"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}
+                ${!['Concessions Approved','Addendum Needed','Completed','Cancelled'].includes(status) ? `<button class="btn btn-ghost btn-sm" onclick="loadOrderForEdit(${oid})" title="Edit Order"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}
                 <button class="btn btn-ghost btn-sm" onclick="viewOrder(${oid})" title="View Order"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
             </td>
         </tr>`;
@@ -3229,8 +3229,8 @@ function getStatusClass(s) {
     if (!s) return 'draft';
     // Exact matches for workflow-specific statuses that need distinct colors
     if (s === 'Concessions Approval Needed') return 'concessions-needed'; // orange
-    if (s === 'Contract Created')            return 'info';               // blue
-    if (s === 'Contract Signed')             return 'signed';             // teal
+    if (s === 'Addendum Created')            return 'info';               // blue
+    if (s === 'Addendum Signed')             return 'signed';             // teal
     // Keyword fallbacks
     const l = s.toLowerCase();
     if (l.includes('pending')||l.includes('processing')||l.includes('review')||l.includes('sent')||l.includes('awaiting')||l.includes('needed')||l.includes('open')||l.includes('progress')||l.includes('hold')) return 'pending'; // amber
