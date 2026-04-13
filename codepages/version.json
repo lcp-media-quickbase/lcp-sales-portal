@@ -1,5 +1,5 @@
 {
-  "version": "2.1.35",
+  "version": "2.1.36",
   "updated": "2026-04-13",
-  "notes": "PDF viewer: add diagnostic — show actual QB response content if not valid PDF bytes"
+  "notes": "PDF/download: QB files API returns base64-encoded content; decode to binary before rendering or downloading"
 }
