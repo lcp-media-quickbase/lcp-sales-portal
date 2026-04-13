@@ -1,5 +1,5 @@
 {
-  "version": "2.1.51",
+  "version": "2.1.52",
   "updated": "2026-04-13",
-  "notes": "Rename Contract statuses to Addendum (Needed, Created, Signed)"
+  "notes": "Remove Download Word button from order detail modal"
 }
