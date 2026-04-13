@@ -3457,7 +3457,7 @@ async function viewOrder(id) {
 
 function viewContractPdf(orderId) {
     const realm = window.location.protocol + '//' + CONFIG.getRealmHostname() + '/';
-    const url = `${realm}db/${CONFIG.appId}?a=dbpage&pagename=iframe.html&rid=${orderId}&tabledbid=${CONFIG.tables.orders}&myurlroot=${encodeURIComponent(realm)}&fileattachmentfid=${CONFIG.fields.orders.orderPDF}`;
+    const url = `${realm}up/${CONFIG.tables.orders}/a/r${orderId}/e${CONFIG.fields.orders.orderPDF}/v0`;
     window.open(url, '_blank');
 }
 

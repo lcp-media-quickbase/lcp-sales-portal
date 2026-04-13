@@ -1,5 +1,5 @@
 {
-  "version": "2.1.26",
+  "version": "2.1.27",
   "updated": "2026-04-13",
-  "notes": "Fix View PDF: use QB iframe.html dbpage URL instead of fetch/blob approach"
+  "notes": "Fix View PDF: use QB direct file URL (/up/{table}/a/r{id}/e{fid}/v0)"
 }
