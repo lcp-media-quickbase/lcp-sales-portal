@@ -87,10 +87,7 @@ function renderClientList(searchTerm) {
     if (!AppState.clients.length) { c.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted)">No clients found</div>'; return; }
     
     var term = (searchTerm || '').toLowerCase().trim();
-    var withId = AppState.clients.filter(cl => cl.ycrmId);
-    var filtered = term
-        ? withId.filter(cl => (cl.name || '').toLowerCase().includes(term) || (cl.ycrmId || '').toLowerCase().includes(term))
-        : withId;
+    var filtered = AppState.clients.filter(cl => cl.ycrmId && (!term || (cl.name || '').toLowerCase().includes(term) || (cl.ycrmId || '').toLowerCase().includes(term)));
 
     if (!filtered.length) {
         c.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted)">No matching clients</div>';
@@ -149,10 +146,7 @@ function renderQuoteClientList(searchTerm) {
     if (!AppState.clients.length) { c.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted)">No clients found</div>'; return; }
     
     var term = (searchTerm || '').toLowerCase().trim();
-    var withId = AppState.clients.filter(cl => cl.ycrmId);
-    var filtered = term
-        ? withId.filter(cl => (cl.name || '').toLowerCase().includes(term) || (cl.ycrmId || '').toLowerCase().includes(term))
-        : withId;
+    var filtered = AppState.clients.filter(cl => cl.ycrmId && (!term || (cl.name || '').toLowerCase().includes(term) || (cl.ycrmId || '').toLowerCase().includes(term)));
 
     if (!filtered.length) {
         c.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted)">No matching clients</div>';
@@ -462,10 +456,14 @@ function updateLineItemQty(propertyId, lineItemId, qty) {
     var orderProp = AppState.orderProperties.find(op => op.propertyId === propertyId);
     if (!orderProp) return;
     var li = orderProp.lineItems.find(l => l.id === lineItemId);
-    if (li) {
-        li.quantity = parseInt(qty) || 1;
-        recalcLineItemTotal(li);
-        renderOrderProperties();
+    if (!li) return;
+    li.quantity = parseInt(qty) || 1;
+    recalcLineItemTotal(li);
+    var totalEl = document.getElementById('li-total-' + propertyId + '-' + lineItemId);
+    if (totalEl) totalEl.value = formatCurrency(li.total);
+    if (li.concession) {
+        var amtEl = document.getElementById('li-camt-' + propertyId + '-' + lineItemId);
+        if (amtEl) amtEl.value = (li.concessionAmount || 0).toFixed(2);
     }
 }
 
@@ -473,44 +471,62 @@ function toggleConcession(propertyId, lineItemId, checked) {
     var orderProp = AppState.orderProperties.find(op => op.propertyId === propertyId);
     if (!orderProp) return;
     var li = orderProp.lineItems.find(l => l.id === lineItemId);
-    if (li) {
-        li.concession = checked;
-        if (!checked) { li.concessionPercent = 0; li.concessionAmount = 0; }
-        recalcLineItemTotal(li);
-        renderOrderProperties();
+    if (!li) return;
+    li.concession = checked;
+    if (!checked) { li.concessionPercent = 0; li.concessionAmount = 0; }
+    recalcLineItemTotal(li);
+    var pctEl  = document.getElementById('li-cpct-'  + propertyId + '-' + lineItemId);
+    var amtEl  = document.getElementById('li-camt-'  + propertyId + '-' + lineItemId);
+    var totalEl = document.getElementById('li-total-' + propertyId + '-' + lineItemId);
+    if (pctEl) {
+        pctEl.disabled = !checked;
+        pctEl.style.opacity = checked ? '' : '0.5';
+        pctEl.style.cursor  = checked ? '' : 'not-allowed';
+        if (!checked) pctEl.value = '0';
     }
+    if (amtEl) {
+        amtEl.disabled = !checked;
+        amtEl.style.opacity = checked ? '' : '0.5';
+        amtEl.style.cursor  = checked ? '' : 'not-allowed';
+        if (!checked) amtEl.value = '0.00';
+    }
+    if (totalEl) totalEl.value = formatCurrency(li.total);
 }
 
 function updateConcessionPercent(propertyId, lineItemId, pct) {
     var orderProp = AppState.orderProperties.find(op => op.propertyId === propertyId);
     if (!orderProp) return;
     var li = orderProp.lineItems.find(l => l.id === lineItemId);
-    if (li) {
-        var pctNum = parseFloat(pct);
-        li.concessionPercent = Math.min(100, Math.max(0, isNaN(pctNum) ? 0 : pctNum));
-        li.concessionAmount = li.quantity * li.unitPrice * li.concessionPercent / 100;
-        recalcLineItemTotal(li);
-        renderOrderProperties();
-    }
+    if (!li) return;
+    var pctNum = parseFloat(pct);
+    li.concessionPercent = Math.min(100, Math.max(0, isNaN(pctNum) ? 0 : pctNum));
+    li.concessionAmount = li.quantity * li.unitPrice * li.concessionPercent / 100;
+    recalcLineItemTotal(li);
+    var amtEl  = document.getElementById('li-camt-'  + propertyId + '-' + lineItemId);
+    var totalEl = document.getElementById('li-total-' + propertyId + '-' + lineItemId);
+    if (amtEl)   amtEl.value   = (li.concessionAmount || 0).toFixed(2);
+    if (totalEl) totalEl.value = formatCurrency(li.total);
 }
 
 function updateConcessionAmount(propertyId, lineItemId, amount) {
     var orderProp = AppState.orderProperties.find(op => op.propertyId === propertyId);
     if (!orderProp) return;
     var li = orderProp.lineItems.find(l => l.id === lineItemId);
-    if (li) {
-        var baseTotal = li.quantity * li.unitPrice;
-        var amtNum = parseFloat(amount);
-        if (isNaN(amtNum) || baseTotal === 0) {
-            li.concessionAmount = 0;
-            li.concessionPercent = 0;
-        } else {
-            li.concessionAmount = Math.min(baseTotal, Math.max(0, amtNum));
-            li.concessionPercent = (li.concessionAmount / baseTotal) * 100;
-        }
-        recalcLineItemTotal(li);
-        renderOrderProperties();
+    if (!li) return;
+    var baseTotal = li.quantity * li.unitPrice;
+    var amtNum = parseFloat(amount);
+    if (isNaN(amtNum) || baseTotal === 0) {
+        li.concessionAmount = 0;
+        li.concessionPercent = 0;
+    } else {
+        li.concessionAmount = Math.min(baseTotal, Math.max(0, amtNum));
+        li.concessionPercent = (li.concessionAmount / baseTotal) * 100;
     }
+    recalcLineItemTotal(li);
+    var pctEl  = document.getElementById('li-cpct-'  + propertyId + '-' + lineItemId);
+    var totalEl = document.getElementById('li-total-' + propertyId + '-' + lineItemId);
+    if (pctEl)   pctEl.value   = li.concessionPercent.toFixed(2);
+    if (totalEl) totalEl.value = formatCurrency(li.total);
 }
 
 function recalcLineItemTotal(li) {
@@ -597,9 +613,9 @@ function renderOrderProperties() {
                 <div class="form-group"><input type="number" class="form-input" value="${li.quantity}" min="1" onchange="updateLineItemQty(${op.propertyId},${li.id},this.value)"></div>
                 <div class="form-group"><input type="text" class="form-input" value="${formatCurrency(li.unitPrice)}" readonly style="background:var(--bg-hover);cursor:not-allowed"></div>
                 <div class="form-group concession-check"><label class="concession-label"><input type="checkbox" ${li.concession?'checked':''} onchange="toggleConcession(${op.propertyId},${li.id},this.checked)"><span>Concession</span></label></div>
-                <div class="form-group concession-pct"><input type="number" class="form-input" value="${li.concessionPercent||0}" min="0" max="100" ${li.concession?'':'disabled'} onchange="updateConcessionPercent(${op.propertyId},${li.id},this.value)" style="${li.concession?'':'opacity:0.5;cursor:not-allowed'}"></div>
-                <div class="form-group concession-amt"><input type="number" class="form-input" value="${(li.concessionAmount||0).toFixed(2)}" min="0" step="0.01" ${li.concession?'':'disabled'} onchange="updateConcessionAmount(${op.propertyId},${li.id},this.value)" style="${li.concession?'':'opacity:0.5;cursor:not-allowed'}"></div>
-                <div class="form-group"><input type="text" class="form-input" value="${formatCurrency(li.total)}" readonly style="background:var(--bg-hover);cursor:not-allowed;font-weight:600;color:var(--lcp-blue)"></div>
+                <div class="form-group concession-pct"><input type="number" class="form-input" id="li-cpct-${op.propertyId}-${li.id}" value="${li.concessionPercent||0}" min="0" max="100" ${li.concession?'':'disabled'} onchange="updateConcessionPercent(${op.propertyId},${li.id},this.value)" style="${li.concession?'':'opacity:0.5;cursor:not-allowed'}"></div>
+                <div class="form-group concession-amt"><input type="number" class="form-input" id="li-camt-${op.propertyId}-${li.id}" value="${(li.concessionAmount||0).toFixed(2)}" min="0" step="0.01" ${li.concession?'':'disabled'} onchange="updateConcessionAmount(${op.propertyId},${li.id},this.value)" style="${li.concession?'':'opacity:0.5;cursor:not-allowed'}"></div>
+                <div class="form-group"><input type="text" class="form-input" id="li-total-${op.propertyId}-${li.id}" value="${formatCurrency(li.total)}" readonly style="background:var(--bg-hover);cursor:not-allowed;font-weight:600;color:var(--lcp-blue)"></div>
                 <button type="button" class="remove-btn" onclick="removeLineItemFromProperty(${op.propertyId},${li.id})"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
             </div>`).join('');
         } else {
@@ -722,17 +738,19 @@ function renderProductGrid() {
     c.innerHTML = AppState.products.map(p => `<tr class="product-row" onclick="selectProductRow(${p.id})" data-type="${p.assetType||''}" data-name="${p.name.toLowerCase()}" data-code="${(p.code||'').toString().toLowerCase()}" style="cursor:pointer;"><td>${p.code}</td><td>${p.name}</td><td style="color:var(--lcp-blue);font-weight:500;">${formatCurrency(p.price)}</td><td>${p.unit}</td><td>${p.assetType?`<span class="badge-type ${p.assetType.toLowerCase().replace(/\s+/g,'-')}">${p.assetType}</span>`:'-'}</td></tr>`).join('');
 }
 
+var _productFilterTimeout = null;
 function filterProducts() {
+    clearTimeout(_productFilterTimeout);
+    _productFilterTimeout = setTimeout(_applyProductFilter, 150);
+}
+function _applyProductFilter() {
     var search = document.getElementById('product-search-input').value.toLowerCase();
     var typeFilter = document.getElementById('product-type-filter');
     var type = typeFilter ? typeFilter.value : '';
-    document.querySelectorAll('.product-row').forEach(row => { 
-        var rowType = row.dataset.type || '';
-        var rowName = row.dataset.name || '';
-        var rowCode = row.dataset.code || '';
-        var matchType = !type || rowType === type;
-        var matchSearch = !search || rowName.includes(search) || rowCode.includes(search);
-        row.style.display = (matchType && matchSearch) ? '' : 'none'; 
+    document.querySelectorAll('.product-row').forEach(row => {
+        var matchType   = !type   || (row.dataset.type || '') === type;
+        var matchSearch = !search || (row.dataset.name || '').includes(search) || (row.dataset.code || '').includes(search);
+        row.style.display = (matchType && matchSearch) ? '' : 'none';
     });
 }
 
@@ -796,14 +814,17 @@ function renderPriceListTable() {
     c.innerHTML = `<div class="price-table-container"><table class="data-table price-table"><thead><tr><th>Code</th><th>Description</th><th>Price</th><th>Unit</th><th>Frequency</th><th>Type</th></tr></thead><tbody id="price-list-body">${AppState.priceList.map(p => `<tr data-type="${p.assetType||''}" data-name="${p.name.toLowerCase()}"><td>${p.code}</td><td>${p.name}</td><td class="price">${formatCurrency(p.price)}</td><td>${p.unit}</td><td>${p.frequency}</td><td>${p.assetType?`<span class="badge-type ${p.assetType.toLowerCase().replace(/\s+/g,'-')}">${p.assetType}</span>`:'-'}</td></tr>`).join('')}</tbody></table></div>`;
 }
 
+var _priceFilterTimeout = null;
 function filterPriceList() {
-    const type = document.getElementById('price-filter-type').value;
+    clearTimeout(_priceFilterTimeout);
+    _priceFilterTimeout = setTimeout(_applyPriceFilter, 150);
+}
+function _applyPriceFilter() {
+    const type   = document.getElementById('price-filter-type').value;
     const search = document.getElementById('price-filter-search').value.toLowerCase();
     document.querySelectorAll('#price-list-body tr').forEach(row => {
-        const rowType = row.dataset.type;
-        const rowName = row.dataset.name;
-        const matchType = !type || rowType === type;
-        const matchSearch = !search || rowName.includes(search);
+        const matchType   = !type   || row.dataset.type === type;
+        const matchSearch = !search || (row.dataset.name || '').includes(search);
         row.style.display = (matchType && matchSearch) ? '' : 'none';
     });
 }
@@ -3025,17 +3046,22 @@ function renderCancellationsTable(records) {
         </tr>`).join('')}</tbody></table>`;
 
     // Re-apply active filters without resetting them
-    filterCancellations();
+    _applyCancellationsFilter();
 }
 
+var _cancellationsFilterTimeout = null;
 function filterCancellations() {
-    const search = (document.getElementById('cancellations-search')?.value || '').toLowerCase();
-    const company = (document.getElementById('cancellations-filter-company')?.value || '').toLowerCase();
-    const state = document.getElementById('cancellations-filter-state')?.value || '';
+    clearTimeout(_cancellationsFilterTimeout);
+    _cancellationsFilterTimeout = setTimeout(_applyCancellationsFilter, 150);
+}
+function _applyCancellationsFilter() {
+    const search   = (document.getElementById('cancellations-search')?.value || '').toLowerCase();
+    const company  = (document.getElementById('cancellations-filter-company')?.value || '').toLowerCase();
+    const state    = document.getElementById('cancellations-filter-state')?.value || '';
     document.querySelectorAll('#cancellations-tbody tr').forEach(row => {
-        const matchSearch = !search || (row.dataset.search || '').includes(search);
+        const matchSearch  = !search  || (row.dataset.search  || '').includes(search);
         const matchCompany = !company || row.dataset.company === company;
-        const matchState = !state || row.dataset.state === state;
+        const matchState   = !state   || row.dataset.state   === state;
         row.style.display = (matchSearch && matchCompany && matchState) ? '' : 'none';
     });
 }
@@ -3141,7 +3167,7 @@ function renderTourBuilderTable(records) {
         <td>${row.tourUrl ? `<a href="${escapeHtml(row.tourUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">View Tour</a>` : '-'}</td>
     </tr>`).join('')}</tbody></table>`;
 
-    filterTourBuilderData();
+    _applyTourBuilderFilter();
 }
 
 function sortTourBuilderData(col) {
@@ -3154,14 +3180,19 @@ function sortTourBuilderData(col) {
     renderTourBuilderTable(AppState.tourbuilder);
 }
 
+var _tourbuilderFilterTimeout = null;
 function filterTourBuilderData() {
+    clearTimeout(_tourbuilderFilterTimeout);
+    _tourbuilderFilterTimeout = setTimeout(_applyTourBuilderFilter, 150);
+}
+function _applyTourBuilderFilter() {
     const search = (document.getElementById('tourbuilder-search')?.value || '').toLowerCase();
     const client = (document.getElementById('tourbuilder-filter-company')?.value || '').toLowerCase();
-    const state = document.getElementById('tourbuilder-filter-state')?.value || '';
+    const state  = document.getElementById('tourbuilder-filter-state')?.value || '';
     document.querySelectorAll('#tourbuilder-tbody tr').forEach(row => {
         const matchSearch = !search || (row.dataset.search || '').includes(search);
         const matchClient = !client || row.dataset.client === client;
-        const matchState = !state || row.dataset.state === state;
+        const matchState  = !state  || row.dataset.state  === state;
         row.style.display = (matchSearch && matchClient && matchState) ? '' : 'none';
     });
 }
@@ -4022,7 +4053,7 @@ function renderTicketsTable(records) {
             </td>
         </tr>`).join('') + '</tbody></table>';
 
-    filterTickets();
+    _applyTicketsFilter();
 }
 
 function sortTickets(col) {
@@ -4035,13 +4066,18 @@ function sortTickets(col) {
     renderTicketsTable(AppState.tickets);
 }
 
+var _ticketsFilterTimeout = null;
 function filterTickets() {
+    clearTimeout(_ticketsFilterTimeout);
+    _ticketsFilterTimeout = setTimeout(_applyTicketsFilter, 150);
+}
+function _applyTicketsFilter() {
     const search = (document.getElementById('tickets-search')?.value || '').toLowerCase();
     const type   = (document.getElementById('tickets-filter-type')?.value || '').toLowerCase();
     const status = (document.getElementById('tickets-filter-status')?.value || '').toLowerCase();
     document.querySelectorAll('#tickets-tbody tr').forEach(row => {
         const matchSearch = !search || (row.dataset.search || '').includes(search);
-        const matchType   = !type   || row.dataset.type === type;
+        const matchType   = !type   || row.dataset.type   === type;
         const matchStatus = !status || row.dataset.status === status;
         row.style.display = (matchSearch && matchType && matchStatus) ? '' : 'none';
     });

@@ -1,5 +1,5 @@
 {
-  "version": "2.1.37",
+  "version": "2.1.38",
   "updated": "2026-04-13",
-  "notes": "Remove View PDF / Download PDF / Download Word buttons from orders list and detail modal"
+  "notes": "Performance: targeted DOM updates for line-item handlers, debounced search filters, single-pass client filter, GPU hint for spinner"
 }
