@@ -2072,8 +2072,9 @@ function _dashOrderRow(o, f, editable, productTypes) {
     var status = o[f.orderStatus]?.value || 'Draft';
     var total = o[f.orderTotal]?.value;
     var propCount = o[f.propertyCount]?.value || 0;
+    var id = o[f.recordId].value;
     return `<div class="dash-mini-row">
-        <div class="dash-mini-left" style="cursor:pointer;" onclick="viewOrder(${o[f.recordId].value})">
+        <div class="dash-mini-left" style="cursor:pointer;" onclick="${editable ? `loadOrderForEdit(${id})` : `viewOrder(${id})`}">
             <div class="dash-mini-company">${escapeHtml(o[f.companyName]?.value || '—')}</div>
             <div class="dash-mini-meta">${formatDate(o[f.quoteDate]?.value) || '—'} &middot; ${propCount} ${propCount === 1 ? 'property' : 'properties'}</div>
             ${productTypes && productTypes.length ? `<div class="dash-mini-products">${productTypes.map(function(t){ return `<span class="badge-type ${escapeHtml(t.toLowerCase().replace(/\s+/g,'-'))}">${escapeHtml(t)}</span>`; }).join('')}</div>` : ''}
@@ -2081,7 +2082,6 @@ function _dashOrderRow(o, f, editable, productTypes) {
         <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
             ${total != null ? `<span style="font-size:13px;font-weight:600;color:var(--text-primary);white-space:nowrap;">${formatCurrency(total)}</span>` : ''}
             <span class="badge badge-${getStatusClass(status)}">${escapeHtml(status)}</span>
-            ${editable ? `<button class="btn btn-ghost btn-sm" onclick="loadOrderForEdit(${o[f.recordId].value})" title="Edit Order"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}
         </div>
     </div>`;
 }

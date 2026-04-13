@@ -1,5 +1,5 @@
 {
-  "version": "2.1.45",
+  "version": "2.1.46",
   "updated": "2026-04-13",
-  "notes": "Dashboard product type badges match charge codes table colors"
+  "notes": "Pending Orders dashboard rows open in edit mode on click"
 }
