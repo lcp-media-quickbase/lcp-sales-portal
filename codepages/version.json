@@ -1,5 +1,5 @@
 {
-  "version": "2.1.41",
+  "version": "2.1.42",
   "updated": "2026-04-13",
-  "notes": "Rename dashboard panel 'Contract Created' to 'Submitted Orders'"
+  "notes": "Add order total dollar column to all orders history table"
 }

@@ -2864,14 +2864,16 @@ function renderOrderHistoryTable() {
     document.getElementById('stat-total-orders').textContent = AppState.orders.length;
     document.getElementById('stat-pending-orders').textContent = AppState.orders.filter(o => ['Pending','Processing'].includes(o[f.orderStatus]?.value)).length;
     document.getElementById('stat-completed-orders').textContent = AppState.orders.filter(o => o[f.orderStatus]?.value === 'Completed').length;
-    c.innerHTML = `<table class="data-table"><thead><tr><th>Company</th><th>Status</th><th>Date</th><th>Sales Rep</th><th>Actions</th></tr></thead><tbody>${AppState.orders.map(o => {
+    c.innerHTML = `<table class="data-table"><thead><tr><th>Company</th><th>Status</th><th>Date</th><th>Sales Rep</th><th style="text-align:right">Total</th><th>Actions</th></tr></thead><tbody>${AppState.orders.map(o => {
         const status = o[f.orderStatus]?.value || 'Draft';
         const oid = o[f.recordId].value;
+        const total = o[f.orderTotal]?.value;
         return `<tr>
             <td>${o[f.companyName]?.value||'-'}</td>
             <td><span class="badge badge-${getStatusClass(status)}">${status}</span></td>
             <td>${formatDate(o[f.quoteDate]?.value)}</td>
             <td>${o[f.salesRepEmail]?.value||'-'}</td>
+            <td style="text-align:right;font-weight:500;color:var(--lcp-blue)">${total != null && total > 0 ? formatCurrency(total) : '-'}</td>
             <td class="actions">
                 ${!['Concessions Approved','Contract Needed','Completed','Cancelled'].includes(status) ? `<button class="btn btn-ghost btn-sm" onclick="loadOrderForEdit(${oid})" title="Edit Order"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}
                 <button class="btn btn-ghost btn-sm" onclick="viewOrder(${oid})" title="View Order"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
@@ -2886,7 +2888,7 @@ async function loadOrderHistory(force) {
     showLoading(c);
     try {
         const f = CONFIG.fields.orders;
-        const r = await queryRecords(CONFIG.tables.orders, [f.recordId, f.orderStatus, f.quoteDate, f.salesRepEmail, f.companyName, f.orderPDF, f.orderDOCX], null, [{ fieldId: f.dateModified, order: 'DESC' }]);
+        const r = await queryRecords(CONFIG.tables.orders, [f.recordId, f.orderStatus, f.quoteDate, f.salesRepEmail, f.companyName, f.orderTotal, f.orderPDF, f.orderDOCX], null, [{ fieldId: f.dateModified, order: 'DESC' }]);
         AppState.orders = r.data;
         renderOrderHistoryTable();
     } catch (e) { showError(c, 'Failed to load orders'); }
