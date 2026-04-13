@@ -2874,7 +2874,7 @@ function renderOrderHistoryTable() {
             <td>${o[f.salesRepEmail]?.value||'-'}</td>
             <td class="actions">
                 ${!['Concessions Approved','Contract Needed','Completed','Cancelled'].includes(status) ? `<button class="btn btn-ghost btn-sm" onclick="loadOrderForEdit(${oid})" title="Edit Order"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}
-                <button class="btn btn-ghost btn-sm" onclick="viewOrder(${oid})" title="View Order"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg></button>
+                <button class="btn btn-ghost btn-sm" onclick="viewOrder(${oid})" title="View Order"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
             </td>
         </tr>`;
     }).join('')}</tbody></table>`;
@@ -3285,7 +3285,7 @@ async function viewOrder(id) {
         
         // Fetch line items for this order
         const lineItemsResult = await queryRecords(CONFIG.tables.orderLineItems,
-            [lf.recordId, lf.relatedProperty, lf.relatedCode, lf.description, lf.quantity, lf.total, lf.concession, lf.concessionPercent, lf.codeRetailPrice, lf.quotePrice],
+            [lf.recordId, lf.relatedProperty, lf.relatedCode, lf.description, lf.quantity, lf.total, lf.concession, lf.concessionPercent, lf.concessionAmount, lf.codeRetailPrice, lf.quotePrice],
             `{${lf.relatedOrder}.EX.${id}}`
         );
         
@@ -3403,9 +3403,10 @@ async function viewOrder(id) {
                                     <tr>
                                         <th style="width: 90px;">Code</th>
                                         <th>Product</th>
-                                        <th style="width: 80px;">Qty</th>
+                                        <th style="width: 60px;">Qty</th>
                                         <th style="width: 100px;">Unit Price</th>
-                                        <th style="width: 100px;">Concession</th>
+                                        <th style="width: 70px;">Con %</th>
+                                        <th style="width: 100px;">Con $</th>
                                         <th style="width: 100px;">Total</th>
                                     </tr>
                                 </thead>
@@ -3419,14 +3420,16 @@ async function viewOrder(id) {
                                         const unitPrice = quotePrice != null && quotePrice !== '' && quotePrice > 0 ? quotePrice : retailPrice;
                                         const concession = li[lf.concession]?.value;
                                         const concessionPct = li[lf.concessionPercent]?.value || 0;
+                                        const concessionAmt = li[lf.concessionAmount]?.value || 0;
                                         const total = li[lf.total]?.value || 0;
                                         return `<tr>
                                             <td>${code}</td>
                                             <td>${desc}</td>
                                             <td>${qty}</td>
-                                            <td>$${Number(unitPrice).toFixed(2)}</td>
+                                            <td>${formatCurrency(unitPrice)}</td>
                                             <td>${concession ? concessionPct + '%' : '-'}</td>
-                                            <td>$${Number(total).toFixed(2)}</td>
+                                            <td>${concession ? formatCurrency(concessionAmt) : '-'}</td>
+                                            <td>${formatCurrency(total)}</td>
                                         </tr>`;
                                     }).join('')}
                                 </tbody>
@@ -3443,7 +3446,7 @@ async function viewOrder(id) {
         html += `
             <div class="order-detail-footer">
                 <div class="order-total">
-                    <strong>Order Total:</strong> $${orderTotal.toFixed(2)}
+                    <strong>Order Total:</strong> ${formatCurrency(orderTotal)}
                 </div>
             </div>
         </div>`;

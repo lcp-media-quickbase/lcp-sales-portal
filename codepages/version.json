@@ -1,5 +1,5 @@
 {
-  "version": "2.1.39",
+  "version": "2.1.40",
   "updated": "2026-04-13",
-  "notes": "Fix version mismatch: sync CONFIG.version in shared.js with version.json to stop false refresh banner"
+  "notes": "Eyeball icon on order view buttons; commas on order detail dollar fields; concession % and $ columns in order detail"
 }
