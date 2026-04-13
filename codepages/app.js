@@ -2857,7 +2857,7 @@ function renderOrderHistoryTable() {
             <td>${o[f.salesRepEmail]?.value||'-'}</td>
             <td class="actions">
                 ${!['Concessions Approved','Contract Needed','Completed','Cancelled'].includes(status) ? `<button class="btn btn-ghost btn-sm" onclick="loadOrderForEdit(${oid})" title="Edit Order"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}
-                ${pdfVer !== undefined ? `<button class="btn btn-ghost btn-sm" onclick="viewOrderAndPdf(${oid})" title="View Contract PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>` : ''}
+                ${pdfVer !== undefined ? `<button class="btn btn-ghost btn-sm" onclick="viewOrderAndPdf(${oid},${pdfVer})" title="View Contract PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>` : ''}
                 ${pdfVer !== undefined ? `<button class="btn btn-ghost btn-sm" onclick="downloadContractFile(${oid}, ${f.orderPDF}, ${pdfVer}, '${pdfName}')" title="Download PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg></button>` : ''}
                 ${docxVer !== undefined ? `<button class="btn btn-ghost btn-sm" onclick="downloadContractFile(${oid}, ${f.orderDOCX}, ${docxVer}, '${docxName}')" title="Download Word"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/><line x1="9" y1="12" x2="12" y2="12"/></svg></button>` : ''}
                 <button class="btn btn-ghost btn-sm" onclick="viewOrder(${oid})" title="View Order"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg></button>
@@ -3331,7 +3331,7 @@ async function viewOrder(id) {
 
                 ${hasContracts ? `
                     <div style="display:flex;gap:8px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border);">
-                        <button class="btn btn-secondary btn-sm" onclick="viewContractPdf(${id})">
+                        <button class="btn btn-secondary btn-sm" onclick="viewContractPdf(${id},${pdfVer})">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                             View PDF
                         </button>
@@ -3467,7 +3467,7 @@ function loadPdfJs() {
     });
 }
 
-async function viewContractPdf(orderId) {
+async function viewContractPdf(orderId, versionNumber) {
     const panel = document.getElementById('order-pdf-panel');
     const container = document.getElementById('order-pdf-canvas-container');
     const mc = document.querySelector('#order-detail-modal .modal-content');
@@ -3478,7 +3478,7 @@ async function viewContractPdf(orderId) {
     try {
         const realm = CONFIG.getRealmHostname();
         const token = await getTempToken(CONFIG.tables.orders);
-        const url = `https://api.quickbase.com/v1/files/${CONFIG.tables.orders}/${orderId}/${CONFIG.fields.orders.orderPDF}/0`;
+        const url = `https://api.quickbase.com/v1/files/${CONFIG.tables.orders}/${orderId}/${CONFIG.fields.orders.orderPDF}/${versionNumber ?? 0}`;
         const resp = await fetch(url, { headers: { 'QB-Realm-Hostname': realm, 'Authorization': `QB-TEMP-TOKEN ${token}` } });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const arrayBuffer = await resp.arrayBuffer();
@@ -3515,9 +3515,9 @@ function closeContractPdf() {
     mc.style.height = '';
 }
 
-async function viewOrderAndPdf(id) {
+async function viewOrderAndPdf(id, pdfVer) {
     await viewOrder(id);
-    viewContractPdf(id);
+    viewContractPdf(id, pdfVer);
 }
 
 async function downloadContractFile(orderId, fieldId, versionNumber, fileName) {

@@ -1,5 +1,5 @@
 {
-  "version": "2.1.32",
+  "version": "2.1.33",
   "updated": "2026-04-13",
-  "notes": "PDF viewer: load PDF.js dynamically (QB loader strips script tags from dashboard.html)"
+  "notes": "PDF viewer: pass correct QB file version number to files API instead of hardcoded 0"
 }
