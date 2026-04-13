@@ -3481,7 +3481,7 @@ async function viewContractPdf(orderId) {
         const url = `https://api.quickbase.com/v1/files/${CONFIG.tables.orders}/${orderId}/${CONFIG.fields.orders.orderPDF}/0`;
         const resp = await fetch(url, { headers: { 'QB-Realm-Hostname': realm, 'Authorization': `QB-TEMP-TOKEN ${token}` } });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const blob = await resp.blob();
+        const blob = new Blob([await resp.arrayBuffer()], { type: 'application/pdf' });
         const blobUrl = URL.createObjectURL(blob);
         iframe.src = blobUrl;
         iframe.style.display = 'block';

@@ -1,5 +1,5 @@
 {
-  "version": "2.1.29",
+  "version": "2.1.30",
   "updated": "2026-04-13",
-  "notes": "Fix View PDF iframe: fetch via API to blob URL so browser renders inline instead of downloading"
+  "notes": "Fix PDF viewer: use embed tag + force application/pdf blob type for inline rendering"
 }
