@@ -1,5 +1,5 @@
 {
-  "version": "2.1.36",
+  "version": "2.1.37",
   "updated": "2026-04-13",
-  "notes": "PDF/download: QB files API returns base64-encoded content; decode to binary before rendering or downloading"
+  "notes": "Remove View PDF / Download PDF / Download Word buttons from orders list and detail modal"
 }
