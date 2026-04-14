@@ -42,6 +42,15 @@ async function prefillCurrentUserEmail() {
     }
 }
 
+function toggleLegalEntity(checked) {
+    const section = document.getElementById('legal-entity-section');
+    section.style.display = checked ? 'block' : 'none';
+    const required = ['order-entity-name', 'order-entity-phone', 'order-entity-email', 'order-entity-street1', 'order-entity-city', 'order-entity-state', 'order-entity-zip'];
+    required.forEach(function(id) {
+        document.getElementById(id).required = checked;
+    });
+}
+
 function setupFormHandlers() {
     const orderForm = document.getElementById('order-form');
     orderForm.addEventListener('submit', async e => { e.preventDefault(); await saveOrder(); });
@@ -1161,12 +1170,26 @@ async function saveOrder() {
     const contractEmail = document.getElementById('order-contract-email').value.trim();
     const contractPhone = document.getElementById('order-contract-phone').value.trim();
     const notes = getRichTextContent('order-notes-editor');
-    
+    const useLegalEntity = document.getElementById('order-use-legal-entity').checked;
+    const entityName = document.getElementById('order-entity-name').value.trim();
+    const entityPhone = document.getElementById('order-entity-phone').value.trim();
+    const entityEmail = document.getElementById('order-entity-email').value.trim();
+    const entityStreet1 = document.getElementById('order-entity-street1').value.trim();
+    const entityStreet2 = document.getElementById('order-entity-street2').value.trim();
+    const entityCity = document.getElementById('order-entity-city').value.trim();
+    const entityState = document.getElementById('order-entity-state').value.trim();
+    const entityZip = document.getElementById('order-entity-zip').value.trim();
+    const entityCountry = document.getElementById('order-entity-country').value.trim();
+
     if (!email) { alert('Sales rep email required'); return; }
     if (!ycrmOpportunity) { alert('yCRM Opportunity ID required'); return; }
     if (!AppState.selectedClient) { alert('Please select a client'); return; }
     if (!contractFirst || !contractLast || !contractEmail || !contractPhone) {
         alert('Contract contact info (first name, last name, email, phone) is required');
+        return;
+    }
+    if (useLegalEntity && (!entityName || !entityPhone || !entityEmail || !entityStreet1 || !entityCity || !entityState || !entityZip)) {
+        alert('Legal entity name, phone, email, street 1, city, state, and postal code are required when Use Legal Entity Name is checked');
         return;
     }
     if (!AppState.orderProperties.length) { alert('Please add at least one property'); return; }
@@ -1219,6 +1242,18 @@ async function saveOrder() {
         if (contractEmail) orderData[f.contractEmail] = { value: contractEmail };
         if (contractPhone) orderData[f.contractPhone] = { value: contractPhone };
         orderData[f.propertyLevelBilling] = { value: document.getElementById('order-property-level-billing').checked };
+        orderData[f.useLegalEntity] = { value: useLegalEntity };
+        if (useLegalEntity) {
+            orderData[f.legalEntityName] = { value: entityName };
+            orderData[f.entityPhone] = { value: entityPhone };
+            orderData[f.entityEmail] = { value: entityEmail };
+            orderData[f.entityAddressStreet1] = { value: entityStreet1 };
+            if (entityStreet2) orderData[f.entityAddressStreet2] = { value: entityStreet2 };
+            orderData[f.entityAddressCity] = { value: entityCity };
+            orderData[f.entityAddressState] = { value: entityState };
+            orderData[f.entityAddressZip] = { value: entityZip };
+            if (entityCountry) orderData[f.entityAddressCountry] = { value: entityCountry };
+        }
         if (AppState.convertingQuoteId) orderData[f.relatedQuote3D] = { value: AppState.convertingQuoteId };
 
         let orderId;
@@ -1856,7 +1891,10 @@ async function loadOrderForEdit(id) {
         const [orderResult, propsResult] = await Promise.all([
             queryRecords(CONFIG.tables.orders,
                 [f.recordId, f.salesRepEmail, f.ycrmOpportunityId, f.historyNotes, f.relatedCompany,
-                 f.contractContactFirst, f.contractContactLast, f.contractEmail, f.contractPhone, f.propertyLevelBilling],
+                 f.contractContactFirst, f.contractContactLast, f.contractEmail, f.contractPhone, f.propertyLevelBilling,
+                 f.useLegalEntity, f.legalEntityName, f.entityPhone, f.entityEmail,
+                 f.entityAddressStreet1, f.entityAddressStreet2, f.entityAddressCity,
+                 f.entityAddressState, f.entityAddressZip, f.entityAddressCountry],
                 `{3.EX.${id}}`
             ),
             queryRecords(CONFIG.tables.properties,
@@ -1889,6 +1927,18 @@ async function loadOrderForEdit(id) {
         document.getElementById('order-contract-phone').value = order[f.contractPhone]?.value || '';
         document.getElementById('order-property-level-billing').checked = order[f.propertyLevelBilling]?.value === true;
         setRichTextContent('order-notes-editor', order[f.historyNotes]?.value || '');
+        const useLegalEntity = order[f.useLegalEntity]?.value === true;
+        document.getElementById('order-use-legal-entity').checked = useLegalEntity;
+        toggleLegalEntity(useLegalEntity);
+        document.getElementById('order-entity-name').value = order[f.legalEntityName]?.value || '';
+        document.getElementById('order-entity-phone').value = order[f.entityPhone]?.value || '';
+        document.getElementById('order-entity-email').value = order[f.entityEmail]?.value || '';
+        document.getElementById('order-entity-street1').value = order[f.entityAddressStreet1]?.value || '';
+        document.getElementById('order-entity-street2').value = order[f.entityAddressStreet2]?.value || '';
+        document.getElementById('order-entity-city').value = order[f.entityAddressCity]?.value || '';
+        document.getElementById('order-entity-state').value = order[f.entityAddressState]?.value || '';
+        document.getElementById('order-entity-zip').value = order[f.entityAddressZip]?.value || '';
+        document.getElementById('order-entity-country').value = order[f.entityAddressCountry]?.value || '';
 
         // Restore client
         const relatedCompany = order[f.relatedCompany]?.value;
@@ -3252,6 +3302,17 @@ function resetOrderForm() {
     document.getElementById('order-contract-last').value = '';
     document.getElementById('order-contract-email').value = '';
     document.getElementById('order-contract-phone').value = '';
+    document.getElementById('order-use-legal-entity').checked = false;
+    toggleLegalEntity(false);
+    document.getElementById('order-entity-name').value = '';
+    document.getElementById('order-entity-phone').value = '';
+    document.getElementById('order-entity-email').value = '';
+    document.getElementById('order-entity-street1').value = '';
+    document.getElementById('order-entity-street2').value = '';
+    document.getElementById('order-entity-city').value = '';
+    document.getElementById('order-entity-state').value = '';
+    document.getElementById('order-entity-zip').value = '';
+    document.getElementById('order-entity-country').value = '';
     AppState.orderProperties = [];
     AppState.selectedClient = null;
     AppState.convertingQuoteId = null;

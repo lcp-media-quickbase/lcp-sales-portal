@@ -1,5 +1,5 @@
 {
-  "version": "2.1.53",
-  "updated": "2026-04-13",
-  "notes": "Disable Enter key form submission on order form"
+  "version": "2.1.54",
+  "updated": "2026-04-14",
+  "notes": "Add Use Legal Entity Name checkbox and entity fields to order form"
 }
