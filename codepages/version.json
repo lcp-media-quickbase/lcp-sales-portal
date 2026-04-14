@@ -1,5 +1,5 @@
 {
-  "version": "2.1.54",
+  "version": "2.1.55",
   "updated": "2026-04-14",
-  "notes": "Add Use Legal Entity Name checkbox and entity fields to order form"
+  "notes": "Show Legal Entity info card in order detail view when enabled"
 }

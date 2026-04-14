@@ -3357,7 +3357,10 @@ async function viewOrder(id) {
              f.companyName, f.companyYcrmId, f.ycrmOpportunityId, f.billingContactName, f.billingContactEmail, f.billingContactPhone,
              f.contractContactFirst, f.contractContactLast, f.contractEmail, f.contractPhone, f.propertyLevelBilling,
              f.concessionsApproval, f.concessionsApprovedBy, f.concessionsApprovedDate, f.concessionNotes,
-             f.orderPDF, f.orderDOCX],
+             f.orderPDF, f.orderDOCX,
+             f.useLegalEntity, f.legalEntityName, f.entityPhone, f.entityEmail,
+             f.entityAddressStreet1, f.entityAddressStreet2, f.entityAddressCity,
+             f.entityAddressState, f.entityAddressZip, f.entityAddressCountry],
             `{3.EX.${id}}`
         );
         
@@ -3400,6 +3403,16 @@ async function viewOrder(id) {
         const concessionsApprovedDate = order[f.concessionsApprovedDate]?.value || '';
         const concessionNotes = escapeHtml(order[f.concessionNotes]?.value || '');
         const propertyLevelBilling = order[f.propertyLevelBilling]?.value === true;
+        const useLegalEntity = order[f.useLegalEntity]?.value === true;
+        const entityName = escapeHtml(order[f.legalEntityName]?.value || '');
+        const entityPhone = escapeHtml(order[f.entityPhone]?.value || '');
+        const entityEmail = escapeHtml(order[f.entityEmail]?.value || '');
+        const entityStreet1 = escapeHtml(order[f.entityAddressStreet1]?.value || '');
+        const entityStreet2 = escapeHtml(order[f.entityAddressStreet2]?.value || '');
+        const entityCity = escapeHtml(order[f.entityAddressCity]?.value || '');
+        const entityState = escapeHtml(order[f.entityAddressState]?.value || '');
+        const entityZip = escapeHtml(order[f.entityAddressZip]?.value || '');
+        const entityCountry = escapeHtml(order[f.entityAddressCountry]?.value || '');
         const needsConcessionApproval = status === 'Concessions Approval Needed';
         const hasConcessionDecision = concessionsApproval === 'Approved' || concessionsApproval === 'Denied';
         const hasContractContact = contractContact || contractEmail || contractPhone;
@@ -3475,6 +3488,15 @@ async function viewOrder(id) {
                             ${contractContact ? `<p><strong>Name:</strong> ${contractContact}</p>` : ''}
                             ${contractEmail ? `<p><strong>Email:</strong> <a href="mailto:${contractEmail}" style="color:var(--lcp-blue);">${contractEmail}</a></p>` : ''}
                             ${contractPhone ? `<p><strong>Phone:</strong> ${contractPhone}</p>` : ''}
+                        </div>
+                    ` : ''}
+                    ${useLegalEntity ? `
+                        <div class="order-detail-card">
+                            <h4>Legal Entity</h4>
+                            ${entityName ? `<p><strong>Name:</strong> ${entityName}</p>` : ''}
+                            ${entityPhone ? `<p><strong>Phone:</strong> ${entityPhone}</p>` : ''}
+                            ${entityEmail ? `<p><strong>Email:</strong> <a href="mailto:${entityEmail}" style="color:var(--lcp-blue);">${entityEmail}</a></p>` : ''}
+                            ${entityStreet1 ? `<p><strong>Address:</strong> ${entityStreet1}${entityStreet2 ? `, ${entityStreet2}` : ''}, ${entityCity}, ${entityState} ${entityZip}${entityCountry ? `, ${entityCountry}` : ''}</p>` : ''}
                         </div>
                     ` : ''}
                     ${notes ? `<div class="order-detail-card"><h4>Notes</h4><div class="order-notes-content">${notes}</div></div>` : ''}
