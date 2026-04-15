@@ -51,11 +51,72 @@ function toggleLegalEntity(checked) {
     });
 }
 
+function setupEntityAddressAutocomplete() {
+    const input = document.getElementById('order-entity-street1');
+    if (!input) return;
+
+    const wrapper = input.parentNode;
+    wrapper.style.position = 'relative';
+
+    const dropdown = document.createElement('div');
+    dropdown.style.cssText = 'position:absolute;left:0;right:0;top:100%;z-index:9999;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.2);max-height:220px;overflow-y:auto;display:none;';
+    wrapper.appendChild(dropdown);
+
+    let debounceTimer;
+    let pendingResults = [];
+
+    function closeDropdown() { dropdown.style.display = 'none'; }
+
+    input.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        const query = this.value.trim();
+        if (query.length < 4) { closeDropdown(); return; }
+        debounceTimer = setTimeout(async function() {
+            try {
+                const res = await fetch(
+                    'https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=6&q=' +
+                    encodeURIComponent(query) + '&countrycodes=us',
+                    { headers: { 'Accept-Language': 'en-US,en' } }
+                );
+                pendingResults = await res.json();
+                if (!pendingResults.length) { closeDropdown(); return; }
+                dropdown.innerHTML = pendingResults.map(function(r, i) {
+                    return '<div data-i="' + i + '" style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);line-height:1.4;">' + escapeHtml(r.display_name) + '</div>';
+                }).join('');
+                dropdown.querySelectorAll('[data-i]').forEach(function(el) {
+                    el.addEventListener('mouseenter', function() { this.style.background = 'var(--bg-hover, rgba(0,0,0,0.05))'; });
+                    el.addEventListener('mouseleave', function() { this.style.background = ''; });
+                    el.addEventListener('mousedown', function(e) {
+                        e.preventDefault(); // prevent input blur before click fires
+                        const r = pendingResults[parseInt(this.dataset.i)];
+                        const a = r.address || {};
+                        input.value = [a.house_number, a.road].filter(Boolean).join(' ');
+                        document.getElementById('order-entity-city').value = a.city || a.town || a.village || a.county || '';
+                        document.getElementById('order-entity-state').value = a.state || '';
+                        document.getElementById('order-entity-zip').value = a.postcode || '';
+                        document.getElementById('order-entity-country').value = a.country || '';
+                        closeDropdown();
+                    });
+                });
+                dropdown.style.display = 'block';
+            } catch(e) {
+                closeDropdown();
+            }
+        }, 350);
+    });
+
+    input.addEventListener('blur', closeDropdown);
+    document.addEventListener('click', function(e) {
+        if (!wrapper.contains(e.target)) closeDropdown();
+    });
+}
+
 function setupFormHandlers() {
     const orderForm = document.getElementById('order-form');
     orderForm.addEventListener('submit', async e => { e.preventDefault(); await saveOrder(); });
     orderForm.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') e.preventDefault(); });
     document.getElementById('quote-form').addEventListener('submit', async e => { e.preventDefault(); await saveQuote(); });
+    setupEntityAddressAutocomplete();
 }
 
 function setupClientSelector() {
@@ -1247,12 +1308,14 @@ async function saveOrder() {
             orderData[f.legalEntityName] = { value: entityName };
             orderData[f.entityPhone] = { value: entityPhone };
             orderData[f.entityEmail] = { value: entityEmail };
-            orderData[f.entityAddressStreet1] = { value: entityStreet1 };
-            if (entityStreet2) orderData[f.entityAddressStreet2] = { value: entityStreet2 };
-            orderData[f.entityAddressCity] = { value: entityCity };
-            orderData[f.entityAddressState] = { value: entityState };
-            orderData[f.entityAddressZip] = { value: entityZip };
-            if (entityCountry) orderData[f.entityAddressCountry] = { value: entityCountry };
+            orderData[f.entityAddress] = { value: {
+                street1: entityStreet1,
+                street2: entityStreet2 || '',
+                city: entityCity,
+                state: entityState,
+                zip: entityZip,
+                country: entityCountry || ''
+            }};
         }
         if (AppState.convertingQuoteId) orderData[f.relatedQuote3D] = { value: AppState.convertingQuoteId };
 

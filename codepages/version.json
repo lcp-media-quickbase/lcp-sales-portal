@@ -1,5 +1,5 @@
 {
-  "version": "2.1.55",
-  "updated": "2026-04-14",
-  "notes": "Show Legal Entity info card in order detail view when enabled"
+  "version": "2.1.56",
+  "updated": "2026-04-15",
+  "notes": "Fix legal entity address save (write to compound field); add address autocomplete"
 }
