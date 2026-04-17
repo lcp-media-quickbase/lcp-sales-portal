@@ -1,5 +1,5 @@
 {
-  "version": "2.1.56",
-  "updated": "2026-04-15",
-  "notes": "Fix legal entity address save (write to compound field); add address autocomplete"
+  "version": "2.1.57",
+  "updated": "2026-04-17",
+  "notes": "Replace entity address dropdown with property-search-style inline results list"
 }

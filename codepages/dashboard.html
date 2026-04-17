@@ -231,47 +231,58 @@
                         </div>
 
                         <div id="legal-entity-section" style="display:none;margin-top:16px;">
-                            <div class="form-row" style="border-top:1px solid var(--border);padding-top:16px;">
-                                <div class="form-col-left">
-                                    <div class="form-group">
-                                        <label class="form-label required" id="legal-entity-name-label">Legal Entity Name</label>
-                                        <input type="text" class="form-input" id="order-entity-name" placeholder="Full legal entity name">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label required">Entity Phone</label>
-                                        <input type="tel" class="form-input" id="order-entity-phone" placeholder="(555) 123-4567" oninput="formatPhoneNumber(this)">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label required">Entity Email</label>
-                                        <input type="email" class="form-input" id="order-entity-email" placeholder="legal@company.com">
+                            <div style="border-top:1px solid var(--border);padding-top:16px;">
+                                <div class="form-group" style="margin-bottom:16px;">
+                                    <label class="form-label">Address Search <span style="font-weight:400;color:var(--text-muted);font-size:11px;">— type to find and auto-fill address fields</span></label>
+                                    <input type="text" class="form-input" id="order-entity-address-search" placeholder="Search for address..." autocomplete="off" oninput="debouncedEntityAddressSearch()">
+                                    <div id="entity-address-results" style="display:none;border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-top:4px;max-height:220px;overflow-y:auto;">
+                                        <table class="data-table" style="margin:0;">
+                                            <tbody id="entity-address-tbody"></tbody>
+                                        </table>
                                     </div>
                                 </div>
-                                <div class="form-col-mid">
-                                    <div class="form-group">
-                                        <label class="form-label required">Address Street 1 <span style="font-weight:400;color:var(--text-muted);font-size:11px;">(type to search)</span></label>
-                                        <input type="text" class="form-input" id="order-entity-street1" placeholder="123 Main St" autocomplete="off">
+                                <div class="form-row">
+                                    <div class="form-col-left">
+                                        <div class="form-group">
+                                            <label class="form-label required" id="legal-entity-name-label">Legal Entity Name</label>
+                                            <input type="text" class="form-input" id="order-entity-name" placeholder="Full legal entity name">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label required">Entity Phone</label>
+                                            <input type="tel" class="form-input" id="order-entity-phone" placeholder="(555) 123-4567" oninput="formatPhoneNumber(this)">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label required">Entity Email</label>
+                                            <input type="email" class="form-input" id="order-entity-email" placeholder="legal@company.com">
+                                        </div>
                                     </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Address Street 2</label>
-                                        <input type="text" class="form-input" id="order-entity-street2" placeholder="Suite 100">
+                                    <div class="form-col-mid">
+                                        <div class="form-group">
+                                            <label class="form-label required">Address Street 1</label>
+                                            <input type="text" class="form-input" id="order-entity-street1" placeholder="123 Main St">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Address Street 2</label>
+                                            <input type="text" class="form-input" id="order-entity-street2" placeholder="Suite 100">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label required">City</label>
+                                            <input type="text" class="form-input" id="order-entity-city" placeholder="City">
+                                        </div>
                                     </div>
-                                    <div class="form-group">
-                                        <label class="form-label required">City</label>
-                                        <input type="text" class="form-input" id="order-entity-city" placeholder="City">
-                                    </div>
-                                </div>
-                                <div class="form-col-right">
-                                    <div class="form-group">
-                                        <label class="form-label required">State / Region</label>
-                                        <input type="text" class="form-input" id="order-entity-state" placeholder="CA">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label required">Postal Code</label>
-                                        <input type="text" class="form-input" id="order-entity-zip" placeholder="90210">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Country</label>
-                                        <input type="text" class="form-input" id="order-entity-country" placeholder="USA">
+                                    <div class="form-col-right">
+                                        <div class="form-group">
+                                            <label class="form-label required">State / Region</label>
+                                            <input type="text" class="form-input" id="order-entity-state" placeholder="CA">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label required">Postal Code</label>
+                                            <input type="text" class="form-input" id="order-entity-zip" placeholder="90210">
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Country</label>
+                                            <input type="text" class="form-input" id="order-entity-country" placeholder="USA">
+                                        </div>
                                     </div>
                                 </div>
                             </div>
